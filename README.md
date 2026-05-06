@@ -1,0 +1,1 @@
+# Resource-rational-heuristics-for-continuous-allocation-decisions
