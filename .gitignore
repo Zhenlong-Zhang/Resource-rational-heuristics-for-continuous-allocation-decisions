@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+notebooks/
+Project2.1_detailed_plan.md
