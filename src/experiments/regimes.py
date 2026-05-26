@@ -1,0 +1,363 @@
+from __future__ import annotations
+
+import math
+import statistics
+from dataclasses import replace
+from typing import Dict, List, Optional, Sequence
+
+try:
+    from ..mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
+    from ..policies.heuristic import build_final_choice_heuristics, build_policy_library
+    from ..policies.voi import BlinkeredPolicy, MyopicValueOfInformationPolicy
+    from ..solvers.dp import DiscretizedDynamicProgrammingPolicy
+except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
+    from mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
+    from policies.heuristic import build_final_choice_heuristics, build_policy_library
+    from policies.voi import BlinkeredPolicy, MyopicValueOfInformationPolicy
+    from solvers.dp import DiscretizedDynamicProgrammingPolicy
+
+
+def _mean(values: Sequence[float]) -> float:
+    return float(statistics.mean(values)) if values else math.nan
+
+
+def _ci95(values: Sequence[float]) -> float:
+    if len(values) <= 1:
+        return 0.0
+    return float(1.96 * statistics.stdev(values) / math.sqrt(len(values)))
+
+
+def compare_rr_to_heuristics_by_final_choice(
+    environment_name: str,
+    n_episodes: int = 200,
+    config: Optional[EnvironmentConfig] = None,
+    allocation_tolerance: float = 0.05,
+    rr_policy: Optional[MetaPolicy] = None,
+) -> List[Dict[str, float | str]]:
+    config = config or EnvironmentConfig()
+    rr_policy = rr_policy or MyopicValueOfInformationPolicy(observation_draws=24)
+    heuristics = build_final_choice_heuristics()
+    rows: List[Dict[str, float | str]] = []
+
+    rr_utilities: List[float] = []
+    rr_allocations: List[float] = []
+    heuristic_utilities: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    heuristic_allocations: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    utility_gaps: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    allocation_gaps: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    allocation_matches: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+
+    for episode_index in range(n_episodes):
+        rr_config = replace(
+            config,
+            random_seed=(config.random_seed or 0) + episode_index * 17 + 1,
+        )
+        rr_mdp = ContinuousAllocationMetaMDP(rr_config)
+        true_state = rr_mdp.sample_true_state()
+        rr_result = rr_mdp.run_episode(rr_policy, true_state=true_state)
+        rr_utilities.append(rr_result.realized_utility)
+        rr_allocations.append(rr_result.final_allocation_to_person1)
+
+        for policy in heuristics:
+            heuristic_allocation, _ = rr_mdp.resolve_final_allocation(policy, rr_result.final_belief)
+            heuristic_allocations[policy.name].append(heuristic_allocation)
+            _, _, _, heuristic_realized_utility = rr_mdp.realized_utility(
+                true_state,
+                heuristic_allocation,
+                rr_result.final_belief,
+            )
+            heuristic_utilities[policy.name].append(heuristic_realized_utility)
+            utility_gaps[policy.name].append(rr_result.realized_utility - heuristic_realized_utility)
+            allocation_gap = abs(rr_result.final_allocation_to_person1 - heuristic_allocation)
+            allocation_gaps[policy.name].append(allocation_gap)
+            allocation_matches[policy.name].append(1.0 if allocation_gap <= allocation_tolerance else 0.0)
+
+    rr_mean_utility = _mean(rr_utilities)
+
+    for policy in heuristics:
+        policy_name = policy.name
+        policy_mean_utility = _mean(heuristic_utilities[policy_name])
+        mean_abs_allocation_gap = _mean(allocation_gaps[policy_name])
+        final_choice_match_rate = _mean(allocation_matches[policy_name])
+        rows.append(
+            {
+                "environment": environment_name,
+                "n_episodes": n_episodes,
+                "rr_policy": rr_policy.name,
+                "heuristic": policy_name,
+                "rr_mean_utility": rr_mean_utility,
+                "rr_mean_utility_ci95": _ci95(rr_utilities),
+                "heuristic_mean_utility": policy_mean_utility,
+                "heuristic_mean_utility_ci95": _ci95(heuristic_utilities[policy_name]),
+                "utility_gap_rr_minus_heuristic": _mean(utility_gaps[policy_name]),
+                "utility_gap_ci95": _ci95(utility_gaps[policy_name]),
+                "mean_abs_allocation_gap": mean_abs_allocation_gap,
+                "mean_abs_allocation_gap_ci95": _ci95(allocation_gaps[policy_name]),
+                "final_choice_match_rate": final_choice_match_rate,
+                "final_choice_match_rate_ci95": _ci95(allocation_matches[policy_name]),
+            }
+        )
+
+    return rows
+
+
+def compare_rr_information_acquisition_to_heuristics(
+    environment_name: str,
+    n_episodes: int = 200,
+    config: Optional[EnvironmentConfig] = None,
+    rr_policy: Optional[MetaPolicy] = None,
+) -> List[Dict[str, float | str]]:
+    config = config or EnvironmentConfig()
+    rr_policy = rr_policy or MyopicValueOfInformationPolicy(observation_draws=24)
+    heuristics = build_policy_library()
+    rows: List[Dict[str, float | str]] = []
+
+    rr_utilities: List[float] = []
+    rr_sample_counts: List[int] = []
+    heuristic_utilities: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    heuristic_sample_counts: Dict[str, List[int]] = {policy.name: [] for policy in heuristics}
+
+    for episode_index in range(n_episodes):
+        rr_config = replace(config, random_seed=(config.random_seed or 0) + episode_index * 17 + 1)
+        rr_mdp = ContinuousAllocationMetaMDP(rr_config)
+        true_state = rr_mdp.sample_true_state()
+        rr_result = rr_mdp.run_episode(rr_policy, true_state=true_state)
+        rr_utilities.append(rr_result.realized_utility)
+        rr_sample_counts.append(len(rr_result.samples))
+
+        for policy in heuristics:
+            heuristic_config = replace(config, random_seed=(config.random_seed or 0) + episode_index * 17 + 1000)
+            heuristic_mdp = ContinuousAllocationMetaMDP(heuristic_config)
+            heuristic_result = heuristic_mdp.run_episode(policy, true_state=true_state)
+            heuristic_utilities[policy.name].append(heuristic_result.realized_utility)
+            heuristic_sample_counts[policy.name].append(len(heuristic_result.samples))
+
+    rr_mean_utility = _mean(rr_utilities)
+    rr_mean_samples = _mean(rr_sample_counts)
+
+    for policy in heuristics:
+        policy_name = policy.name
+        heuristic_mean_utility = _mean(heuristic_utilities[policy_name])
+        utility_gaps = [
+            rr_utility - heuristic_utility
+            for rr_utility, heuristic_utility in zip(rr_utilities, heuristic_utilities[policy_name])
+        ]
+        rows.append(
+            {
+                "environment": environment_name,
+                "n_episodes": n_episodes,
+                "rr_policy": rr_policy.name,
+                "heuristic": policy_name,
+                "rr_mean_utility": rr_mean_utility,
+                "rr_mean_utility_ci95": _ci95(rr_utilities),
+                "heuristic_mean_utility": heuristic_mean_utility,
+                "heuristic_mean_utility_ci95": _ci95(heuristic_utilities[policy_name]),
+                "utility_gap_rr_minus_heuristic": _mean(utility_gaps),
+                "utility_gap_ci95": _ci95(utility_gaps),
+                "rr_mean_sample_count": rr_mean_samples,
+                "heuristic_mean_sample_count": _mean(heuristic_sample_counts[policy_name]),
+            }
+        )
+    return rows
+
+
+def _sample_action_count(result: EpisodeResult, action_code: float) -> int:
+    return sum(1 for sample in result.samples if sample["action"] == action_code)
+
+
+def _safe_share(numerator: int, denominator: int) -> float:
+    return float(numerator / denominator) if denominator else math.nan
+
+
+def _behavior_indicators(
+    mdp: ContinuousAllocationMetaMDP,
+    result: EpisodeResult,
+    allocation_tolerance: float,
+    gap_threshold: float,
+    small_sample_threshold: int,
+) -> Dict[str, float]:
+    sample_1_count = _sample_action_count(result, 1.0)
+    sample_2_count = _sample_action_count(result, 2.0)
+    sample_count = sample_1_count + sample_2_count
+    final_gap = result.final_belief.mean_1 - result.final_belief.mean_2
+    allocation = result.final_allocation_to_person1
+
+    if final_gap > mdp.config.equal_perception_tolerance:
+        all_to_greatest_need = allocation >= 1.0 - allocation_tolerance
+    elif final_gap < -mdp.config.equal_perception_tolerance:
+        all_to_greatest_need = allocation <= allocation_tolerance
+    else:
+        all_to_greatest_need = False
+
+    equal_outcome_allocation = mdp.final_allocation_equal_outcome(result.final_belief)
+    equal_outcome_gap = abs(allocation - equal_outcome_allocation)
+    threshold_gap_stop = (
+        bool(result.actions)
+        and result.actions[-1] == mdp.TERMINATE
+        and sample_count > 0
+        and abs(final_gap) >= gap_threshold
+    )
+
+    return {
+        "utility": result.realized_utility,
+        "sample_count": float(sample_count),
+        "sample_1_count": float(sample_1_count),
+        "sample_2_count": float(sample_2_count),
+        "person1_sampling_share": _safe_share(sample_1_count, sample_count),
+        "abs_sample_count_difference": float(abs(sample_1_count - sample_2_count)),
+        "immediate_termination": 1.0 if result.actions and result.actions[0] == mdp.TERMINATE else 0.0,
+        "small_information": 1.0 if sample_count <= small_sample_threshold else 0.0,
+        "preferential_sample_1": 1.0 if sample_1_count > sample_2_count else 0.0,
+        "preferential_sample_2": 1.0 if sample_2_count > sample_1_count else 0.0,
+        "near_equal_allocation": 1.0 if abs(allocation - 0.5) <= allocation_tolerance else 0.0,
+        "abs_allocation_from_equal": abs(allocation - 0.5),
+        "all_to_greatest_need": 1.0 if all_to_greatest_need else 0.0,
+        "equal_outcome": 1.0 if equal_outcome_gap <= allocation_tolerance else 0.0,
+        "equal_outcome_allocation_gap": equal_outcome_gap,
+        "threshold_gap_stop": 1.0 if threshold_gap_stop else 0.0,
+        "final_belief_need_gap": final_gap,
+        "abs_final_belief_need_gap": abs(final_gap),
+    }
+
+
+def compare_policy_behavior_profiles(
+    environment_name: str,
+    n_episodes: int = 200,
+    config: Optional[EnvironmentConfig] = None,
+    rr_policy: Optional[MetaPolicy] = None,
+    policies: Optional[Sequence[MetaPolicy]] = None,
+    allocation_tolerance: float = 0.05,
+    gap_threshold: float = 10.0,
+    small_sample_threshold: int = 1,
+) -> List[Dict[str, float | str]]:
+    config = config or EnvironmentConfig()
+    rr_policy = rr_policy or MyopicValueOfInformationPolicy(observation_draws=24)
+    heuristic_policies = list(policies or build_policy_library())
+    all_policies: List[tuple[str, MetaPolicy]] = [("rr_approximation", rr_policy)] + [
+        ("heuristic", policy) for policy in heuristic_policies
+    ]
+    metrics_by_policy: Dict[str, List[Dict[str, float]]] = {
+        policy.name: [] for _, policy in all_policies
+    }
+    role_by_policy = {policy.name: role for role, policy in all_policies}
+
+    for episode_index in range(n_episodes):
+        base_seed = (config.random_seed or 0) + episode_index * 17 + 1
+        state_mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=base_seed))
+        true_state = state_mdp.sample_true_state()
+        for policy_index, (_, policy) in enumerate(all_policies):
+            policy_seed = base_seed + (policy_index + 1) * 1000
+            policy_mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=policy_seed))
+            result = policy_mdp.run_episode(policy, true_state=true_state)
+            metrics_by_policy[policy.name].append(
+                _behavior_indicators(
+                    policy_mdp,
+                    result,
+                    allocation_tolerance=allocation_tolerance,
+                    gap_threshold=gap_threshold,
+                    small_sample_threshold=small_sample_threshold,
+                )
+            )
+
+    rows: List[Dict[str, float | str]] = []
+    for policy_name, metric_rows in metrics_by_policy.items():
+        def metric_values(key: str) -> List[float]:
+            return [row[key] for row in metric_rows if not math.isnan(row[key])]
+
+        rows.append(
+            {
+                "environment": environment_name,
+                "n_episodes": n_episodes,
+                "policy": policy_name,
+                "policy_type": role_by_policy[policy_name],
+                "mean_utility": _mean(metric_values("utility")),
+                "mean_utility_ci95": _ci95(metric_values("utility")),
+                "immediate_termination_rate": _mean(metric_values("immediate_termination")),
+                "small_information_rate": _mean(metric_values("small_information")),
+                "mean_sample_count": _mean(metric_values("sample_count")),
+                "mean_sample_1_count": _mean(metric_values("sample_1_count")),
+                "mean_sample_2_count": _mean(metric_values("sample_2_count")),
+                "mean_person1_sampling_share": _mean(metric_values("person1_sampling_share")),
+                "preferential_sample_1_rate": _mean(metric_values("preferential_sample_1")),
+                "preferential_sample_2_rate": _mean(metric_values("preferential_sample_2")),
+                "mean_abs_sample_count_difference": _mean(metric_values("abs_sample_count_difference")),
+                "near_equal_allocation_rate": _mean(metric_values("near_equal_allocation")),
+                "mean_abs_allocation_from_equal": _mean(metric_values("abs_allocation_from_equal")),
+                "all_to_greatest_need_rate": _mean(metric_values("all_to_greatest_need")),
+                "equal_outcome_rate": _mean(metric_values("equal_outcome")),
+                "mean_equal_outcome_allocation_gap": _mean(metric_values("equal_outcome_allocation_gap")),
+                "threshold_gap_stop_rate": _mean(metric_values("threshold_gap_stop")),
+                "mean_final_belief_need_gap": _mean(metric_values("final_belief_need_gap")),
+                "mean_abs_final_belief_need_gap": _mean(metric_values("abs_final_belief_need_gap")),
+            }
+        )
+    return rows
+
+
+def summarize_rr_regimes(
+    environment_names: Sequence[str],
+    config_builder,
+    n_episodes: int = 200,
+    allocation_tolerance: float = 0.05,
+    rr_policy: Optional[MetaPolicy] = None,
+) -> List[Dict[str, float | str]]:
+    rows: List[Dict[str, float | str]] = []
+    for environment_name in environment_names:
+        rows.extend(
+            compare_rr_to_heuristics_by_final_choice(
+                environment_name=environment_name,
+                config=config_builder(environment_name),
+                n_episodes=n_episodes,
+                allocation_tolerance=allocation_tolerance,
+                rr_policy=rr_policy,
+            )
+        )
+    return rows
+
+
+def compare_rr_approximation_methods(
+    environment_name: str,
+    n_episodes: int = 100,
+    config: Optional[EnvironmentConfig] = None,
+    policies: Optional[Sequence[MetaPolicy]] = None,
+) -> List[Dict[str, float | str]]:
+    config = config or EnvironmentConfig()
+    policies = policies or [
+        MyopicValueOfInformationPolicy(observation_draws=16),
+        BlinkeredPolicy(horizon=2, observation_draws=6),
+        DiscretizedDynamicProgrammingPolicy(max_samples=2, mean_grid_size=7, observation_branches=3),
+    ]
+    policy_utilities: Dict[str, List[float]] = {policy.name: [] for policy in policies}
+    policy_samples: Dict[str, List[int]] = {policy.name: [] for policy in policies}
+    policy_allocations: Dict[str, List[float]] = {policy.name: [] for policy in policies}
+
+    for episode_index in range(n_episodes):
+        base_seed = (config.random_seed or 0) + episode_index * 17 + 1
+        state_mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=base_seed))
+        true_state = state_mdp.sample_true_state()
+        for policy_index, policy in enumerate(policies):
+            policy_seed = base_seed + (policy_index + 1) * 1000
+            policy_mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=policy_seed))
+            result = policy_mdp.run_episode(policy, true_state=true_state)
+            policy_utilities[policy.name].append(result.realized_utility)
+            policy_samples[policy.name].append(len(result.samples))
+            policy_allocations[policy.name].append(result.final_allocation_to_person1)
+
+    best_mean_utility = max(_mean(values) for values in policy_utilities.values())
+    rows: List[Dict[str, float | str]] = []
+    for policy in policies:
+        policy_name = policy.name
+        mean_utility = _mean(policy_utilities[policy_name])
+        rows.append(
+            {
+                "environment": environment_name,
+                "n_episodes": n_episodes,
+                "policy": policy_name,
+                "mean_utility": mean_utility,
+                "mean_utility_ci95": _ci95(policy_utilities[policy_name]),
+                "regret_vs_best_rr_approximation": best_mean_utility - mean_utility,
+                "mean_sample_count": _mean(policy_samples[policy_name]),
+                "mean_allocation_to_person1": _mean(policy_allocations[policy_name]),
+            }
+        )
+    return rows

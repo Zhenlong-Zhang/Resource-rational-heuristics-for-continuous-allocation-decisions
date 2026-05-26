@@ -19,16 +19,32 @@ class EnvironmentConfig:
     sigma_sample: float = 10.0
     total_time: float = 60.0
     lambda_shortfall: float = 2.0
+    utility_exponent: float = 0.5
+    alpha: Optional[float] = None
+    learning_per_unit_of_tutoring: float = 1.0
+    delta_learning_per_unit_tutoring: float = 0.0
     need_threshold: float = 100.0
     terminate_cost: float = 1.0
+    sample_time_cost: float = 1.0
     equal_perception_tolerance: float = 1e-6
-    sample_cost_person2: float = 1.0
-    sample_cost_person1_equal: float = 1.0
-    sample_cost_person1_unequal: float = 2.0
     allocation_grid_size: int = 201
     expected_utility_draws: int = 2000
     max_workers: Optional[int] = None
+    initial_mean_1: Optional[float] = None
+    initial_mean_2: Optional[float] = None
+    initial_var_1: Optional[float] = None
+    initial_var_2: Optional[float] = None
+    prior_sample_count_1: int = 0
+    prior_sample_count_2: int = 0
     random_seed: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        if self.learning_per_unit_of_tutoring <= 0:
+            raise ValueError("learning_per_unit_of_tutoring must be positive")
+        if self.learning_per_unit_of_tutoring - self.delta_learning_per_unit_tutoring <= 0:
+            raise ValueError(
+                "learning_per_unit_of_tutoring - delta_learning_per_unit_tutoring must be positive"
+            )
 
 
 @dataclass(frozen=True)
@@ -77,11 +93,14 @@ class MetaPolicy(Protocol):
     def choose_action(self, mdp: "ContinuousAllocationMetaMDP", belief: BeliefState) -> Action:
         ...
 
+    def choose_final_allocation(self, mdp: "ContinuousAllocationMetaMDP", belief: BeliefState) -> Optional[float]:
+        ...
 
-def utility(outcome_minus_need: float, lambda_shortfall: float) -> float:
+
+def utility(outcome_minus_need: float, lambda_shortfall: float, exponent: float = 0.5) -> float:
     if outcome_minus_need < 0:
-        return -lambda_shortfall * math.sqrt(abs(outcome_minus_need))
-    return math.sqrt(outcome_minus_need)
+        return -lambda_shortfall * (abs(outcome_minus_need) ** exponent)
+    return outcome_minus_need ** exponent
 
 
 class ContinuousAllocationMetaMDP:
@@ -104,33 +123,70 @@ class ContinuousAllocationMetaMDP:
             need_2=self.rng.gauss(self.config.mu_need, self.config.sigma_need),
         )
 
+    def _prior_variance_after_prior_samples(self, prior_sample_count: int) -> float:
+        prior_precision = 1.0 / (self.config.sigma_need ** 2)
+        sample_precision = prior_sample_count / (self.config.sigma_sample ** 2)
+        return 1.0 / (prior_precision + sample_precision)
+
     def initial_belief(self) -> BeliefState:
-        prior_var = self.config.sigma_need ** 2
+        prior_var_1 = self._prior_variance_after_prior_samples(self.config.prior_sample_count_1)
+        prior_var_2 = self._prior_variance_after_prior_samples(self.config.prior_sample_count_2)
         return BeliefState(
-            mean_1=self.config.mu_need,
-            var_1=prior_var,
-            mean_2=self.config.mu_need,
-            var_2=prior_var,
+            mean_1=self.config.initial_mean_1 if self.config.initial_mean_1 is not None else self.config.mu_need,
+            var_1=self.config.initial_var_1 if self.config.initial_var_1 is not None else prior_var_1,
+            mean_2=self.config.initial_mean_2 if self.config.initial_mean_2 is not None else self.config.mu_need,
+            var_2=self.config.initial_var_2 if self.config.initial_var_2 is not None else prior_var_2,
         )
 
     def perceived_equal_need(self, belief: BeliefState) -> bool:
         return abs(belief.mean_1 - belief.mean_2) <= self.config.equal_perception_tolerance
 
     def sample_cost(self, action: Action, belief: BeliefState) -> float:
-        if action == self.SAMPLE_PERSON_2:
-            return self.config.sample_cost_person2
-        if action == self.SAMPLE_PERSON_1:
-            return (
-                self.config.sample_cost_person1_equal
-                if self.perceived_equal_need(belief)
-                else self.config.sample_cost_person1_unequal
-            )
+        if action in (self.SAMPLE_PERSON_1, self.SAMPLE_PERSON_2):
+            return self.config.sample_time_cost
         if action == self.TERMINATE:
             return self.config.terminate_cost
         raise ValueError(f"Unknown action: {action}")
 
-    def remaining_time_after_termination(self, belief: BeliefState) -> float:
-        return max(0.0, self.config.total_time - belief.deliberation_time - self.config.terminate_cost)
+    def terminal_action_cost(self, policy: Optional[MetaPolicy] = None, belief: Optional[BeliefState] = None) -> float:
+        cost = getattr(policy, "termination_time_cost", None)
+        if callable(cost):
+            return float(cost(self, belief))
+        if cost is not None:
+            return float(cost)
+        return self.config.terminate_cost
+
+    @staticmethod
+    def belief_already_terminated(belief: BeliefState) -> bool:
+        return bool(belief.history and belief.history[-1]["action"] == 0.0)
+
+    def remaining_time_after_termination(
+        self,
+        belief: BeliefState,
+        policy: Optional[MetaPolicy] = None,
+    ) -> float:
+        remaining = self.config.total_time - belief.deliberation_time
+        if not self.belief_already_terminated(belief):
+            remaining -= self.terminal_action_cost(policy, belief)
+        return max(0.0, remaining)
+
+    def utility_exponent(self) -> float:
+        return self.config.alpha if self.config.alpha is not None else self.config.utility_exponent
+
+    def learning_rates(self) -> Tuple[float, float]:
+        rate_1 = self.config.learning_per_unit_of_tutoring
+        rate_2 = self.config.learning_per_unit_of_tutoring - self.config.delta_learning_per_unit_tutoring
+        return rate_1, rate_2
+
+    def allocation_to_learning_outcomes(
+        self,
+        allocation_to_person1: float,
+        remaining_time: float,
+    ) -> Tuple[float, float]:
+        rate_1, rate_2 = self.learning_rates()
+        tutoring_time_1 = allocation_to_person1 * remaining_time
+        tutoring_time_2 = (1.0 - allocation_to_person1) * remaining_time
+        return rate_1 * tutoring_time_1, rate_2 * tutoring_time_2
 
     def posterior_update(self, mean: float, var: float, observation: float) -> Tuple[float, float]:
         obs_var = self.config.sigma_sample ** 2
@@ -169,19 +225,26 @@ class ContinuousAllocationMetaMDP:
             return next_belief
 
         if action == self.TERMINATE:
-            next_belief.history.append({"action": 0.0, "observation": math.nan, "cost": cost})
-            return next_belief
+            return self.terminate_belief(belief)
 
         raise ValueError(f"Unknown action: {action}")
 
-    def available_actions(self, belief: BeliefState) -> List[Action]:
-        if belief.deliberation_time + self.config.terminate_cost > self.config.total_time:
+    def terminate_belief(self, belief: BeliefState, policy: Optional[MetaPolicy] = None) -> BeliefState:
+        next_belief = belief.copy()
+        cost = self.terminal_action_cost(policy, belief)
+        next_belief.deliberation_time += cost
+        next_belief.history.append({"action": 0.0, "observation": math.nan, "cost": cost})
+        return next_belief
+
+    def available_actions(self, belief: BeliefState, policy: Optional[MetaPolicy] = None) -> List[Action]:
+        terminal_cost = self.terminal_action_cost(policy, belief)
+        if belief.deliberation_time + terminal_cost > self.config.total_time:
             return []
 
         actions = [self.TERMINATE]
-        if belief.deliberation_time + self.sample_cost(self.SAMPLE_PERSON_1, belief) + self.config.terminate_cost <= self.config.total_time:
+        if belief.deliberation_time + self.sample_cost(self.SAMPLE_PERSON_1, belief) + terminal_cost <= self.config.total_time:
             actions.append(self.SAMPLE_PERSON_1)
-        if belief.deliberation_time + self.sample_cost(self.SAMPLE_PERSON_2, belief) + self.config.terminate_cost <= self.config.total_time:
+        if belief.deliberation_time + self.sample_cost(self.SAMPLE_PERSON_2, belief) + terminal_cost <= self.config.total_time:
             actions.append(self.SAMPLE_PERSON_2)
         return actions
 
@@ -199,11 +262,11 @@ class ContinuousAllocationMetaMDP:
         need_2_samples: List[float],
     ) -> float:
         remaining_time = self.remaining_time_after_termination(belief)
-        amount_1 = allocation_to_person1 * remaining_time
-        amount_2 = (1.0 - allocation_to_person1) * remaining_time
+        amount_1, amount_2 = self.allocation_to_learning_outcomes(allocation_to_person1, remaining_time)
+        alpha = self.utility_exponent()
         utilities = [
-            utility(amount_1 - n1, self.config.lambda_shortfall)
-            + utility(amount_2 - n2, self.config.lambda_shortfall)
+            utility(amount_1 - n1, self.config.lambda_shortfall, alpha)
+            + utility(amount_2 - n2, self.config.lambda_shortfall, alpha)
             for n1, n2 in zip(need_1_samples, need_2_samples)
         ]
         return float(statistics.mean(utilities))
@@ -219,9 +282,11 @@ class ContinuousAllocationMetaMDP:
 
     def solve_terminal_allocation(self, belief: BeliefState) -> Tuple[float, float]:
         need_1_samples, need_2_samples = self.draw_need_samples_from_belief(belief)
+        rate_1, rate_2 = self.learning_rates()
         if (
             abs(belief.mean_1 - belief.mean_2) <= self.config.equal_perception_tolerance
             and abs(belief.var_1 - belief.var_2) <= self.config.equal_perception_tolerance
+            and abs(rate_1 - rate_2) <= self.config.equal_perception_tolerance
         ):
             symmetric_a = 0.5
             return symmetric_a, self.expected_terminal_utility_from_samples(
@@ -246,6 +311,47 @@ class ContinuousAllocationMetaMDP:
         best_index = max(range(len(values)), key=lambda idx: values[idx])
         return float(grid[best_index]), float(values[best_index])
 
+    def final_allocation_equal_division(self, belief: BeliefState) -> float:
+        return 0.5
+
+    def final_allocation_all_to_greatest_need(self, belief: BeliefState) -> float:
+        if belief.mean_1 > belief.mean_2:
+            return 1.0
+        if belief.mean_2 > belief.mean_1:
+            return 0.0
+        return 0.5
+
+    def final_allocation_proportional_to_estimated_needs(self, belief: BeliefState) -> float:
+        rate_1, rate_2 = self.learning_rates()
+        time_needed_1 = belief.mean_1 / rate_1
+        time_needed_2 = belief.mean_2 / rate_2
+        total_estimated_time_needed = max(1e-9, time_needed_1 + time_needed_2)
+        return min(1.0, max(0.0, time_needed_1 / total_estimated_time_needed))
+
+    def final_allocation_rectify_then_split_equally(self, belief: BeliefState) -> float:
+        remaining_time = self.remaining_time_after_termination(belief)
+        if remaining_time <= 0:
+            return 0.5
+        rate_1, rate_2 = self.learning_rates()
+        allocation = (belief.mean_1 - belief.mean_2 + rate_2 * remaining_time) / (
+            (rate_1 + rate_2) * remaining_time
+        )
+        return min(1.0, max(0.0, allocation))
+
+    def final_allocation_equal_outcome(self, belief: BeliefState) -> float:
+        return self.final_allocation_rectify_then_split_equally(belief)
+
+    def final_allocation_maximin(self, belief: BeliefState) -> float:
+        return self.final_allocation_rectify_then_split_equally(belief)
+
+    def resolve_final_allocation(self, policy: MetaPolicy, belief: BeliefState) -> Tuple[float, Optional[float]]:
+        if hasattr(policy, "choose_final_allocation"):
+            allocation = policy.choose_final_allocation(self, belief)
+            if allocation is not None:
+                return allocation, None
+        allocation, expected_value = self.solve_terminal_allocation(belief)
+        return allocation, expected_value
+
     def realized_utility(
         self,
         true_state: TrueState,
@@ -253,10 +359,10 @@ class ContinuousAllocationMetaMDP:
         belief: BeliefState,
     ) -> Tuple[float, float, float, float]:
         remaining_time = self.remaining_time_after_termination(belief)
-        amount_1 = allocation_to_person1 * remaining_time
-        amount_2 = (1.0 - allocation_to_person1) * remaining_time
-        utility_1 = utility(amount_1 - true_state.need_1, self.config.lambda_shortfall)
-        utility_2 = utility(amount_2 - true_state.need_2, self.config.lambda_shortfall)
+        amount_1, amount_2 = self.allocation_to_learning_outcomes(allocation_to_person1, remaining_time)
+        alpha = self.utility_exponent()
+        utility_1 = utility(amount_1 - true_state.need_1, self.config.lambda_shortfall, alpha)
+        utility_2 = utility(amount_2 - true_state.need_2, self.config.lambda_shortfall, alpha)
         return amount_1, amount_2, remaining_time, utility_1 + utility_2
 
     def run_episode(
@@ -272,7 +378,7 @@ class ContinuousAllocationMetaMDP:
         terminated = False
 
         for _ in range(max_steps):
-            available = self.available_actions(belief)
+            available = self.available_actions(belief, policy)
             if not available:
                 action = self.TERMINATE
             else:
@@ -282,7 +388,7 @@ class ContinuousAllocationMetaMDP:
             actions.append(action)
 
             if action == self.TERMINATE:
-                belief = self.transition(belief, true_state, action)
+                belief = self.terminate_belief(belief, policy)
                 terminated = True
                 break
 
@@ -292,10 +398,10 @@ class ContinuousAllocationMetaMDP:
                 samples.append(belief.history[-1])
 
         if not terminated:
-            belief = self.transition(belief, true_state, self.TERMINATE)
+            belief = self.terminate_belief(belief, policy)
             actions.append(self.TERMINATE)
 
-        allocation_to_person1, _ = self.solve_terminal_allocation(belief)
+        allocation_to_person1, _ = self.resolve_final_allocation(policy, belief)
         amount_1, amount_2, remaining_time, realized = self.realized_utility(
             true_state, allocation_to_person1, belief
         )

@@ -1,19 +1,40 @@
 from .heuristic import (
     BalancedSamplingPolicy,
+    EqualOutcomePolicy,
     EqualDivisionPolicy,
+    FocusAttentionOnNeediestAfterGapPolicy,
+    GiveAllToGreatestNeedPolicy,
+    HelpPoorestAfterCertaintyPolicy,
+    HelpPoorestImmediatePolicy,
+    MaximinPolicy,
     NeediestFirstPolicy,
+    OneAndDonePolicy,
     Person1FirstPolicy,
+    ProportionalNeedPolicy,
+    RectifyThenSplitPolicy,
     ThresholdDifferencePolicy,
+    build_final_choice_heuristics,
     build_policy_library,
 )
-from .voi import MyopicValueOfInformationPolicy
+from .voi import BlinkeredPolicy, MyopicValueOfInformationPolicy
 
 __all__ = [
     "BalancedSamplingPolicy",
+    "EqualOutcomePolicy",
     "EqualDivisionPolicy",
+    "FocusAttentionOnNeediestAfterGapPolicy",
+    "GiveAllToGreatestNeedPolicy",
+    "HelpPoorestAfterCertaintyPolicy",
+    "HelpPoorestImmediatePolicy",
+    "MaximinPolicy",
     "NeediestFirstPolicy",
+    "OneAndDonePolicy",
     "Person1FirstPolicy",
+    "ProportionalNeedPolicy",
+    "RectifyThenSplitPolicy",
     "ThresholdDifferencePolicy",
+    "BlinkeredPolicy",
     "MyopicValueOfInformationPolicy",
+    "build_final_choice_heuristics",
     "build_policy_library",
 ]

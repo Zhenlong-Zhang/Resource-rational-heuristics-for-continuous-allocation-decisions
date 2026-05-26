@@ -1,9 +1,43 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Callable, Dict, Hashable, Mapping, Optional
 
-from mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
-from policies.voi import MyopicValueOfInformationPolicy
+try:
+    from ..mdp.meta_mdp import Action, BeliefState, ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
+    from ..policies.voi import MyopicValueOfInformationPolicy
+except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
+    from mdp.meta_mdp import Action, BeliefState, ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
+    from policies.voi import MyopicValueOfInformationPolicy
+
+
+BeliefKeyFn = Callable[[BeliefState], Hashable]
+
+
+def rounded_belief_key(belief: BeliefState, digits: int = 2) -> tuple[float, float, float, float, float]:
+    return (
+        round(belief.mean_1, digits),
+        round(belief.var_1, digits),
+        round(belief.mean_2, digits),
+        round(belief.var_2, digits),
+        round(belief.deliberation_time, digits),
+    )
+
+
+class BeliefActionDictionaryPolicy:
+    name = "belief_action_dictionary"
+
+    def __init__(
+        self,
+        action_by_belief: Mapping[Hashable, Action],
+        default_action: Action = ContinuousAllocationMetaMDP.TERMINATE,
+        key_fn: Optional[BeliefKeyFn] = None,
+    ):
+        self.action_by_belief = dict(action_by_belief)
+        self.default_action = default_action
+        self.key_fn = key_fn or rounded_belief_key
+
+    def choose_action(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> Action:
+        return self.action_by_belief.get(self.key_fn(belief), self.default_action)
 
 
 def run_single_episode(

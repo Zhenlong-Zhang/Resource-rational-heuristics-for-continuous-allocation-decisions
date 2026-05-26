@@ -1,4 +1,4 @@
-from experiments.compare import (
+from .experiments.compare import (
     ENVIRONMENT_LIBRARY,
     best_policy_by_environment,
     build_environment,
@@ -6,7 +6,23 @@ from experiments.compare import (
     model_overview,
     run_strategy_comparison,
 )
-from mdp.meta_mdp import (
+from .experiments.regimes import (
+    compare_rr_approximation_methods,
+    compare_rr_information_acquisition_to_heuristics,
+    compare_rr_to_heuristics_by_final_choice,
+    summarize_rr_regimes,
+)
+from .experiments.sweeps import (
+    DEFAULT_MAX_GRID_POINTS,
+    DEFAULT_SWEEP_EPISODES,
+    SERVER_MAX_GRID_POINTS,
+    SERVER_SWEEP_EPISODES,
+    SWEEP_VALUES,
+    build_sweep_configs,
+    run_final_choice_sweep,
+    summarize_sweep_regimes,
+)
+from .mdp.meta_mdp import (
     Action,
     BeliefState,
     ContinuousAllocationMetaMDP,
@@ -16,40 +32,82 @@ from mdp.meta_mdp import (
     TrueState,
     utility,
 )
-from policies.heuristic import (
+from .policies.heuristic import (
     BalancedSamplingPolicy,
+    EqualOutcomePolicy,
     EqualDivisionPolicy,
+    FocusAttentionOnNeediestAfterGapPolicy,
+    GiveAllToGreatestNeedPolicy,
+    HelpPoorestAfterCertaintyPolicy,
+    HelpPoorestImmediatePolicy,
+    MaximinPolicy,
     NeediestFirstPolicy,
+    OneAndDonePolicy,
     Person1FirstPolicy,
+    ProportionalNeedPolicy,
+    RectifyThenSplitPolicy,
     ThresholdDifferencePolicy,
     build_policy_library,
 )
-from policies.voi import MyopicValueOfInformationPolicy
-from simulator.simulator import episode_to_dict, run_single_episode, simulate_many_episodes
+from .policies.voi import BlinkeredPolicy, MyopicValueOfInformationPolicy
+from .simulator.simulator import (
+    BeliefActionDictionaryPolicy,
+    episode_to_dict,
+    rounded_belief_key,
+    run_single_episode,
+    simulate_many_episodes,
+)
+from .solvers.dp import DiscretizedDynamicProgrammingPolicy, FiniteHorizonDPSolver
 
 __all__ = [
     "Action",
+    "BeliefActionDictionaryPolicy",
+    "BlinkeredPolicy",
     "BalancedSamplingPolicy",
+    "EqualOutcomePolicy",
     "BeliefState",
     "ContinuousAllocationMetaMDP",
+    "DiscretizedDynamicProgrammingPolicy",
+    "DEFAULT_MAX_GRID_POINTS",
+    "DEFAULT_SWEEP_EPISODES",
     "ENVIRONMENT_LIBRARY",
     "EnvironmentConfig",
     "EpisodeResult",
     "EqualDivisionPolicy",
+    "FocusAttentionOnNeediestAfterGapPolicy",
+    "FiniteHorizonDPSolver",
     "MetaPolicy",
+    "HelpPoorestAfterCertaintyPolicy",
+    "HelpPoorestImmediatePolicy",
     "MyopicValueOfInformationPolicy",
     "NeediestFirstPolicy",
+    "OneAndDonePolicy",
     "Person1FirstPolicy",
+    "ProportionalNeedPolicy",
+    "RectifyThenSplitPolicy",
+    "SERVER_MAX_GRID_POINTS",
+    "SERVER_SWEEP_EPISODES",
+    "SWEEP_VALUES",
     "ThresholdDifferencePolicy",
     "TrueState",
     "best_policy_by_environment",
     "build_environment",
     "build_policy_library",
+    "build_sweep_configs",
+    "compare_rr_approximation_methods",
+    "compare_rr_to_heuristics_by_final_choice",
+    "compare_rr_information_acquisition_to_heuristics",
     "episode_to_dict",
     "evaluate_policy_library",
+    "GiveAllToGreatestNeedPolicy",
+    "MaximinPolicy",
     "model_overview",
     "run_single_episode",
     "run_strategy_comparison",
+    "run_final_choice_sweep",
     "simulate_many_episodes",
+    "rounded_belief_key",
+    "summarize_rr_regimes",
+    "summarize_sweep_regimes",
     "utility",
 ]

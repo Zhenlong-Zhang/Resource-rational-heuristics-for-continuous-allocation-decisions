@@ -6,9 +6,14 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import os
 
-from mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig
-from policies.heuristic import build_policy_library
-from policies.voi import MyopicValueOfInformationPolicy
+try:
+    from ..mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig
+    from ..policies.heuristic import build_policy_library
+    from ..policies.voi import MyopicValueOfInformationPolicy
+except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
+    from mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig
+    from policies.heuristic import build_policy_library
+    from policies.voi import MyopicValueOfInformationPolicy
 
 
 ENVIRONMENT_LIBRARY: Dict[str, EnvironmentConfig] = {
@@ -48,6 +53,86 @@ ENVIRONMENT_LIBRARY: Dict[str, EnvironmentConfig] = {
         sigma_sample=10.0,
         total_time=20.0,
         lambda_shortfall=2.0,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "diminishing_marginal_utility": EnvironmentConfig(
+        mu_need=100.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=2.0,
+        utility_exponent=0.25,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "high_shortfall_penalty": EnvironmentConfig(
+        mu_need=100.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=4.0,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "high_sampling_cost": EnvironmentConfig(
+        mu_need=100.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=2.0,
+        sample_time_cost=3.0,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "prior_knowledge_symmetric": EnvironmentConfig(
+        mu_need=100.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=2.0,
+        prior_sample_count_1=4,
+        prior_sample_count_2=4,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "initial_belief_asymmetry": EnvironmentConfig(
+        mu_need=100.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=2.0,
+        initial_mean_1=115.0,
+        initial_mean_2=85.0,
+        prior_sample_count_1=4,
+        prior_sample_count_2=4,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "lower_average_need": EnvironmentConfig(
+        mu_need=70.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=2.0,
+        expected_utility_draws=100,
+        allocation_grid_size=31,
+        random_seed=11,
+    ),
+    "unequal_learning_efficiency": EnvironmentConfig(
+        mu_need=100.0,
+        sigma_need=20.0,
+        sigma_sample=10.0,
+        total_time=60.0,
+        lambda_shortfall=2.0,
+        learning_per_unit_of_tutoring=1.0,
+        delta_learning_per_unit_tutoring=0.4,
         expected_utility_draws=100,
         allocation_grid_size=31,
         random_seed=11,
