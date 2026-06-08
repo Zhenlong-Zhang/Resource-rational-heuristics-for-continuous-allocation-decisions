@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
 
 import math
 import os
@@ -29,6 +29,8 @@ class EnvironmentConfig:
     equal_perception_tolerance: float = 1e-6
     allocation_grid_size: int = 201
     expected_utility_draws: int = 2000
+    expected_utility_method: str = "monte_carlo"
+    gauss_hermite_order: int = 15
     max_workers: Optional[int] = None
     initial_mean_1: Optional[float] = None
     initial_mean_2: Optional[float] = None
@@ -45,6 +47,8 @@ class EnvironmentConfig:
             raise ValueError(
                 "learning_per_unit_of_tutoring - delta_learning_per_unit_tutoring must be positive"
             )
+        if self.expected_utility_method not in {"monte_carlo", "gauss_hermite"}:
+            raise ValueError("expected_utility_method must be 'monte_carlo' or 'gauss_hermite'")
 
 
 @dataclass(frozen=True)
@@ -108,9 +112,21 @@ class ContinuousAllocationMetaMDP:
     SAMPLE_PERSON_1: Action = "sample_1"
     SAMPLE_PERSON_2: Action = "sample_2"
 
-    def __init__(self, config: EnvironmentConfig):
+    def __init__(
+        self,
+        config: EnvironmentConfig,
+        observation_streams: Optional[Mapping[Action, Sequence[float]]] = None,
+    ):
         self.config = config
         self.rng = random.Random(config.random_seed)
+        self._observation_streams = {
+            action: list(observations)
+            for action, observations in (observation_streams or {}).items()
+        }
+        self._observation_positions = {
+            action: 0
+            for action in self._observation_streams
+        }
 
     @staticmethod
     def default_max_workers() -> int:
@@ -197,6 +213,16 @@ class ContinuousAllocationMetaMDP:
         return post_mean, post_var
 
     def observe(self, true_state: TrueState, action: Action) -> float:
+        if action in self._observation_streams:
+            position = self._observation_positions[action]
+            observations = self._observation_streams[action]
+            if position >= len(observations):
+                raise RuntimeError(
+                    f"Observation stream for {action} is exhausted. "
+                    "Increase observations_per_person for common-randomness runs."
+                )
+            self._observation_positions[action] = position + 1
+            return float(observations[position])
         if action == self.SAMPLE_PERSON_1:
             return float(self.rng.gauss(true_state.need_1, self.config.sigma_sample))
         if action == self.SAMPLE_PERSON_2:
@@ -272,6 +298,18 @@ class ContinuousAllocationMetaMDP:
         return float(statistics.mean(utilities))
 
     def expected_terminal_utility(self, belief: BeliefState, allocation_to_person1: float) -> float:
+        if self.config.expected_utility_method == "gauss_hermite":
+            try:
+                from ..solvers.gauss_hermite import expected_terminal_utility_gauss_hermite
+            except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
+                from solvers.gauss_hermite import expected_terminal_utility_gauss_hermite
+
+            return expected_terminal_utility_gauss_hermite(
+                self,
+                belief,
+                allocation_to_person1,
+                order=self.config.gauss_hermite_order,
+            )
         need_1, need_2 = self.draw_need_samples_from_belief(belief)
         return self.expected_terminal_utility_from_samples(
             belief,
@@ -281,7 +319,20 @@ class ContinuousAllocationMetaMDP:
         )
 
     def solve_terminal_allocation(self, belief: BeliefState) -> Tuple[float, float]:
-        need_1_samples, need_2_samples = self.draw_need_samples_from_belief(belief)
+        if self.config.expected_utility_method == "gauss_hermite":
+            def evaluator(allocation_to_person1: float) -> float:
+                return self.expected_terminal_utility(belief, allocation_to_person1)
+        else:
+            need_1_samples, need_2_samples = self.draw_need_samples_from_belief(belief)
+
+            def evaluator(allocation_to_person1: float) -> float:
+                return self.expected_terminal_utility_from_samples(
+                    belief,
+                    allocation_to_person1,
+                    need_1_samples,
+                    need_2_samples,
+                )
+
         rate_1, rate_2 = self.learning_rates()
         if (
             abs(belief.mean_1 - belief.mean_2) <= self.config.equal_perception_tolerance
@@ -289,25 +340,12 @@ class ContinuousAllocationMetaMDP:
             and abs(rate_1 - rate_2) <= self.config.equal_perception_tolerance
         ):
             symmetric_a = 0.5
-            return symmetric_a, self.expected_terminal_utility_from_samples(
-                belief,
-                symmetric_a,
-                need_1_samples,
-                need_2_samples,
-            )
+            return symmetric_a, evaluator(symmetric_a)
         if self.config.allocation_grid_size <= 1:
             grid = [0.5]
         else:
             grid = [i / (self.config.allocation_grid_size - 1) for i in range(self.config.allocation_grid_size)]
-        values = [
-            self.expected_terminal_utility_from_samples(
-                belief,
-                a,
-                need_1_samples,
-                need_2_samples,
-            )
-            for a in grid
-        ]
+        values = [evaluator(a) for a in grid]
         best_index = max(range(len(values)), key=lambda idx: values[idx])
         return float(grid[best_index]), float(values[best_index])
 
