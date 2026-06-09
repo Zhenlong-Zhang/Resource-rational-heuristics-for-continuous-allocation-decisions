@@ -33,3 +33,17 @@ python3 scripts/generate_results.py \
 ```
 
 Generated outputs are written under `results/`, which is ignored by Git.
+
+`run_parallel_r2.py` is the preferred runner for larger Round 2 jobs. It splits the run into section/environment or section/feature shards, runs shards in parallel, writes one stdout/stderr log per shard, and combines successful shard outputs.
+
+Example:
+
+```bash
+python3 scripts/run_parallel_r2.py \
+  --preset serious \
+  --sections all \
+  --max-workers 7 \
+  --output-dir results/r2_parallel_serious
+```
+
+If a task fails, inspect `parallel_run_status.csv`, `parallel_summary.md`, and the corresponding file under `logs/`.
