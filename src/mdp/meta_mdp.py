@@ -290,12 +290,85 @@ class ContinuousAllocationMetaMDP:
         remaining_time = self.remaining_time_after_termination(belief)
         amount_1, amount_2 = self.allocation_to_learning_outcomes(allocation_to_person1, remaining_time)
         alpha = self.utility_exponent()
+        try:
+            import numpy as np  # type: ignore
+
+            need_1 = np.asarray(need_1_samples, dtype=float)
+            need_2 = np.asarray(need_2_samples, dtype=float)
+            outcome_1 = amount_1 - need_1
+            outcome_2 = amount_2 - need_2
+            utility_1 = np.where(
+                outcome_1 < 0.0,
+                -self.config.lambda_shortfall * np.power(np.maximum(-outcome_1, 0.0), alpha),
+                np.power(np.maximum(outcome_1, 0.0), alpha),
+            )
+            utility_2 = np.where(
+                outcome_2 < 0.0,
+                -self.config.lambda_shortfall * np.power(np.maximum(-outcome_2, 0.0), alpha),
+                np.power(np.maximum(outcome_2, 0.0), alpha),
+            )
+            return float(np.mean(utility_1 + utility_2))
+        except Exception:
+            pass
         utilities = [
             utility(amount_1 - n1, self.config.lambda_shortfall, alpha)
             + utility(amount_2 - n2, self.config.lambda_shortfall, alpha)
             for n1, n2 in zip(need_1_samples, need_2_samples)
         ]
         return float(statistics.mean(utilities))
+
+    def _solve_terminal_allocation_from_samples(
+        self,
+        belief: BeliefState,
+        need_1_samples: List[float],
+        need_2_samples: List[float],
+    ) -> Tuple[float, float]:
+        try:
+            import numpy as np  # type: ignore
+
+            if self.config.allocation_grid_size <= 1:
+                grid = np.asarray([0.5], dtype=float)
+            else:
+                grid = np.linspace(0.0, 1.0, self.config.allocation_grid_size)
+            remaining_time = self.remaining_time_after_termination(belief)
+            rate_1, rate_2 = self.learning_rates()
+            need_1 = np.asarray(need_1_samples, dtype=float)[None, :]
+            need_2 = np.asarray(need_2_samples, dtype=float)[None, :]
+            allocation = grid[:, None]
+            amount_1 = rate_1 * allocation * remaining_time
+            amount_2 = rate_2 * (1.0 - allocation) * remaining_time
+            alpha = self.utility_exponent()
+            outcome_1 = amount_1 - need_1
+            outcome_2 = amount_2 - need_2
+            utility_1 = np.where(
+                outcome_1 < 0.0,
+                -self.config.lambda_shortfall * np.power(np.maximum(-outcome_1, 0.0), alpha),
+                np.power(np.maximum(outcome_1, 0.0), alpha),
+            )
+            utility_2 = np.where(
+                outcome_2 < 0.0,
+                -self.config.lambda_shortfall * np.power(np.maximum(-outcome_2, 0.0), alpha),
+                np.power(np.maximum(outcome_2, 0.0), alpha),
+            )
+            values = np.mean(utility_1 + utility_2, axis=1)
+            best_index = int(np.argmax(values))
+            return float(grid[best_index]), float(values[best_index])
+        except Exception:
+            if self.config.allocation_grid_size <= 1:
+                grid = [0.5]
+            else:
+                grid = [i / (self.config.allocation_grid_size - 1) for i in range(self.config.allocation_grid_size)]
+            values = [
+                self.expected_terminal_utility_from_samples(
+                    belief,
+                    allocation_to_person1,
+                    need_1_samples,
+                    need_2_samples,
+                )
+                for allocation_to_person1 in grid
+            ]
+            best_index = max(range(len(values)), key=lambda idx: values[idx])
+            return float(grid[best_index]), float(values[best_index])
 
     def expected_terminal_utility(self, belief: BeliefState, allocation_to_person1: float) -> float:
         if self.config.expected_utility_method == "gauss_hermite":
@@ -341,6 +414,12 @@ class ContinuousAllocationMetaMDP:
         ):
             symmetric_a = 0.5
             return symmetric_a, evaluator(symmetric_a)
+        if self.config.expected_utility_method != "gauss_hermite":
+            return self._solve_terminal_allocation_from_samples(
+                belief,
+                need_1_samples,
+                need_2_samples,
+            )
         if self.config.allocation_grid_size <= 1:
             grid = [0.5]
         else:
