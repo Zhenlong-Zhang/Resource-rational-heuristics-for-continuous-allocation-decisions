@@ -108,20 +108,34 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def write_csv(path: Path, rows: Sequence[Dict[str, object]]) -> None:
+def write_csv(
+    path: Path,
+    rows: Sequence[Dict[str, object]],
+    fieldnames: Sequence[str] | None = None,
+) -> None:
     ensure_dir(path.parent)
-    if not rows:
+    resolved_fieldnames: List[str] = list(fieldnames or [])
+    for row in rows:
+        for key in row.keys():
+            if key not in resolved_fieldnames:
+                resolved_fieldnames.append(key)
+    if not resolved_fieldnames:
         path.write_text("", encoding="utf-8")
         return
-    fieldnames: List[str] = []
-    for row in rows:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=resolved_fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def candidate_fieldnames(source_rows: Sequence[Dict[str, object]]) -> List[str]:
+    """Keep candidate CSVs readable even when no regimes pass thresholds."""
+    fieldnames = ["candidate_type"]
+    for row in source_rows:
         for key in row.keys():
             if key not in fieldnames:
                 fieldnames.append(key)
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    return fieldnames
 
 
 def _as_float(value: object) -> float:
@@ -332,8 +346,16 @@ def run_sweep_outputs(
     behavior_candidates = identify_rr_behavior_regime_candidates(behavior_rows)
     write_csv(output_dir / "sweep_final_choice_comparison.csv", final_choice_rows)
     write_csv(output_dir / "sweep_rr_behavior_profiles.csv", behavior_rows)
-    write_csv(output_dir / "sweep_final_choice_candidates.csv", final_candidates)
-    write_csv(output_dir / "sweep_behavior_candidates.csv", behavior_candidates)
+    write_csv(
+        output_dir / "sweep_final_choice_candidates.csv",
+        final_candidates,
+        fieldnames=candidate_fieldnames(final_choice_rows),
+    )
+    write_csv(
+        output_dir / "sweep_behavior_candidates.csv",
+        behavior_candidates,
+        fieldnames=candidate_fieldnames(behavior_rows),
+    )
     return {
         "sweep_final_choice": final_choice_rows,
         "sweep_behavior": behavior_rows,
