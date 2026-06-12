@@ -139,20 +139,54 @@ class ContinuousAllocationMetaMDP:
             need_2=self.rng.gauss(self.config.mu_need, self.config.sigma_need),
         )
 
-    def _prior_variance_after_prior_samples(self, prior_sample_count: int) -> float:
-        prior_precision = 1.0 / (self.config.sigma_need ** 2)
+    def _prior_variance_after_prior_samples(self, prior_var: float, prior_sample_count: int) -> float:
+        prior_precision = 1.0 / prior_var
         sample_precision = prior_sample_count / (self.config.sigma_sample ** 2)
         return 1.0 / (prior_precision + sample_precision)
 
-    def initial_belief(self) -> BeliefState:
-        prior_var_1 = self._prior_variance_after_prior_samples(self.config.prior_sample_count_1)
-        prior_var_2 = self._prior_variance_after_prior_samples(self.config.prior_sample_count_2)
-        return BeliefState(
-            mean_1=self.config.initial_mean_1 if self.config.initial_mean_1 is not None else self.config.mu_need,
-            var_1=self.config.initial_var_1 if self.config.initial_var_1 is not None else prior_var_1,
-            mean_2=self.config.initial_mean_2 if self.config.initial_mean_2 is not None else self.config.mu_need,
-            var_2=self.config.initial_var_2 if self.config.initial_var_2 is not None else prior_var_2,
-        )
+    def _initial_mean_var(self, person: int) -> Tuple[float, float]:
+        if person == 1:
+            mean = self.config.initial_mean_1 if self.config.initial_mean_1 is not None else self.config.mu_need
+            var = self.config.initial_var_1 if self.config.initial_var_1 is not None else self.config.sigma_need ** 2
+            return mean, var
+        if person == 2:
+            mean = self.config.initial_mean_2 if self.config.initial_mean_2 is not None else self.config.mu_need
+            var = self.config.initial_var_2 if self.config.initial_var_2 is not None else self.config.sigma_need ** 2
+            return mean, var
+        raise ValueError(f"Unknown person: {person}")
+
+    def initial_belief(self, true_state: Optional[TrueState] = None) -> BeliefState:
+        """Create the starting belief before metalevel actions are chosen.
+
+        When `true_state` is available, prior knowledge is represented as
+        actual pre-deliberation samples from each recipient. These observations
+        update the initial means and variances but do not count as metalevel
+        sampling actions and do not consume deliberation time.
+        """
+        mean_1, var_1 = self._initial_mean_var(person=1)
+        mean_2, var_2 = self._initial_mean_var(person=2)
+
+        if true_state is None:
+            return BeliefState(
+                mean_1=mean_1,
+                var_1=self._prior_variance_after_prior_samples(var_1, self.config.prior_sample_count_1),
+                mean_2=mean_2,
+                var_2=self._prior_variance_after_prior_samples(var_2, self.config.prior_sample_count_2),
+            )
+
+        for _ in range(self.config.prior_sample_count_1):
+            mean_1, var_1 = self.posterior_update(
+                mean_1,
+                var_1,
+                self.observe(true_state, self.SAMPLE_PERSON_1),
+            )
+        for _ in range(self.config.prior_sample_count_2):
+            mean_2, var_2 = self.posterior_update(
+                mean_2,
+                var_2,
+                self.observe(true_state, self.SAMPLE_PERSON_2),
+            )
+        return BeliefState(mean_1=mean_1, var_1=var_1, mean_2=mean_2, var_2=var_2)
 
     def perceived_equal_need(self, belief: BeliefState) -> bool:
         return abs(belief.mean_1 - belief.mean_2) <= self.config.equal_perception_tolerance
@@ -489,7 +523,7 @@ class ContinuousAllocationMetaMDP:
         max_steps: int = 100,
     ) -> EpisodeResult:
         true_state = true_state or self.sample_true_state()
-        belief = self.initial_belief()
+        belief = self.initial_belief(true_state=true_state)
         actions: List[Action] = []
         samples: List[Dict[str, float]] = []
         terminated = False

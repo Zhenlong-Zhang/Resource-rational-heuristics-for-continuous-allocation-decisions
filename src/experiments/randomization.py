@@ -55,7 +55,11 @@ def build_evaluation_episodes(
     base_seed = config.random_seed or 0
     if include_observation_streams:
         max_possible_samples = math.ceil(config.total_time / max(config.sample_time_cost, 1e-9))
-        observations_per_person = max(observations_per_person, max_possible_samples + 5)
+        max_prior_samples = max(config.prior_sample_count_1, config.prior_sample_count_2)
+        observations_per_person = max(
+            observations_per_person,
+            max_possible_samples + max_prior_samples + 5,
+        )
     for episode_index in range(n_episodes):
         true_state_seed = base_seed + episode_index * seed_stride + seed_offset
         mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=true_state_seed))

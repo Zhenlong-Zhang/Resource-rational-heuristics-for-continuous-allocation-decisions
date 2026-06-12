@@ -61,6 +61,17 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "learning_per_unit_of_tutoring": [1.0, 1.5, 2.0],
         "sigma_need": [5.0, 10.0],
     },
+    # Designed to find equal-outcome/maximin regimes that are not merely
+    # symmetric 50/50 allocations. Prior samples can make the initial beliefs
+    # asymmetric before any new metalevel sampling occurs.
+    "equal_outcome_distinct_focused": {
+        "mu_need": [20.0, 40.0],
+        "sigma_need": [10.0, 25.0],
+        "sigma_sample": [2.0, 5.0],
+        "prior_sample_count": [5.0, 20.0],
+        "total_time": [80.0, 120.0],
+        "learning_per_unit_of_tutoring": [1.0, 1.5],
+    },
 }
 
 ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
@@ -224,7 +235,7 @@ def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
             learning_per_unit_of_tutoring=1.0,
             delta_learning_per_unit_tutoring=0.0,
         )
-    if grid_name in {"equal_outcome", "equal_outcome_focused"}:
+    if grid_name in {"equal_outcome", "equal_outcome_focused", "equal_outcome_distinct_focused"}:
         return replace(
             base,
             sigma_sample=8.0,
