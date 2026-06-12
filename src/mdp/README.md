@@ -12,10 +12,10 @@ Key objects:
 
 Important methods:
 
-- `initial_belief(...)`: creates the starting belief from environment parameters
+- `initial_belief(...)`: creates the starting belief from environment parameters; during full episode runs, prior sample counts are implemented as pre-deliberation observations from the true state
 - `transition(...)`: applies a sampling action and updates the belief
 - `solve_terminal_allocation(...)`: chooses the terminal allocation according to the current belief
 - `resolve_final_allocation(...)`: uses a policy-specific final-choice heuristic when available, otherwise solves the terminal allocation
 - `run_episode(...)`: executes a metalevel policy until termination
 
-The model supports optional pre-generated observation streams so different policies can be evaluated on the same true states and information-gathering noise.
+The model supports optional pre-generated observation streams so different policies can be evaluated on the same true states and information-gathering noise. When prior samples are used, those streams are also used for pre-deliberation prior observations before normal metalevel sampling starts.

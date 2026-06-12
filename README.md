@@ -59,6 +59,30 @@ python3 scripts/generate_results.py \
   --output-dir results/round2_server
 ```
 
+Run a targeted regime grid, such as the current distinct equal-outcome search:
+
+```bash
+python3 scripts/generate_results.py \
+  --preset serious \
+  --sections regime_grid \
+  --regime-grid equal_outcome_distinct_focused \
+  --common-observations on \
+  --output-dir results/equal_outcome_distinct_serious
+```
+
+For larger grids, use the parallel runner:
+
+```bash
+python3 scripts/run_parallel_r2.py \
+  --preset serious \
+  --sections regime_grid \
+  --regime-grid equal_outcome_distinct_focused \
+  --regime-grid-chunks 8 \
+  --common-observations on \
+  --max-workers 4 \
+  --output-dir results/equal_outcome_distinct_parallel
+```
+
 You can override the main computational knobs:
 
 ```bash
@@ -90,8 +114,11 @@ The current pipeline implements the main items from Falk's second-round feedback
 - positive and near-zero average utility environments
 - one-dimensional parameter sweeps from low to high values
 - candidate searches for near-always 50/50 and near-always equal-outcome regimes
+- focused targeted grids for near-50/50, symmetric equal-outcome, and distinct equal-outcome regimes
 - DP sensitivity diagnostics over `max_samples`, `mean_grid_size`, and `observation_branches`
 - Gauss-Hermite integration utilities and diagnostics
+
+Prior knowledge is represented as pre-deliberation samples in full episode runs. These samples update the initial belief means and variances before metalevel actions begin, but they do not count as deliberation actions or consume deliberation time.
 
 ## Interpretation Notes
 
