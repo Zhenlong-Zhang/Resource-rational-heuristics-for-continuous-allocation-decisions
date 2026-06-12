@@ -20,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from generate_results import write_figures  # noqa: E402
 from src.experiments.compare import ENVIRONMENT_LIBRARY  # noqa: E402
 from src.experiments.sweeps import ONE_DIMENSIONAL_SWEEP_VALUES, build_positive_and_near_zero_utility_configs  # noqa: E402
+from src.experiments.sweeps import TARGETED_REGIME_GRID_VALUES  # noqa: E402
 
 
 EXPECTED_OUTPUTS: Dict[str, Sequence[str]] = {
@@ -35,6 +36,12 @@ EXPECTED_OUTPUTS: Dict[str, Sequence[str]] = {
         "sweep_final_choice_candidates.csv",
         "sweep_behavior_candidates.csv",
     ),
+    "regime_grid": (
+        "targeted_regime_final_choice_comparison.csv",
+        "targeted_regime_rr_behavior_profiles.csv",
+        "targeted_regime_final_choice_candidates.csv",
+        "targeted_regime_behavior_candidates.csv",
+    ),
     "dp": ("dp_sensitivity_analysis.csv",),
     "gh": ("gauss_hermite_diagnostics.csv",),
 }
@@ -48,6 +55,10 @@ RESULT_SET_BY_FILE = {
     "sweep_rr_behavior_profiles.csv": "sweep_behavior",
     "sweep_final_choice_candidates.csv": "sweep_final_choice_candidates",
     "sweep_behavior_candidates.csv": "sweep_behavior_candidates",
+    "targeted_regime_final_choice_comparison.csv": "targeted_regime_final_choice",
+    "targeted_regime_rr_behavior_profiles.csv": "targeted_regime_behavior",
+    "targeted_regime_final_choice_candidates.csv": "targeted_regime_final_choice_candidates",
+    "targeted_regime_behavior_candidates.csv": "targeted_regime_behavior_candidates",
     "dp_sensitivity_analysis.csv": "dp_sensitivity",
     "gauss_hermite_diagnostics.csv": "gauss_hermite",
 }
@@ -112,6 +123,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--environment", action="append", default=[])
     parser.add_argument("--sweep-feature", action="append", default=[])
     parser.add_argument("--max-sweep-values-per-feature", type=int, default=None)
+    parser.add_argument("--regime-grid", action="append", default=[])
+    parser.add_argument("--regime-grid-chunks", type=int, default=1)
+    parser.add_argument("--max-regime-grid-points", type=int, default=None)
     parser.add_argument("--dp-max-samples-values", default="2,4,6,10")
     parser.add_argument("--dp-mean-grid-sizes", default="7,11,21,50")
     parser.add_argument("--dp-observation-branches", default="3,5")
@@ -144,6 +158,16 @@ def all_sweep_features(selected: Sequence[str]) -> List[str]:
     return names
 
 
+def all_regime_grids(selected: Sequence[str]) -> List[str]:
+    names = list(TARGETED_REGIME_GRID_VALUES)
+    if selected:
+        missing = sorted(set(selected) - set(names))
+        if missing:
+            raise ValueError(f"Unknown regime grids: {missing}")
+        return list(selected)
+    return names
+
+
 def relative_to_project(path: Path) -> str:
     try:
         return str(path.relative_to(PROJECT_ROOT))
@@ -161,6 +185,7 @@ def add_optional_args(command: List[str], args: argparse.Namespace) -> None:
         "--expected-utility-draws": args.expected_utility_draws,
         "--terminal-integration": args.terminal_integration,
         "--max-sweep-values-per-feature": args.max_sweep_values_per_feature,
+        "--max-regime-grid-points": args.max_regime_grid_points,
     }
     for flag, value in optional.items():
         if value is not None:
@@ -211,6 +236,7 @@ def build_tasks(args: argparse.Namespace, run_dir: Path) -> List[TaskSpec]:
     sections = parse_sections(args.sections)
     environments = all_environment_names(args.environment)
     sweep_features = all_sweep_features(args.sweep_feature)
+    regime_grids = all_regime_grids(args.regime_grid)
 
     if "step7" in sections:
         for environment in environments:
@@ -218,6 +244,28 @@ def build_tasks(args: argparse.Namespace, run_dir: Path) -> List[TaskSpec]:
     if "sweeps" in sections:
         for feature in sweep_features:
             tasks.append(build_task(args, run_dir, "sweeps", feature, ["--sweep-feature", feature]))
+    if "regime_grid" in sections:
+        if args.regime_grid_chunks <= 0:
+            raise ValueError("--regime-grid-chunks must be positive")
+        for grid in regime_grids:
+            for chunk_index in range(args.regime_grid_chunks):
+                shard = f"{grid}_chunk{chunk_index:02d}_of{args.regime_grid_chunks:02d}"
+                tasks.append(
+                    build_task(
+                        args,
+                        run_dir,
+                        "regime_grid",
+                        shard,
+                        [
+                            "--regime-grid",
+                            grid,
+                            "--regime-grid-chunk-index",
+                            str(chunk_index),
+                            "--regime-grid-chunks",
+                            str(args.regime_grid_chunks),
+                        ],
+                    )
+                )
     if "dp" in sections:
         for environment in environments:
             tasks.append(build_task(args, run_dir, "dp", environment, ["--environment", environment]))
@@ -308,16 +356,28 @@ def read_csv_rows(path: Path) -> List[Dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
-def write_combined_csv(path: Path, rows: Sequence[Dict[str, str]]) -> None:
-    if not rows:
-        return
-    fieldnames: List[str] = []
+def read_csv_header(path: Path) -> List[str]:
+    if not path.exists() or path.stat().st_size == 0:
+        return []
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle)
+        return next(reader, [])
+
+
+def write_combined_csv(
+    path: Path,
+    rows: Sequence[Dict[str, str]],
+    fieldnames: Sequence[str] | None = None,
+) -> None:
+    resolved_fieldnames: List[str] = list(fieldnames or [])
     for row in rows:
         for key in row:
-            if key not in fieldnames:
-                fieldnames.append(key)
+            if key not in resolved_fieldnames:
+                resolved_fieldnames.append(key)
+    if not resolved_fieldnames:
+        return
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=resolved_fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -328,18 +388,28 @@ def combine_outputs(run_dir: Path, tasks: Sequence[TaskSpec]) -> Dict[str, List[
         for filenames in EXPECTED_OUTPUTS.values()
         for filename in filenames
     }
+    headers_by_file: Dict[str, List[str]] = {
+        filename: []
+        for filenames in EXPECTED_OUTPUTS.values()
+        for filename in filenames
+    }
     for task in tasks:
         output_dir = Path(task.output_dir)
         for filename in EXPECTED_OUTPUTS[task.section]:
-            for row in read_csv_rows(output_dir / filename):
+            path = output_dir / filename
+            for header in read_csv_header(path):
+                if header not in headers_by_file[filename]:
+                    headers_by_file[filename].append(header)
+            for row in read_csv_rows(path):
                 combined_by_file[filename].append(row)
 
     result_sets: Dict[str, List[Dict[str, str]]] = {}
     for filename, rows in combined_by_file.items():
-        if not rows:
+        if not rows and not headers_by_file[filename]:
             continue
-        write_combined_csv(run_dir / filename, rows)
-        result_sets[RESULT_SET_BY_FILE[filename]] = rows
+        write_combined_csv(run_dir / filename, rows, headers_by_file[filename])
+        if rows:
+            result_sets[RESULT_SET_BY_FILE[filename]] = rows
     return result_sets
 
 

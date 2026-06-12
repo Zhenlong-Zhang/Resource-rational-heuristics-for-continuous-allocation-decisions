@@ -34,10 +34,13 @@ from src.experiments.sweeps import (  # noqa: E402
     ONE_DIMENSIONAL_SWEEP_VALUES,
     build_all_one_dimensional_sweep_configs,
     build_positive_and_near_zero_utility_configs,
+    build_targeted_regime_grid_configs,
     identify_final_choice_regime_candidates,
     identify_rr_behavior_regime_candidates,
     run_one_dimensional_final_choice_sweeps,
     run_one_dimensional_rr_behavior_sweeps,
+    run_targeted_regime_behavior_grid,
+    run_targeted_regime_final_choice_grid,
 )
 from src.mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig  # noqa: E402
 from src.solvers.gauss_hermite import expected_terminal_utility_gauss_hermite, normal_expectation_1d  # noqa: E402
@@ -80,6 +83,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--environment", action="append", default=[])
     parser.add_argument("--sweep-feature", action="append", default=[])
     parser.add_argument("--max-sweep-values-per-feature", type=int, default=None)
+    parser.add_argument("--regime-grid", action="append", default=[])
+    parser.add_argument("--max-regime-grid-points", type=int, default=None)
+    parser.add_argument("--regime-grid-chunk-index", type=int, default=0)
+    parser.add_argument("--regime-grid-chunks", type=int, default=1)
     parser.add_argument("--dp-max-samples-values", default="2,4,6,10")
     parser.add_argument("--dp-mean-grid-sizes", default="7,11,21,50")
     parser.add_argument("--dp-observation-branches", default="3,5")
@@ -253,6 +260,28 @@ def build_sweep_configs_for_args(args: argparse.Namespace) -> List[tuple[str, fl
     ]
 
 
+def build_targeted_regime_configs_for_args(
+    args: argparse.Namespace,
+) -> List[tuple[str, int, str, Dict[str, float], EnvironmentConfig]]:
+    if args.regime_grid_chunks <= 0:
+        raise ValueError("--regime-grid-chunks must be positive")
+    if args.regime_grid_chunk_index < 0 or args.regime_grid_chunk_index >= args.regime_grid_chunks:
+        raise ValueError("--regime-grid-chunk-index must be in [0, regime_grid_chunks)")
+    configs = build_targeted_regime_grid_configs(
+        grid_names=args.regime_grid or None,
+        max_grid_points=args.max_regime_grid_points,
+    )
+    chunked_configs = [
+        config_tuple
+        for index, config_tuple in enumerate(configs)
+        if index % args.regime_grid_chunks == args.regime_grid_chunk_index
+    ]
+    return [
+        (grid_name, grid_index, environment_name, parameter_values, apply_environment_overrides(config, args))
+        for grid_name, grid_index, environment_name, parameter_values, config in chunked_configs
+    ]
+
+
 def run_step7_outputs(
     output_dir: Path,
     environments: Dict[str, EnvironmentConfig],
@@ -361,6 +390,41 @@ def run_sweep_outputs(
         "sweep_behavior": behavior_rows,
         "sweep_final_choice_candidates": final_candidates,
         "sweep_behavior_candidates": behavior_candidates,
+    }
+
+
+def run_targeted_regime_outputs(
+    output_dir: Path,
+    regime_configs: List[tuple[str, int, str, Dict[str, float], EnvironmentConfig]],
+    settings: EvaluationSettings,
+) -> Dict[str, List[Dict[str, object]]]:
+    final_choice_rows = run_targeted_regime_final_choice_grid(
+        regime_configs=regime_configs,
+        settings=settings,
+    )
+    behavior_rows = run_targeted_regime_behavior_grid(
+        regime_configs=regime_configs,
+        settings=settings,
+    )
+    final_candidates = identify_final_choice_regime_candidates(final_choice_rows)
+    behavior_candidates = identify_rr_behavior_regime_candidates(behavior_rows)
+    write_csv(output_dir / "targeted_regime_final_choice_comparison.csv", final_choice_rows)
+    write_csv(output_dir / "targeted_regime_rr_behavior_profiles.csv", behavior_rows)
+    write_csv(
+        output_dir / "targeted_regime_final_choice_candidates.csv",
+        final_candidates,
+        fieldnames=candidate_fieldnames(final_choice_rows),
+    )
+    write_csv(
+        output_dir / "targeted_regime_behavior_candidates.csv",
+        behavior_candidates,
+        fieldnames=candidate_fieldnames(behavior_rows),
+    )
+    return {
+        "targeted_regime_final_choice": final_choice_rows,
+        "targeted_regime_behavior": behavior_rows,
+        "targeted_regime_final_choice_candidates": final_candidates,
+        "targeted_regime_behavior_candidates": behavior_candidates,
     }
 
 
@@ -506,6 +570,26 @@ def write_figures(output_dir: Path, result_sets: Dict[str, List[Dict[str, object
             value_key="equal_outcome_rate",
             title="RR equal-outcome rate across one-dimensional sweeps",
         )
+    if "targeted_regime_behavior" in result_sets:
+        rows = result_sets["targeted_regime_behavior"]
+        write_heatmap_svg(
+            figures_dir / "targeted_regime_near_equal_allocation_rate.svg",
+            rows,
+            x_key="grid_index",
+            y_key="regime_grid",
+            value_key="near_equal_allocation_rate",
+            title="Targeted regime near-50/50 rate",
+            max_labels=80,
+        )
+        write_heatmap_svg(
+            figures_dir / "targeted_regime_equal_outcome_rate.svg",
+            rows,
+            x_key="grid_index",
+            y_key="regime_grid",
+            value_key="equal_outcome_rate",
+            title="Targeted regime equal-outcome rate",
+            max_labels=80,
+        )
 
 
 def write_summary(
@@ -563,6 +647,9 @@ def main() -> None:
     if "sweeps" in sections:
         sweep_configs = build_sweep_configs_for_args(args)
         result_sets.update(run_sweep_outputs(output_dir, sweep_configs, settings))
+    if "regime_grid" in sections:
+        regime_configs = build_targeted_regime_configs_for_args(args)
+        result_sets.update(run_targeted_regime_outputs(output_dir, regime_configs, settings))
     if "regimes" in sections and "sweeps" not in sections:
         sweep_configs = build_sweep_configs_for_args(args)
         sweep_results = run_sweep_outputs(output_dir, sweep_configs, settings)

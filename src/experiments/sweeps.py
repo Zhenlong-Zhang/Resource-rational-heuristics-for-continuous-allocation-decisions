@@ -28,6 +28,25 @@ SWEEP_VALUES: Dict[str, Sequence[float]] = {
     "initial_belief_gap": [0.0, 20.0, 40.0],
 }
 
+TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
+    # Designed to find regimes where the RR policy stops early and chooses
+    # approximately equal division because information is unreliable or costly.
+    "near_50_50": {
+        "sample_time_cost": [1.0, 4.0, 8.0, 16.0, 32.0],
+        "sigma_sample": [10.0, 30.0, 60.0, 100.0],
+        "sigma_need": [2.0, 5.0, 10.0, 20.0],
+        "total_time": [5.0, 10.0, 20.0, 40.0],
+    },
+    # Designed to find regimes where both recipients can often be brought close
+    # to their need threshold, making equal-outcome/maximin behavior plausible.
+    "equal_outcome": {
+        "mu_need": [10.0, 20.0, 25.0, 30.0, 40.0, 50.0],
+        "total_time": [60.0, 80.0, 100.0],
+        "learning_per_unit_of_tutoring": [1.0, 1.25, 1.5, 2.0],
+        "sigma_need": [5.0, 10.0, 15.0, 20.0],
+    },
+}
+
 ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
     "sigma_need": [2.0, 5.0, 10.0, 20.0, 40.0, 80.0],
     "sigma_sample": [1.0, 3.0, 5.0, 10.0, 20.0, 40.0],
@@ -180,6 +199,53 @@ def build_all_one_dimensional_sweep_configs(
     return rows
 
 
+def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
+    base = build_environment()
+    if grid_name == "near_50_50":
+        return replace(
+            base,
+            mu_need=100.0,
+            learning_per_unit_of_tutoring=1.0,
+            delta_learning_per_unit_tutoring=0.0,
+        )
+    if grid_name == "equal_outcome":
+        return replace(
+            base,
+            sigma_sample=8.0,
+            sample_time_cost=1.0,
+            delta_learning_per_unit_tutoring=0.0,
+        )
+    raise ValueError(f"Unknown targeted regime grid: {grid_name}")
+
+
+def build_targeted_regime_grid_configs(
+    grid_names: Sequence[str] | None = None,
+    max_grid_points: int | None = None,
+) -> List[tuple[str, int, str, Dict[str, float], EnvironmentConfig]]:
+    selected_grid_names = list(grid_names or TARGETED_REGIME_GRID_VALUES)
+    missing = sorted(set(selected_grid_names) - set(TARGETED_REGIME_GRID_VALUES))
+    if missing:
+        raise ValueError(f"Unknown targeted regime grids: {missing}")
+
+    configs: List[tuple[str, int, str, Dict[str, float], EnvironmentConfig]] = []
+    for grid_name in selected_grid_names:
+        grid_values = TARGETED_REGIME_GRID_VALUES[grid_name]
+        keys = list(grid_values)
+        base_config = _targeted_regime_base_environment(grid_name)
+        for grid_index, combo in enumerate(product(*(grid_values[key] for key in keys))):
+            if max_grid_points is not None and len(configs) >= max_grid_points:
+                return configs
+            parameter_values = {key: float(value) for key, value in zip(keys, combo)}
+            config = base_config
+            for key, value in parameter_values.items():
+                config = _config_with_sweep_override(config, key, value)
+            label = f"{grid_name}_{grid_index:04d}_" + "_".join(
+                f"{key}={value:g}" for key, value in parameter_values.items()
+            )
+            configs.append((grid_name, grid_index, label, parameter_values, config))
+    return configs
+
+
 def compact_config_row(environment: str, config: EnvironmentConfig) -> Dict[str, float | int | str | None]:
     row = asdict(config)
     row["environment"] = environment
@@ -215,6 +281,26 @@ def _attach_sweep_metadata(
         {
             "sweep_feature": feature,
             "sweep_value": value,
+            **row,
+        }
+        for row in rows
+    ]
+
+
+def _attach_targeted_regime_metadata(
+    rows: List[Dict[str, float | str]],
+    grid_name: str,
+    grid_index: int,
+    parameter_values: Dict[str, float],
+) -> List[Dict[str, float | str]]:
+    metadata: Dict[str, float | str] = {
+        "regime_grid": grid_name,
+        "grid_index": float(grid_index),
+    }
+    metadata.update(parameter_values)
+    return [
+        {
+            **metadata,
             **row,
         }
         for row in rows
@@ -263,6 +349,51 @@ def run_one_dimensional_rr_behavior_sweeps(
             observations_per_person=settings.observations_per_person,
         )
         rows.extend(_attach_sweep_metadata(feature_rows, feature, value))
+    return rows
+
+
+def run_targeted_regime_final_choice_grid(
+    regime_configs: Iterable[tuple[str, int, str, Dict[str, float], EnvironmentConfig]],
+    settings: EvaluationSettings = SMOKE_EVALUATION_SETTINGS,
+    allocation_tolerance: float = 0.05,
+    rr_policy: MetaPolicy | None = None,
+) -> List[Dict[str, float | str]]:
+    rows: List[Dict[str, float | str]] = []
+    policy = rr_policy or build_rr_policy_from_settings(settings)
+    for grid_name, grid_index, environment_name, parameter_values, config in regime_configs:
+        grid_rows = compare_rr_to_heuristics_by_final_choice(
+            environment_name=environment_name,
+            config=config,
+            n_episodes=settings.n_episodes,
+            allocation_tolerance=allocation_tolerance,
+            rr_policy=policy,
+            use_common_observation_streams=settings.use_common_observation_streams,
+            observations_per_person=settings.observations_per_person,
+        )
+        rows.extend(_attach_targeted_regime_metadata(grid_rows, grid_name, grid_index, parameter_values))
+    return rows
+
+
+def run_targeted_regime_behavior_grid(
+    regime_configs: Iterable[tuple[str, int, str, Dict[str, float], EnvironmentConfig]],
+    settings: EvaluationSettings = SMOKE_EVALUATION_SETTINGS,
+    allocation_tolerance: float = 0.05,
+    rr_policy: MetaPolicy | None = None,
+) -> List[Dict[str, float | str]]:
+    rows: List[Dict[str, float | str]] = []
+    policy = rr_policy or build_rr_policy_from_settings(settings)
+    for grid_name, grid_index, environment_name, parameter_values, config in regime_configs:
+        grid_rows = compare_policy_behavior_profiles(
+            environment_name=environment_name,
+            config=config,
+            n_episodes=settings.n_episodes,
+            allocation_tolerance=allocation_tolerance,
+            rr_policy=policy,
+            policies=[],
+            use_common_observation_streams=settings.use_common_observation_streams,
+            observations_per_person=settings.observations_per_person,
+        )
+        rows.extend(_attach_targeted_regime_metadata(grid_rows, grid_name, grid_index, parameter_values))
     return rows
 
 
