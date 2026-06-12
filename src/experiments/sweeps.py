@@ -45,6 +45,22 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "learning_per_unit_of_tutoring": [1.0, 1.25, 1.5, 2.0],
         "sigma_need": [5.0, 10.0, 15.0, 20.0],
     },
+    # Smaller first-pass grid for the same theoretical target as near_50_50.
+    # Use this before the larger grid when cluster feedback needs to be fast.
+    "near_50_50_focused": {
+        "sample_time_cost": [8.0, 16.0, 32.0],
+        "sigma_sample": [60.0, 100.0],
+        "sigma_need": [2.0, 5.0],
+        "total_time": [5.0, 10.0, 20.0],
+    },
+    # Smaller first-pass grid around the positive-utility/equal-outcome regimes
+    # found in the serious Step 7 run.
+    "equal_outcome_focused": {
+        "mu_need": [10.0, 20.0, 25.0, 30.0],
+        "total_time": [80.0, 100.0],
+        "learning_per_unit_of_tutoring": [1.0, 1.5, 2.0],
+        "sigma_need": [5.0, 10.0],
+    },
 }
 
 ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
@@ -201,14 +217,14 @@ def build_all_one_dimensional_sweep_configs(
 
 def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
     base = build_environment()
-    if grid_name == "near_50_50":
+    if grid_name in {"near_50_50", "near_50_50_focused"}:
         return replace(
             base,
             mu_need=100.0,
             learning_per_unit_of_tutoring=1.0,
             delta_learning_per_unit_tutoring=0.0,
         )
-    if grid_name == "equal_outcome":
+    if grid_name in {"equal_outcome", "equal_outcome_focused"}:
         return replace(
             base,
             sigma_sample=8.0,
