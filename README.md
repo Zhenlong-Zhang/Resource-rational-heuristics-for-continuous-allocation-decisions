@@ -83,6 +83,14 @@ python3 scripts/run_parallel_r2.py \
   --output-dir results/equal_outcome_distinct_parallel
 ```
 
+After downloading or generating result folders, summarize them without rerunning simulations:
+
+```bash
+python3 scripts/summarize_round2_results.py \
+  results/equal_outcome_distinct_parallel \
+  --output results/equal_outcome_distinct_summary.md
+```
+
 You can override the main computational knobs:
 
 ```bash

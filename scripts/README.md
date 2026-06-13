@@ -47,3 +47,14 @@ python3 scripts/run_parallel_r2.py \
 ```
 
 If a task fails, inspect `parallel_run_status.csv`, `parallel_summary.md`, and the corresponding file under `logs/`.
+
+`summarize_round2_results.py` reads one or more existing result folders and writes a compact Markdown summary. It does not rerun simulations.
+
+Example:
+
+```bash
+python3 scripts/summarize_round2_results.py \
+  results/r2_full_near_50_50_serious \
+  results/r2_confirm_equal_outcome_distinct_1200 \
+  --output results/round2_summary.md
+```
