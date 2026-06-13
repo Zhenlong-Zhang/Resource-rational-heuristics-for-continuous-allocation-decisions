@@ -123,7 +123,7 @@ def final_choice_line(row: dict[str, str]) -> str:
         "match": as_float(row, "final_choice_match_rate"),
         "mean_abs_gap": as_float(row, "mean_abs_allocation_gap"),
         "rmse_gap": as_float(row, "rmse_allocation_gap"),
-        "utility_gap": as_float(row, "mean_utility_gap_vs_rr"),
+        "utility_gap_rr_minus_heuristic": as_float(row, "utility_gap_rr_minus_heuristic"),
     }
     metric_text = ", ".join(f"{key}={format_number(value)}" for key, value in metrics.items())
     heuristic = row.get("heuristic", "unknown")
