@@ -108,3 +108,15 @@ python3 scripts/run_parallel_r2.py \
   --max-workers 7 \
   --output-dir results/r3_active_search_equal_outcome_server
 ```
+
+On Hoffman2, prefer the submission wrapper:
+
+```bash
+bash scripts/submit_hoffman2_round3.sh
+```
+
+By default this submits the observation-stream diagnostic and the active-search true-equal-outcome server grid. To also submit the deferred 10x approximation-method comparison:
+
+```bash
+RUN_METHOD_COMPARISON_10X=1 bash scripts/submit_hoffman2_round3.sh
+```
