@@ -65,20 +65,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
+def run_observation_stream_check(
+    *,
+    n_episodes: int = 80,
+    observations_per_person: int = 80,
+    seed: int = 123,
+    sigma_need: float = 20.0,
+    sigma_sample: float = 10.0,
+    min_correlation: float = 0.95,
+) -> dict:
     config = EnvironmentConfig(
-        sigma_need=args.sigma_need,
-        sigma_sample=args.sigma_sample,
-        random_seed=args.seed,
+        sigma_need=sigma_need,
+        sigma_sample=sigma_sample,
+        random_seed=seed,
         prior_sample_count_1=0,
         prior_sample_count_2=0,
     )
     episodes = build_evaluation_episodes(
         config=config,
-        n_episodes=args.episodes,
+        n_episodes=n_episodes,
         include_observation_streams=True,
-        observations_per_person=args.observations_per_person,
+        observations_per_person=observations_per_person,
     )
 
     true_1: List[float] = []
@@ -102,7 +109,7 @@ def main() -> None:
         stream_mean_2.append(_mean(person2_stream))
 
         mdp = ContinuousAllocationMetaMDP(
-            replace(config, random_seed=args.seed + episode.episode_index * 31),
+            replace(config, random_seed=seed + episode.episode_index * 31),
             observation_streams=streams,
         )
         result = mdp.run_episode(policy, true_state=episode.true_state)
@@ -120,9 +127,9 @@ def main() -> None:
     corr_2 = _correlation(true_2, stream_mean_2)
     summary = {
         "n_episodes": len(episodes),
-        "observations_per_person": args.observations_per_person,
-        "sigma_need": args.sigma_need,
-        "sigma_sample": args.sigma_sample,
+        "observations_per_person": observations_per_person,
+        "sigma_need": sigma_need,
+        "sigma_sample": sigma_sample,
         "true_state_mismatches": true_state_mismatches,
         "first_sample_mismatches": first_sample_mismatches,
         "person1_stream_mean_true_need_correlation": corr_1,
@@ -133,8 +140,21 @@ def main() -> None:
         "person2_mean_abs_stream_mean_error": _mean(
             [abs(stream_mean - true_need) for stream_mean, true_need in zip(stream_mean_2, true_2)]
         ),
-        "min_correlation_required": args.min_correlation,
+        "min_correlation_required": min_correlation,
     }
+    return summary
+
+
+def main() -> None:
+    args = parse_args()
+    summary = run_observation_stream_check(
+        n_episodes=args.episodes,
+        observations_per_person=args.observations_per_person,
+        seed=args.seed,
+        sigma_need=args.sigma_need,
+        sigma_sample=args.sigma_sample,
+        min_correlation=args.min_correlation,
+    )
 
     text = json.dumps(summary, indent=2, sort_keys=True)
     print(text)
@@ -142,12 +162,14 @@ def main() -> None:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
         args.output_json.write_text(text + "\n", encoding="utf-8")
 
-    if true_state_mismatches or first_sample_mismatches:
+    if summary["true_state_mismatches"] or summary["first_sample_mismatches"]:
         raise SystemExit(1)
-    if corr_1 < args.min_correlation or corr_2 < args.min_correlation:
+    if (
+        summary["person1_stream_mean_true_need_correlation"] < args.min_correlation
+        or summary["person2_stream_mean_true_need_correlation"] < args.min_correlation
+    ):
         raise SystemExit(1)
 
 
 if __name__ == "__main__":
     main()
-

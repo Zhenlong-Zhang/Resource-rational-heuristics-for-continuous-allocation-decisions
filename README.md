@@ -111,6 +111,16 @@ Open `notebooks/run_round2_pipeline.ipynb`. The notebook installs common Python 
 
 Use the notebook when you want to inspect outputs interactively. Use the script directly when running on a server.
 
+## Tests
+
+Run the lightweight regression tests with the Python standard library:
+
+```bash
+python3 -m unittest discover -s tests
+```
+
+The current test suite includes an observation-stream regression check. It verifies that common observation streams are tied to the same hidden true state used for realized utility, and that stream averages are highly correlated with the corresponding true needs.
+
 ## Current Round 2 Coverage
 
 The current pipeline implements the main items from Falk's second-round feedback:
