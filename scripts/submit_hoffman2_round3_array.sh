@@ -11,6 +11,9 @@ set -euo pipefail
 #
 # Run this script from the Hoffman2 clone after pulling the latest GitHub commit.
 
+export LC_ALL=C
+export LANG=C
+
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 
