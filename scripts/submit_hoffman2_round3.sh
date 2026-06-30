@@ -35,7 +35,7 @@ submit_job_file() {
   local job_file="$1"
   chmod +x "${job_file}"
   echo "Submitting ${job_file}"
-  (cd "${PROJECT_ROOT}" && qsub "${job_file}")
+  (cd "${PROJECT_ROOT}" && env LC_ALL=C LANG=C qsub "${job_file}")
 }
 
 if [[ "${RUN_OBSERVATION_CHECK}" == "1" ]]; then
