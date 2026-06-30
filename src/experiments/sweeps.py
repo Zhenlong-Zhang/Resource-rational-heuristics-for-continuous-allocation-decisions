@@ -72,6 +72,18 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "total_time": [80.0, 120.0],
         "learning_per_unit_of_tutoring": [1.0, 1.5],
     },
+    # Designed for Falk's Round 3 request: start from symmetric or very
+    # limited prior knowledge, actively collect information, choose unequal
+    # allocations, and approximate equal outcomes in the hidden true state.
+    "active_search_equal_outcome_focused": {
+        "mu_need": [25.0, 30.0, 35.0],
+        "total_time": [80.0, 100.0, 120.0],
+        "learning_per_unit_of_tutoring": [1.0, 1.25],
+        "sigma_need": [15.0, 25.0, 40.0],
+        "sigma_sample": [2.0, 5.0, 8.0],
+        "sample_time_cost": [0.25, 0.5, 1.0],
+        "prior_sample_count": [0.0],
+    },
 }
 
 ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
@@ -235,7 +247,12 @@ def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
             learning_per_unit_of_tutoring=1.0,
             delta_learning_per_unit_tutoring=0.0,
         )
-    if grid_name in {"equal_outcome", "equal_outcome_focused", "equal_outcome_distinct_focused"}:
+    if grid_name in {
+        "equal_outcome",
+        "equal_outcome_focused",
+        "equal_outcome_distinct_focused",
+        "active_search_equal_outcome_focused",
+    }:
         return replace(
             base,
             sigma_sample=8.0,
@@ -428,6 +445,9 @@ def identify_rr_behavior_regime_candidates(
     behavior_rows: Sequence[Dict[str, float | str]],
     near_equal_rate_threshold: float = 0.9,
     equal_outcome_rate_threshold: float = 0.9,
+    true_equal_outcome_rate_threshold: float = 0.9,
+    active_search_sample_threshold: float = 1.0,
+    unequal_allocation_threshold: float = 0.05,
 ) -> List[Dict[str, float | str]]:
     candidates: List[Dict[str, float | str]] = []
     for row in behavior_rows:
@@ -435,10 +455,23 @@ def identify_rr_behavior_regime_candidates(
             continue
         near_equal_rate = float(row["near_equal_allocation_rate"])
         equal_outcome_rate = float(row["equal_outcome_rate"])
+        true_equal_outcome_rate = float(row.get("true_equal_outcome_rate", 0.0))
+        sample_count = float(row["mean_sample_count"])
+        allocation_from_equal = float(row["mean_abs_allocation_from_equal"])
+        closer_to_true_equal = float(row.get("closer_to_true_equal_outcome_than_equal_split_rate", 0.0))
         if near_equal_rate >= near_equal_rate_threshold:
             candidates.append({"candidate_type": "near_always_50_50", **row})
         if equal_outcome_rate >= equal_outcome_rate_threshold:
             candidates.append({"candidate_type": "near_always_equal_outcome", **row})
+        if true_equal_outcome_rate >= true_equal_outcome_rate_threshold:
+            candidates.append({"candidate_type": "near_always_true_equal_outcome", **row})
+        if (
+            true_equal_outcome_rate >= true_equal_outcome_rate_threshold
+            and sample_count > active_search_sample_threshold
+            and allocation_from_equal >= unequal_allocation_threshold
+            and closer_to_true_equal >= 0.5
+        ):
+            candidates.append({"candidate_type": "active_search_true_equal_outcome", **row})
     return candidates
 
 

@@ -535,6 +535,22 @@ def write_figures(output_dir: Path, result_sets: Dict[str, List[Dict[str, object
             title="Equal-outcome allocation rate",
         )
         write_heatmap_svg(
+            figures_dir / "step7_behavior_true_equal_outcome_rate.svg",
+            rows,
+            x_key="environment",
+            y_key="policy",
+            value_key="true_equal_outcome_rate",
+            title="True-state equal-outcome allocation rate",
+        )
+        write_heatmap_svg(
+            figures_dir / "step7_behavior_mean_realized_outcome_gap.svg",
+            rows,
+            x_key="environment",
+            y_key="policy",
+            value_key="mean_realized_outcome_gap",
+            title="Mean realized true-outcome gap",
+        )
+        write_heatmap_svg(
             figures_dir / "step7_behavior_mean_sample_count.svg",
             rows,
             x_key="environment",
@@ -570,6 +586,22 @@ def write_figures(output_dir: Path, result_sets: Dict[str, List[Dict[str, object
             value_key="equal_outcome_rate",
             title="RR equal-outcome rate across one-dimensional sweeps",
         )
+        write_heatmap_svg(
+            figures_dir / "sweep_true_equal_outcome_rate.svg",
+            rows,
+            x_key="sweep_value",
+            y_key="sweep_feature",
+            value_key="true_equal_outcome_rate",
+            title="RR true-state equal-outcome rate across one-dimensional sweeps",
+        )
+        write_heatmap_svg(
+            figures_dir / "sweep_mean_realized_outcome_gap.svg",
+            rows,
+            x_key="sweep_value",
+            y_key="sweep_feature",
+            value_key="mean_realized_outcome_gap",
+            title="RR mean realized true-outcome gap across one-dimensional sweeps",
+        )
     if "targeted_regime_behavior" in result_sets:
         rows = result_sets["targeted_regime_behavior"]
         write_heatmap_svg(
@@ -588,6 +620,24 @@ def write_figures(output_dir: Path, result_sets: Dict[str, List[Dict[str, object
             y_key="regime_grid",
             value_key="equal_outcome_rate",
             title="Targeted regime equal-outcome rate",
+            max_labels=80,
+        )
+        write_heatmap_svg(
+            figures_dir / "targeted_regime_true_equal_outcome_rate.svg",
+            rows,
+            x_key="grid_index",
+            y_key="regime_grid",
+            value_key="true_equal_outcome_rate",
+            title="Targeted regime true-state equal-outcome rate",
+            max_labels=80,
+        )
+        write_heatmap_svg(
+            figures_dir / "targeted_regime_mean_realized_outcome_gap.svg",
+            rows,
+            x_key="grid_index",
+            y_key="regime_grid",
+            value_key="mean_realized_outcome_gap",
+            title="Targeted regime mean realized true-outcome gap",
             max_labels=80,
         )
 

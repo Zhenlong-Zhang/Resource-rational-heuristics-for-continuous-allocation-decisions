@@ -20,6 +20,8 @@ from .regimes import (
     compare_rr_information_acquisition_to_heuristics,
     compare_rr_to_heuristics_by_final_choice,
     summarize_rr_regimes,
+    true_equal_outcome_allocation,
+    true_outcome_metrics_for_allocation,
 )
 from .settings import (
     SERVER_EVALUATION_SETTINGS,
@@ -93,4 +95,6 @@ __all__ = [
     "settings_with_overrides",
     "summarize_rr_regimes",
     "summarize_sweep_regimes",
+    "true_equal_outcome_allocation",
+    "true_outcome_metrics_for_allocation",
 ]

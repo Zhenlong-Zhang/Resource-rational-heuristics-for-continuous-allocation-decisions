@@ -12,6 +12,8 @@ from .experiments.regimes import (
     compare_rr_information_acquisition_to_heuristics,
     compare_rr_to_heuristics_by_final_choice,
     summarize_rr_regimes,
+    true_equal_outcome_allocation,
+    true_outcome_metrics_for_allocation,
 )
 from .experiments.randomization import (
     EvaluationEpisode,
@@ -167,5 +169,7 @@ __all__ = [
     "rounded_belief_key",
     "summarize_rr_regimes",
     "summarize_sweep_regimes",
+    "true_equal_outcome_allocation",
+    "true_outcome_metrics_for_allocation",
     "utility",
 ]

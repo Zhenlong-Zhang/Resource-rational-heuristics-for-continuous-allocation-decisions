@@ -6,13 +6,13 @@ from dataclasses import replace
 from typing import Dict, List, Optional, Sequence
 
 try:
-    from ..mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
+    from ..mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy, TrueState
     from ..policies.heuristic import build_final_choice_heuristics, build_policy_library
     from ..policies.voi import BlinkeredPolicy, MyopicValueOfInformationPolicy
     from ..solvers.dp import DiscretizedDynamicProgrammingPolicy
     from .randomization import EvaluationEpisode, ensure_evaluation_episodes, observation_streams_for_mdp
 except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
-    from mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy
+    from mdp.meta_mdp import ContinuousAllocationMetaMDP, EnvironmentConfig, EpisodeResult, MetaPolicy, TrueState
     from policies.heuristic import build_final_choice_heuristics, build_policy_library
     from policies.voi import BlinkeredPolicy, MyopicValueOfInformationPolicy
     from solvers.dp import DiscretizedDynamicProgrammingPolicy
@@ -35,6 +35,10 @@ def _rmse(values: Sequence[float]) -> float:
     return math.sqrt(statistics.mean([value * value for value in values]))
 
 
+def _clip_allocation(allocation: float) -> float:
+    return min(1.0, max(0.0, float(allocation)))
+
+
 def _policy_parameter(policy: MetaPolicy, attribute: str) -> float | str:
     value = getattr(policy, attribute, "")
     return float(value) if isinstance(value, (int, float)) else value
@@ -55,6 +59,111 @@ def _mdp_for_episode(
         replace(config, random_seed=_episode_seed(config, episode, seed_offset)),
         observation_streams=streams,
     )
+
+
+def true_equal_outcome_allocation(
+    mdp: ContinuousAllocationMetaMDP,
+    true_state: TrueState,
+    remaining_time: float,
+) -> float:
+    """Allocation that equalizes realized outcome-minus-need if feasible.
+
+    This is the true-state analogue of the belief-based equal-outcome
+    allocation. If exact equalization is outside [0, 1], clipping gives the
+    closest feasible maximin/equal-outcome allocation in this two-person
+    single-resource setting.
+    """
+
+    rate_1, rate_2 = mdp.learning_rates()
+    denominator = (rate_1 + rate_2) * remaining_time
+    if denominator <= 0.0:
+        return 0.5
+    allocation = (true_state.need_1 - true_state.need_2 + rate_2 * remaining_time) / denominator
+    return _clip_allocation(allocation)
+
+
+def _realized_outcome_gap(
+    true_state: TrueState,
+    amount_1: float,
+    amount_2: float,
+) -> float:
+    outcome_minus_need_1 = amount_1 - true_state.need_1
+    outcome_minus_need_2 = amount_2 - true_state.need_2
+    return abs(outcome_minus_need_1 - outcome_minus_need_2)
+
+
+def true_outcome_metrics_for_allocation(
+    mdp: ContinuousAllocationMetaMDP,
+    true_state: TrueState,
+    belief,
+    allocation_to_person1: float,
+    allocation_tolerance: float,
+) -> Dict[str, float]:
+    """Compute true-state equity/maximin diagnostics for one final choice."""
+
+    allocation = _clip_allocation(allocation_to_person1)
+    amount_1, amount_2, remaining_time, _ = mdp.realized_utility(true_state, allocation, belief)
+    realized_gap = _realized_outcome_gap(true_state, amount_1, amount_2)
+
+    equal_split_amount_1, equal_split_amount_2, _, _ = mdp.realized_utility(true_state, 0.5, belief)
+    equal_split_gap = _realized_outcome_gap(true_state, equal_split_amount_1, equal_split_amount_2)
+
+    true_equal_allocation = true_equal_outcome_allocation(mdp, true_state, remaining_time)
+    true_equal_amount_1, true_equal_amount_2 = mdp.allocation_to_learning_outcomes(
+        true_equal_allocation,
+        remaining_time,
+    )
+    true_equal_solution_gap = _realized_outcome_gap(
+        true_state,
+        true_equal_amount_1,
+        true_equal_amount_2,
+    )
+
+    true_equal_allocation_gap = abs(allocation - true_equal_allocation)
+    equal_split_allocation_gap = abs(allocation - 0.5)
+    allocation_distance_difference = true_equal_allocation_gap - equal_split_allocation_gap
+    outcome_distance_to_true_equal = max(0.0, realized_gap - true_equal_solution_gap)
+    equal_split_outcome_distance_to_true_equal = max(0.0, equal_split_gap - true_equal_solution_gap)
+    outcome_tolerance = allocation_tolerance * remaining_time * sum(mdp.learning_rates())
+    outcome_distance_difference = (
+        outcome_distance_to_true_equal - equal_split_outcome_distance_to_true_equal
+    )
+
+    if abs(outcome_distance_difference) <= outcome_tolerance:
+        closer_true_equal_outcome = 0.0
+        closer_equal_split = 0.0
+        tie = 1.0
+    elif outcome_distance_to_true_equal < equal_split_outcome_distance_to_true_equal:
+        closer_true_equal_outcome = 1.0
+        closer_equal_split = 0.0
+        tie = 0.0
+    else:
+        closer_true_equal_outcome = 0.0
+        closer_equal_split = 1.0
+        tie = 0.0
+
+    true_outcome_near_feasible_equal = (
+        1.0 if outcome_distance_to_true_equal <= outcome_tolerance else 0.0
+    )
+    true_equal_allocation_close = 1.0 if true_equal_allocation_gap <= allocation_tolerance else 0.0
+
+    return {
+        "realized_outcome_gap": realized_gap,
+        "equal_split_realized_outcome_gap": equal_split_gap,
+        "true_equal_outcome_solution_gap": true_equal_solution_gap,
+        "true_equal_outcome_allocation": true_equal_allocation,
+        "true_equal_outcome_allocation_gap": true_equal_allocation_gap,
+        "true_equal_outcome": true_outcome_near_feasible_equal,
+        "true_equal_outcome_allocation_close": true_equal_allocation_close,
+        "true_outcome_gap_reduction_vs_equal_split": equal_split_gap - realized_gap,
+        "outcome_distance_to_true_equal": outcome_distance_to_true_equal,
+        "equal_split_outcome_distance_to_true_equal": equal_split_outcome_distance_to_true_equal,
+        "allocation_distance_to_true_equal_minus_equal_split": allocation_distance_difference,
+        "outcome_distance_to_true_equal_minus_equal_split": outcome_distance_difference,
+        "closer_to_true_equal_outcome_than_equal_split": closer_true_equal_outcome,
+        "closer_to_equal_split_than_true_equal_outcome": closer_equal_split,
+        "true_outcome_classification_tie": tie,
+    }
 
 
 def compare_rr_to_heuristics_by_final_choice(
@@ -86,6 +195,20 @@ def compare_rr_to_heuristics_by_final_choice(
     utility_gaps: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
     allocation_gaps: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
     allocation_matches: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    rr_realized_outcome_gaps: List[float] = []
+    rr_true_equal_allocation_gaps: List[float] = []
+    rr_true_equal_outcome_rates: List[float] = []
+    rr_outcome_distances_to_true_equal: List[float] = []
+    heuristic_realized_outcome_gaps: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    heuristic_true_equal_allocation_gaps: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    heuristic_true_equal_outcome_rates: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    heuristic_outcome_distances_to_true_equal: Dict[str, List[float]] = {
+        policy.name: [] for policy in heuristics
+    }
+    true_gap_improvements: Dict[str, List[float]] = {policy.name: [] for policy in heuristics}
+    true_outcome_distance_improvements: Dict[str, List[float]] = {
+        policy.name: [] for policy in heuristics
+    }
 
     for episode in episodes:
         rr_mdp = _mdp_for_episode(
@@ -97,6 +220,17 @@ def compare_rr_to_heuristics_by_final_choice(
         rr_result = rr_mdp.run_episode(rr_policy, true_state=episode.true_state)
         rr_utilities.append(rr_result.realized_utility)
         rr_allocations.append(rr_result.final_allocation_to_person1)
+        rr_true_metrics = true_outcome_metrics_for_allocation(
+            rr_mdp,
+            episode.true_state,
+            rr_result.final_belief,
+            rr_result.final_allocation_to_person1,
+            allocation_tolerance=allocation_tolerance,
+        )
+        rr_realized_outcome_gaps.append(rr_true_metrics["realized_outcome_gap"])
+        rr_true_equal_allocation_gaps.append(rr_true_metrics["true_equal_outcome_allocation_gap"])
+        rr_true_equal_outcome_rates.append(rr_true_metrics["true_equal_outcome"])
+        rr_outcome_distances_to_true_equal.append(rr_true_metrics["outcome_distance_to_true_equal"])
 
         for policy in heuristics:
             heuristic_allocation, _ = rr_mdp.resolve_final_allocation(policy, rr_result.final_belief)
@@ -106,8 +240,35 @@ def compare_rr_to_heuristics_by_final_choice(
                 heuristic_allocation,
                 rr_result.final_belief,
             )
+            heuristic_true_metrics = true_outcome_metrics_for_allocation(
+                rr_mdp,
+                episode.true_state,
+                rr_result.final_belief,
+                heuristic_allocation,
+                allocation_tolerance=allocation_tolerance,
+            )
             heuristic_utilities[policy.name].append(heuristic_realized_utility)
             utility_gaps[policy.name].append(rr_result.realized_utility - heuristic_realized_utility)
+            heuristic_realized_outcome_gaps[policy.name].append(
+                heuristic_true_metrics["realized_outcome_gap"]
+            )
+            heuristic_true_equal_allocation_gaps[policy.name].append(
+                heuristic_true_metrics["true_equal_outcome_allocation_gap"]
+            )
+            heuristic_true_equal_outcome_rates[policy.name].append(
+                heuristic_true_metrics["true_equal_outcome"]
+            )
+            heuristic_outcome_distances_to_true_equal[policy.name].append(
+                heuristic_true_metrics["outcome_distance_to_true_equal"]
+            )
+            true_gap_improvements[policy.name].append(
+                heuristic_true_metrics["realized_outcome_gap"]
+                - rr_true_metrics["realized_outcome_gap"]
+            )
+            true_outcome_distance_improvements[policy.name].append(
+                heuristic_true_metrics["outcome_distance_to_true_equal"]
+                - rr_true_metrics["outcome_distance_to_true_equal"]
+            )
             allocation_gap = abs(rr_result.final_allocation_to_person1 - heuristic_allocation)
             allocation_gaps[policy.name].append(allocation_gap)
             allocation_matches[policy.name].append(1.0 if allocation_gap <= allocation_tolerance else 0.0)
@@ -139,6 +300,28 @@ def compare_rr_to_heuristics_by_final_choice(
                 "final_choice_match_rate_ci95": _ci95(allocation_matches[policy_name]),
                 "rr_mean_allocation_to_person1": _mean(rr_allocations),
                 "heuristic_mean_allocation_to_person1": _mean(heuristic_allocations[policy_name]),
+                "rr_mean_realized_outcome_gap": _mean(rr_realized_outcome_gaps),
+                "rr_mean_true_equal_outcome_allocation_gap": _mean(rr_true_equal_allocation_gaps),
+                "rr_true_equal_outcome_rate": _mean(rr_true_equal_outcome_rates),
+                "rr_mean_outcome_distance_to_true_equal": _mean(rr_outcome_distances_to_true_equal),
+                "heuristic_mean_realized_outcome_gap": _mean(heuristic_realized_outcome_gaps[policy_name]),
+                "heuristic_mean_true_equal_outcome_allocation_gap": _mean(
+                    heuristic_true_equal_allocation_gaps[policy_name]
+                ),
+                "heuristic_true_equal_outcome_rate": _mean(
+                    heuristic_true_equal_outcome_rates[policy_name]
+                ),
+                "heuristic_mean_outcome_distance_to_true_equal": _mean(
+                    heuristic_outcome_distances_to_true_equal[policy_name]
+                ),
+                "realized_outcome_gap_heuristic_minus_rr": _mean(true_gap_improvements[policy_name]),
+                "realized_outcome_gap_heuristic_minus_rr_ci95": _ci95(true_gap_improvements[policy_name]),
+                "outcome_distance_to_true_equal_heuristic_minus_rr": _mean(
+                    true_outcome_distance_improvements[policy_name]
+                ),
+                "outcome_distance_to_true_equal_heuristic_minus_rr_ci95": _ci95(
+                    true_outcome_distance_improvements[policy_name]
+                ),
             }
         )
 
@@ -254,6 +437,13 @@ def _behavior_indicators(
 
     equal_outcome_allocation = mdp.final_allocation_equal_outcome(result.final_belief)
     equal_outcome_gap = abs(allocation - equal_outcome_allocation)
+    true_metrics = true_outcome_metrics_for_allocation(
+        mdp,
+        result.true_state,
+        result.final_belief,
+        allocation,
+        allocation_tolerance=allocation_tolerance,
+    )
     threshold_gap_stop = (
         bool(result.actions)
         and result.actions[-1] == mdp.TERMINATE
@@ -277,6 +467,31 @@ def _behavior_indicators(
         "all_to_greatest_need": 1.0 if all_to_greatest_need else 0.0,
         "equal_outcome": 1.0 if equal_outcome_gap <= allocation_tolerance else 0.0,
         "equal_outcome_allocation_gap": equal_outcome_gap,
+        "realized_outcome_gap": true_metrics["realized_outcome_gap"],
+        "equal_split_realized_outcome_gap": true_metrics["equal_split_realized_outcome_gap"],
+        "true_equal_outcome_solution_gap": true_metrics["true_equal_outcome_solution_gap"],
+        "true_equal_outcome_allocation": true_metrics["true_equal_outcome_allocation"],
+        "true_equal_outcome_allocation_gap": true_metrics["true_equal_outcome_allocation_gap"],
+        "true_equal_outcome": true_metrics["true_equal_outcome"],
+        "true_equal_outcome_allocation_close": true_metrics["true_equal_outcome_allocation_close"],
+        "true_outcome_gap_reduction_vs_equal_split": true_metrics["true_outcome_gap_reduction_vs_equal_split"],
+        "outcome_distance_to_true_equal": true_metrics["outcome_distance_to_true_equal"],
+        "equal_split_outcome_distance_to_true_equal": true_metrics[
+            "equal_split_outcome_distance_to_true_equal"
+        ],
+        "allocation_distance_to_true_equal_minus_equal_split": true_metrics[
+            "allocation_distance_to_true_equal_minus_equal_split"
+        ],
+        "outcome_distance_to_true_equal_minus_equal_split": true_metrics[
+            "outcome_distance_to_true_equal_minus_equal_split"
+        ],
+        "closer_to_true_equal_outcome_than_equal_split": true_metrics[
+            "closer_to_true_equal_outcome_than_equal_split"
+        ],
+        "closer_to_equal_split_than_true_equal_outcome": true_metrics[
+            "closer_to_equal_split_than_true_equal_outcome"
+        ],
+        "true_outcome_classification_tie": true_metrics["true_outcome_classification_tie"],
         "threshold_gap_stop": 1.0 if threshold_gap_stop else 0.0,
         "final_belief_need_gap": final_gap,
         "abs_final_belief_need_gap": abs(final_gap),
@@ -362,6 +577,41 @@ def compare_policy_behavior_profiles(
                 "all_to_greatest_need_rate": _mean(metric_values("all_to_greatest_need")),
                 "equal_outcome_rate": _mean(metric_values("equal_outcome")),
                 "mean_equal_outcome_allocation_gap": _mean(metric_values("equal_outcome_allocation_gap")),
+                "true_equal_outcome_rate": _mean(metric_values("true_equal_outcome")),
+                "true_equal_outcome_allocation_close_rate": _mean(
+                    metric_values("true_equal_outcome_allocation_close")
+                ),
+                "mean_realized_outcome_gap": _mean(metric_values("realized_outcome_gap")),
+                "mean_equal_split_realized_outcome_gap": _mean(metric_values("equal_split_realized_outcome_gap")),
+                "mean_true_equal_outcome_solution_gap": _mean(metric_values("true_equal_outcome_solution_gap")),
+                "mean_true_equal_outcome_allocation": _mean(metric_values("true_equal_outcome_allocation")),
+                "mean_true_equal_outcome_allocation_gap": _mean(
+                    metric_values("true_equal_outcome_allocation_gap")
+                ),
+                "mean_true_outcome_gap_reduction_vs_equal_split": _mean(
+                    metric_values("true_outcome_gap_reduction_vs_equal_split")
+                ),
+                "mean_outcome_distance_to_true_equal": _mean(
+                    metric_values("outcome_distance_to_true_equal")
+                ),
+                "mean_equal_split_outcome_distance_to_true_equal": _mean(
+                    metric_values("equal_split_outcome_distance_to_true_equal")
+                ),
+                "mean_allocation_distance_to_true_equal_minus_equal_split": _mean(
+                    metric_values("allocation_distance_to_true_equal_minus_equal_split")
+                ),
+                "mean_outcome_distance_to_true_equal_minus_equal_split": _mean(
+                    metric_values("outcome_distance_to_true_equal_minus_equal_split")
+                ),
+                "closer_to_true_equal_outcome_than_equal_split_rate": _mean(
+                    metric_values("closer_to_true_equal_outcome_than_equal_split")
+                ),
+                "closer_to_equal_split_than_true_equal_outcome_rate": _mean(
+                    metric_values("closer_to_equal_split_than_true_equal_outcome")
+                ),
+                "true_outcome_classification_tie_rate": _mean(
+                    metric_values("true_outcome_classification_tie")
+                ),
                 "threshold_gap_stop_rate": _mean(metric_values("threshold_gap_stop")),
                 "mean_final_belief_need_gap": _mean(metric_values("final_belief_need_gap")),
                 "mean_abs_final_belief_need_gap": _mean(metric_values("abs_final_belief_need_gap")),
