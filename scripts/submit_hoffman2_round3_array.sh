@@ -74,7 +74,7 @@ chmod +x "${array_job_file}"
 echo "Submitting array job ${array_job_file}"
 array_submit_output=$(cd "${PROJECT_ROOT}" && env LC_ALL=C LANG=C qsub "${array_job_file}")
 echo "${array_submit_output}"
-array_job_id=$(echo "${array_submit_output}" | awk '/Your job-array/ {print $3} /Your job/ {print $3}' | tr -d '"')
+array_job_id=$(echo "${array_submit_output}" | awk '/Your job-array/ {print $3} /Your job/ {print $3}' | tr -d '"' | sed 's/[.:].*$//')
 if [[ -z "${array_job_id}" ]]; then
   echo "Could not parse array job id from qsub output" >&2
   exit 1
