@@ -84,6 +84,20 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "sample_time_cost": [0.25, 0.5, 1.0],
         "prior_sample_count": [0.0],
     },
+    # Narrow follow-up to the first 486-environment Round 3 active-search run.
+    # It keeps no prior samples and concentrates around the strongest previous
+    # active/unequal regions, with lower observation noise and lower positive
+    # sampling time costs. Costs are kept positive so common-observation stream
+    # lengths remain well-defined under the current finite-horizon simulator.
+    "active_search_equal_outcome_narrow_followup": {
+        "mu_need": [20.0, 25.0, 30.0, 35.0],
+        "total_time": [100.0, 120.0, 140.0, 160.0],
+        "learning_per_unit_of_tutoring": [1.0, 1.25, 1.5],
+        "sigma_need": [10.0, 15.0, 25.0, 40.0],
+        "sigma_sample": [1.0, 2.0],
+        "sample_time_cost": [0.05, 0.1, 0.25],
+        "prior_sample_count": [0.0],
+    },
 }
 
 ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
@@ -252,6 +266,7 @@ def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
         "equal_outcome_focused",
         "equal_outcome_distinct_focused",
         "active_search_equal_outcome_focused",
+        "active_search_equal_outcome_narrow_followup",
     }:
         return replace(
             base,

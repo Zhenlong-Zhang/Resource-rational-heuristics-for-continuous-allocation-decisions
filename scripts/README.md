@@ -109,14 +109,16 @@ python3 scripts/run_parallel_r2.py \
   --output-dir results/r3_active_search_equal_outcome_server
 ```
 
-On Hoffman2, prefer the submission wrapper:
+On Hoffman2, the original broad active-search array can be submitted with:
 
 ```bash
-bash scripts/submit_hoffman2_round3.sh
+bash scripts/submit_hoffman2_round3_array.sh
 ```
 
-By default this submits the observation-stream diagnostic and the active-search true-equal-outcome server grid. To also submit the deferred 10x approximation-method comparison:
+For the Round 3 follow-up, use:
 
 ```bash
-RUN_METHOD_COMPARISON_10X=1 bash scripts/submit_hoffman2_round3.sh
+bash scripts/submit_hoffman2_round3_followup.sh
 ```
+
+By default this submits two jobs: a high-parallelism array for `active_search_equal_outcome_narrow_followup`, and a separate 1200-episode Step 7 approximation-method comparison.
