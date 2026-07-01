@@ -86,7 +86,7 @@ set -euo pipefail
 
 PYTHON=${PYTHON_BIN}
 TASK_INDEX=\$((SGE_TASK_ID - 1))
-SHARD=\$(printf "${GRID}_chunk%04d_of${grid_tasks}" "\${TASK_INDEX}")
+SHARD=\$(printf "${GRID}_chunk%02d_of${grid_tasks}" "\${TASK_INDEX}")
 TASK_OUTPUT_DIR="${ACTIVE_OUTPUT_DIR}/tasks/regime_grid/\${SHARD}"
 
 mkdir -p "\${TASK_OUTPUT_DIR}"
