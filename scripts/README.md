@@ -122,3 +122,11 @@ bash scripts/submit_hoffman2_round3_followup.sh
 ```
 
 By default this submits two jobs: a high-parallelism array for `active_search_equal_outcome_narrow_followup`, and a separate 1200-episode Step 7 approximation-method comparison.
+
+If the approximation-method comparison queues for too long as a shared/PE job, prefer the dedicated array submitter:
+
+```bash
+bash scripts/submit_hoffman2_round3_methods_array.sh
+```
+
+This submits one Step 7 environment per array task and then runs a dependent combine/package job. It is the preferred workflow for the Round 3 1200-episode approximation-method comparison.
