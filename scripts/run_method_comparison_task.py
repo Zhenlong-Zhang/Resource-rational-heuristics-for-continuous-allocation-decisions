@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import json
 import math
 import statistics
 import sys
@@ -38,8 +40,17 @@ EPISODE_FIELDNAMES = [
     "policy_max_samples",
     "policy_mean_grid_size",
     "policy_observation_branches",
+    "true_need_1",
+    "true_need_2",
+    "observation_stream_hash_1",
+    "observation_stream_hash_2",
+    "episode_fingerprint",
     "realized_utility",
     "sample_count",
+    "sample_1_count",
+    "sample_2_count",
+    "terminated",
+    "action_sequence",
     "allocation_to_person1",
     "elapsed_seconds",
 ]
@@ -145,6 +156,37 @@ def policy_parameter(policy: MetaPolicy, attribute: str) -> float | str:
     return float(value) if isinstance(value, (int, float)) else value
 
 
+def canonical_json(data: object) -> str:
+    return json.dumps(data, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def short_hash(data: object) -> str:
+    return hashlib.sha256(canonical_json(data).encode("utf-8")).hexdigest()[:16]
+
+
+def observation_hashes(episode: EvaluationEpisode) -> tuple[str, str]:
+    if not episode.observation_streams:
+        return "", ""
+    streams = episode.observation_streams
+    return (
+        short_hash(streams.get(ContinuousAllocationMetaMDP.SAMPLE_PERSON_1, [])),
+        short_hash(streams.get(ContinuousAllocationMetaMDP.SAMPLE_PERSON_2, [])),
+    )
+
+
+def episode_fingerprint(episode: EvaluationEpisode) -> str:
+    hash_1, hash_2 = observation_hashes(episode)
+    return short_hash(
+        {
+            "episode_index": episode.episode_index,
+            "true_need_1": episode.true_state.need_1,
+            "true_need_2": episode.true_state.need_2,
+            "observation_stream_hash_1": hash_1,
+            "observation_stream_hash_2": hash_2,
+        }
+    )
+
+
 def episode_seed(config: EnvironmentConfig, episode: EvaluationEpisode, offset: int = 0) -> int:
     return (config.random_seed or 0) + episode.episode_index * 17 + 1 + offset
 
@@ -166,6 +208,70 @@ def mdp_for_episode(
     )
 
 
+def policy_metadata(policy: MetaPolicy) -> Dict[str, object]:
+    return {
+        "name": policy.name,
+        "class": policy.__class__.__name__,
+        "observation_draws": getattr(policy, "observation_draws", ""),
+        "horizon": getattr(policy, "horizon", ""),
+        "max_samples": getattr(policy, "max_samples", ""),
+        "mean_grid_size": getattr(policy, "mean_grid_size", ""),
+        "observation_branches": getattr(policy, "observation_branches", ""),
+    }
+
+
+def task_metadata(args: argparse.Namespace, settings, config: EnvironmentConfig, policy: MetaPolicy) -> Dict[str, object]:
+    return {
+        "script": "run_method_comparison_task.py",
+        "metadata_version": 1,
+        "preset": args.preset,
+        "environment": args.environment,
+        "policy_arg": args.policy,
+        "policy": policy_metadata(policy),
+        "settings": {
+            "n_episodes": settings.n_episodes,
+            "rr_observation_draws": settings.rr_observation_draws,
+            "blinkered_observation_draws": settings.blinkered_observation_draws,
+            "blinkered_horizon": settings.blinkered_horizon,
+            "use_common_observation_streams": settings.use_common_observation_streams,
+            "observations_per_person": settings.observations_per_person,
+        },
+        "environment_config": asdict(config),
+    }
+
+
+def load_metadata(path: Path) -> Dict[str, object] | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def validate_or_write_metadata(
+    path: Path,
+    expected_metadata: Dict[str, object],
+    resume: bool,
+    episode_path: Path,
+    summary_path: Path,
+) -> None:
+    existing_metadata = load_metadata(path)
+    if existing_metadata is None:
+        if resume and (episode_path.exists() or summary_path.exists()):
+            raise RuntimeError(
+                f"Refusing to resume {episode_path.parent}: existing outputs have no task_metadata.json"
+            )
+        path.write_text(canonical_json(expected_metadata) + "\n", encoding="utf-8")
+        return
+    if existing_metadata != expected_metadata:
+        raise RuntimeError(
+            "Refusing to mix method-comparison outputs with different metadata. "
+            f"Existing metadata: {path}"
+        )
+    if not resume and (episode_path.exists() or summary_path.exists()):
+        raise RuntimeError(
+            f"Output files already exist in {episode_path.parent}. Use --resume or choose a new output directory."
+        )
+
+
 def mean(values: List[float]) -> float:
     return float(statistics.mean(values)) if values else math.nan
 
@@ -174,6 +280,12 @@ def ci95(values: List[float]) -> float:
     if len(values) <= 1:
         return 0.0
     return float(1.96 * statistics.stdev(values) / math.sqrt(len(values)))
+
+
+def population_stdev(values: List[float]) -> float:
+    if len(values) <= 1:
+        return 0.0
+    return float(statistics.stdev(values))
 
 
 def read_completed_episode_indices(path: Path) -> set[int]:
@@ -207,7 +319,10 @@ def append_episode_row(path: Path, row: Dict[str, object], write_header: bool) -
 def write_summary(path: Path, args: argparse.Namespace, settings, policy: MetaPolicy, episode_rows: List[Dict[str, str]]) -> None:
     utilities = [float(row["realized_utility"]) for row in episode_rows]
     sample_counts = [float(row["sample_count"]) for row in episode_rows]
+    sample_1_counts = [float(row["sample_1_count"]) for row in episode_rows]
+    sample_2_counts = [float(row["sample_2_count"]) for row in episode_rows]
     allocations = [float(row["allocation_to_person1"]) for row in episode_rows]
+    terminated = [float(row["terminated"]) for row in episode_rows]
     config = environment_config(args)
     config_dict = asdict(config)
     summary = {
@@ -224,10 +339,19 @@ def write_summary(path: Path, args: argparse.Namespace, settings, policy: MetaPo
         "common_observation_streams": 1.0 if settings.use_common_observation_streams else 0.0,
         "observations_per_person": settings.observations_per_person,
         "mean_utility": mean(utilities),
+        "std_utility": population_stdev(utilities),
         "mean_utility_ci95": ci95(utilities),
         "regret_vs_best_rr_approximation": "",
         "mean_sample_count": mean(sample_counts),
+        "std_sample_count": population_stdev(sample_counts),
+        "mean_sample_count_ci95": ci95(sample_counts),
+        "mean_sample_1_count": mean(sample_1_counts),
+        "mean_sample_2_count": mean(sample_2_counts),
+        "preferential_sample_1_minus_2": mean(sample_1_counts) - mean(sample_2_counts),
+        "termination_rate": mean(terminated),
         "mean_allocation_to_person1": mean(allocations),
+        "std_allocation_to_person1": population_stdev(allocations),
+        "mean_allocation_to_person1_ci95": ci95(allocations),
         "completed_episodes": len(episode_rows),
         "complete": 1.0 if len(episode_rows) >= settings.n_episodes else 0.0,
     }
@@ -249,6 +373,14 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     episode_path = output_dir / "rr_approximation_method_episode_results.csv"
     summary_path = output_dir / "rr_approximation_methods_comparison.csv"
+    metadata_path = output_dir / "task_metadata.json"
+    validate_or_write_metadata(
+        metadata_path,
+        task_metadata(args, settings, config, policy),
+        args.resume,
+        episode_path,
+        summary_path,
+    )
     completed = read_completed_episode_indices(episode_path) if args.resume else set()
     write_header = not episode_path.exists() or episode_path.stat().st_size == 0
 
@@ -270,6 +402,9 @@ def main() -> None:
             use_common_observation_streams=settings.use_common_observation_streams,
         )
         result = mdp.run_episode(policy, true_state=episode.true_state)
+        observation_hash_1, observation_hash_2 = observation_hashes(episode)
+        sample_1_count = sum(1 for action in result.actions if action == mdp.SAMPLE_PERSON_1)
+        sample_2_count = sum(1 for action in result.actions if action == mdp.SAMPLE_PERSON_2)
         append_episode_row(
             episode_path,
             {
@@ -281,8 +416,17 @@ def main() -> None:
                 "policy_max_samples": policy_parameter(policy, "max_samples"),
                 "policy_mean_grid_size": policy_parameter(policy, "mean_grid_size"),
                 "policy_observation_branches": policy_parameter(policy, "observation_branches"),
+                "true_need_1": episode.true_state.need_1,
+                "true_need_2": episode.true_state.need_2,
+                "observation_stream_hash_1": observation_hash_1,
+                "observation_stream_hash_2": observation_hash_2,
+                "episode_fingerprint": episode_fingerprint(episode),
                 "realized_utility": result.realized_utility,
                 "sample_count": len(result.samples),
+                "sample_1_count": sample_1_count,
+                "sample_2_count": sample_2_count,
+                "terminated": 1.0 if result.terminated else 0.0,
+                "action_sequence": ";".join(result.actions),
                 "allocation_to_person1": result.final_allocation_to_person1,
                 "elapsed_seconds": time.time() - start,
             },
