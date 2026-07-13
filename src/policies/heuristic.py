@@ -26,6 +26,48 @@ class EqualDivisionPolicy:
         return mdp.final_allocation_equal_division(belief)
 
 
+class EqualSplitBaselinePolicy(EqualDivisionPolicy):
+    """R4 diagnostic alias for the equal-split baseline.
+
+    This policy is behaviorally identical to equal division: it terminates
+    without acquiring new information and allocates the remaining resource 50/50.
+    The separate name keeps the R4 manual-baseline comparison readable.
+    """
+
+    name = "manual_equal_split"
+
+
+class ManualActiveSearchEqualOutcomePolicy:
+    """Transparent hand-coded active-search benchmark for R4 diagnostics.
+
+    The policy deliberately avoids hidden true-state information. It gathers a
+    fixed, balanced number of ordinary observations from both recipients, then
+    uses the terminal belief to choose the equal-outcome/maximin allocation. The
+    resulting allocation is evaluated with true-state metrics elsewhere.
+    """
+
+    name = "manual_active_search_equal_outcome"
+
+    def __init__(self, samples_per_person: int = 3):
+        if samples_per_person < 0:
+            raise ValueError("samples_per_person must be non-negative")
+        self.samples_per_person = samples_per_person
+
+    def choose_action(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> Action:
+        count_1 = sum(1 for item in belief.history if item["action"] == 1.0)
+        count_2 = sum(1 for item in belief.history if item["action"] == 2.0)
+        if count_1 >= self.samples_per_person and count_2 >= self.samples_per_person:
+            return mdp.TERMINATE
+        if count_1 < count_2:
+            return mdp.SAMPLE_PERSON_1
+        if count_2 < count_1:
+            return mdp.SAMPLE_PERSON_2
+        return mdp.SAMPLE_PERSON_1 if belief.var_1 >= belief.var_2 else mdp.SAMPLE_PERSON_2
+
+    def choose_final_allocation(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> float:
+        return mdp.final_allocation_equal_outcome(belief)
+
+
 class Person1FirstPolicy:
     name = "sample_person1_until_threshold"
 

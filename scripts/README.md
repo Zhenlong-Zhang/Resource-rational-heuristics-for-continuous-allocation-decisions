@@ -14,6 +14,7 @@ It can generate:
 - Gauss-Hermite diagnostics
 - simple SVG heatmaps and a run summary
 - Round 3 true-state equal-outcome diagnostics in behavior/final-choice tables
+- Round 4 diagnostic active-search manual-baseline comparisons
 
 Example:
 
@@ -130,3 +131,54 @@ bash scripts/submit_hoffman2_round3_methods_array.sh
 ```
 
 This submits one Step 7 environment per array task and then runs a dependent combine/package job. It is the preferred workflow for the Round 3 1200-episode approximation-method comparison.
+
+## Round 4 Diagnostic Active-Search Checks
+
+The `r4_diagnostics` section is for Falk's 07/01 diagnostic request. It compares:
+
+- `myopic_voi`: current RR approximation
+- `manual_active_search_equal_outcome`: hand-coded active-search baseline that samples both recipients and then uses the terminal belief to choose an equal-outcome allocation
+- `manual_equal_split`: no-search 50/50 baseline
+
+Tiny wiring smoke:
+
+```bash
+python3 scripts/generate_results.py \
+  --preset smoke \
+  --sections r4_diagnostics \
+  --regime-grid r4_diagnostic_active_search \
+  --max-regime-grid-points 1 \
+  --episodes 2 \
+  --voi-samples 2 \
+  --common-observations on \
+  --observations-per-person 10 \
+  --allocation-grid-size 5 \
+  --expected-utility-draws 5 \
+  --manual-active-samples-per-person 1 \
+  --output-dir results/r4_diagnostic_smoke
+```
+
+Parallel/server-style command:
+
+```bash
+python3 scripts/run_parallel_r2.py \
+  --preset server \
+  --sections r4_diagnostics \
+  --regime-grid r4_diagnostic_active_search \
+  --regime-grid-chunks 486 \
+  --episodes 1200 \
+  --voi-samples 500 \
+  --common-observations on \
+  --observations-per-person 500 \
+  --manual-active-samples-per-person 3 \
+  --max-workers 80 \
+  --output-dir results/r4_diagnostic_active_search_server
+```
+
+Main outputs:
+
+- `r4_diagnostic_policy_profiles.csv`: policy-level RR/manual/equal-split behavior and true-state metrics
+- `r4_diagnostic_environment_summary.csv`: environment-level manual-vs-equal-split and RR-vs-manual contrasts
+- `r4_diagnostic_manual_advantage_candidates.csv`: environments where the manual active-search baseline clearly beats equal split under the current thresholds
+
+Interpretation note: the current utility family can approximate "quickly flattening after needs are met" through stronger concavity, but it does not implement a literal post-threshold plateau.

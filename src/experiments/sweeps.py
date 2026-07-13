@@ -98,6 +98,24 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "sample_time_cost": [0.05, 0.1, 0.25],
         "prior_sample_count": [0.0],
     },
+    # R4 diagnostic grid from Falk's 07/01 comments. This grid is not meant to
+    # be an exhaustive ecological sweep. It deliberately creates larger need
+    # separation, reliable/cheap information, no prior samples, and near
+    # just-enough-time conditions so manual active-search equal-outcome behavior
+    # should have a clear chance to beat equal split.
+    #
+    # `utility_exponent < 0.5` approximates "quickly flattens after needs are
+    # met" with the current concave utility family. It is not a true plateau.
+    "r4_diagnostic_active_search": {
+        "mu_need": [35.0, 45.0, 55.0],
+        "total_time": [80.0, 100.0, 120.0],
+        "learning_per_unit_of_tutoring": [1.0, 1.25],
+        "sigma_need": [40.0, 60.0, 80.0],
+        "sigma_sample": [1.0, 2.0, 4.0],
+        "sample_time_cost": [0.02, 0.05, 0.1],
+        "utility_exponent": [0.25, 0.35],
+        "prior_sample_count": [0.0],
+    },
 }
 
 ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
@@ -267,6 +285,7 @@ def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
         "equal_outcome_distinct_focused",
         "active_search_equal_outcome_focused",
         "active_search_equal_outcome_narrow_followup",
+        "r4_diagnostic_active_search",
     }:
         return replace(
             base,

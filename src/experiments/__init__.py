@@ -7,6 +7,14 @@ from .compare import (
     run_strategy_comparison,
 )
 from .dp_diagnostics import build_dp_sensitivity_policies, run_dp_sensitivity_analysis
+from .diagnostics import (
+    EQUAL_SPLIT_BASELINE_NAME,
+    MANUAL_ACTIVE_POLICY_NAME,
+    build_r4_manual_baseline_policies,
+    identify_r4_manual_advantage_candidates,
+    run_r4_diagnostic_policy_grid,
+    summarize_r4_diagnostic_policies,
+)
 from .randomization import (
     EvaluationEpisode,
     build_evaluation_episodes,
@@ -54,10 +62,12 @@ from .sweeps import (
 
 __all__ = [
     "DEFAULT_MAX_GRID_POINTS",
+    "EQUAL_SPLIT_BASELINE_NAME",
     "DEFAULT_SWEEP_EPISODES",
     "ENVIRONMENT_LIBRARY",
     "EvaluationEpisode",
     "EvaluationSettings",
+    "MANUAL_ACTIVE_POLICY_NAME",
     "ONE_DIMENSIONAL_SWEEP_VALUES",
     "SERVER_EVALUATION_SETTINGS",
     "SERVER_MAX_GRID_POINTS",
@@ -73,6 +83,7 @@ __all__ = [
     "build_observation_streams",
     "build_one_dimensional_sweep_configs",
     "build_positive_and_near_zero_utility_configs",
+    "build_r4_manual_baseline_policies",
     "build_rr_approximation_policies_from_settings",
     "build_rr_policy_from_settings",
     "build_sweep_configs",
@@ -83,6 +94,7 @@ __all__ = [
     "ensure_evaluation_episodes",
     "evaluate_policy_library",
     "identify_final_choice_regime_candidates",
+    "identify_r4_manual_advantage_candidates",
     "identify_rr_behavior_regime_candidates",
     "model_overview",
     "observation_streams_for_mdp",
@@ -91,9 +103,11 @@ __all__ = [
     "run_one_dimensional_final_choice_sweeps",
     "run_one_dimensional_rr_behavior_sweeps",
     "run_strategy_comparison",
+    "run_r4_diagnostic_policy_grid",
     "run_target_regime_search",
     "settings_with_overrides",
     "summarize_rr_regimes",
+    "summarize_r4_diagnostic_policies",
     "summarize_sweep_regimes",
     "true_equal_outcome_allocation",
     "true_outcome_metrics_for_allocation",

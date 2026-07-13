@@ -66,12 +66,13 @@ def true_equal_outcome_allocation(
     true_state: TrueState,
     remaining_time: float,
 ) -> float:
-    """Allocation that equalizes realized outcome-minus-need if feasible.
+    """Allocation that equalizes true realized outcome-minus-need if feasible.
 
-    This is the true-state analogue of the belief-based equal-outcome
-    allocation. If exact equalization is outside [0, 1], clipping gives the
-    closest feasible maximin/equal-outcome allocation in this two-person
-    single-resource setting.
+    The realized outcome for each recipient is tutoring/help received minus
+    hidden true need. Equal outcome/maximin therefore means making these two
+    true realized outcomes as equal as possible. If exact equalization would
+    require an allocation outside [0, 1], clipping gives the closest feasible
+    equal-outcome reference in this two-person single-resource model.
     """
 
     rate_1, rate_2 = mdp.learning_rates()
@@ -87,6 +88,8 @@ def _realized_outcome_gap(
     amount_1: float,
     amount_2: float,
 ) -> float:
+    """Absolute gap between the two recipients' true outcome-minus-need values."""
+
     outcome_minus_need_1 = amount_1 - true_state.need_1
     outcome_minus_need_2 = amount_2 - true_state.need_2
     return abs(outcome_minus_need_1 - outcome_minus_need_2)
@@ -99,15 +102,26 @@ def true_outcome_metrics_for_allocation(
     allocation_to_person1: float,
     allocation_tolerance: float,
 ) -> Dict[str, float]:
-    """Compute true-state equity/maximin diagnostics for one final choice."""
+    """Compute true-state equity/maximin diagnostics for one final choice.
+
+    This is intentionally true-state based rather than belief based. The final
+    allocation can be chosen from a policy's beliefs, but the diagnostic asks how
+    equal the hidden realized outcomes actually are after the allocation.
+    """
 
     allocation = _clip_allocation(allocation_to_person1)
     amount_1, amount_2, remaining_time, _ = mdp.realized_utility(true_state, allocation, belief)
     realized_gap = _realized_outcome_gap(true_state, amount_1, amount_2)
 
+    # Equal split is the main alternative Falk asked us to separate from
+    # equity/maximin. It is evaluated with the same true state and remaining time
+    # as the policy's chosen allocation.
     equal_split_amount_1, equal_split_amount_2, _, _ = mdp.realized_utility(true_state, 0.5, belief)
     equal_split_gap = _realized_outcome_gap(true_state, equal_split_amount_1, equal_split_amount_2)
 
+    # The feasible true-equal-outcome reference is the best outcome gap that
+    # could be achieved if the hidden true needs were known. A nonzero reference
+    # gap can remain when exact equalization is infeasible within [0, 1].
     true_equal_allocation = true_equal_outcome_allocation(mdp, true_state, remaining_time)
     true_equal_amount_1, true_equal_amount_2 = mdp.allocation_to_learning_outcomes(
         true_equal_allocation,
@@ -122,6 +136,11 @@ def true_outcome_metrics_for_allocation(
     true_equal_allocation_gap = abs(allocation - true_equal_allocation)
     equal_split_allocation_gap = abs(allocation - 0.5)
     allocation_distance_difference = true_equal_allocation_gap - equal_split_allocation_gap
+
+    # Outcome-distance fields are primary for equity/maximin because they compare
+    # realized outcome gaps. Allocation-distance fields are secondary diagnostics:
+    # two allocations can be close while their realized outcome gaps differ, and
+    # vice versa when learning rates or needs differ.
     outcome_distance_to_true_equal = max(0.0, realized_gap - true_equal_solution_gap)
     equal_split_outcome_distance_to_true_equal = max(0.0, equal_split_gap - true_equal_solution_gap)
     outcome_tolerance = allocation_tolerance * remaining_time * sum(mdp.learning_rates())
@@ -129,6 +148,10 @@ def true_outcome_metrics_for_allocation(
         outcome_distance_to_true_equal - equal_split_outcome_distance_to_true_equal
     )
 
+    # This classifier implements Falk's requested logical comparison: is the
+    # chosen allocation closer to the feasible true equal-outcome/maximin
+    # reference than a 50/50 split is? Ties are tracked separately so they are not
+    # misread as either equity/maximin success or equal-split success.
     if abs(outcome_distance_difference) <= outcome_tolerance:
         closer_true_equal_outcome = 0.0
         closer_equal_split = 0.0

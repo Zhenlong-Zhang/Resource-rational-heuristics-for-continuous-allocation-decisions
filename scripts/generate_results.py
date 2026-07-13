@@ -13,6 +13,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.experiments.compare import ENVIRONMENT_LIBRARY  # noqa: E402
+from src.experiments.diagnostics import (  # noqa: E402
+    identify_r4_manual_advantage_candidates,
+    run_r4_diagnostic_policy_grid,
+    summarize_r4_diagnostic_policies,
+)
 from src.experiments.dp_diagnostics import run_dp_sensitivity_analysis  # noqa: E402
 from src.experiments.randomization import build_evaluation_episodes  # noqa: E402
 from src.experiments.regimes import (  # noqa: E402
@@ -63,14 +68,24 @@ def parse_sections(value: str) -> set[str]:
     sections = {part.strip() for part in value.split(",") if part.strip()}
     if not sections or "all" in sections:
         return {"step7", "sweeps", "regimes", "dp", "gh"}
+    allowed = {"step7", "sweeps", "regimes", "regime_grid", "r4_diagnostics", "dp", "gh"}
+    unknown = sorted(sections - allowed)
+    if unknown:
+        raise ValueError(f"Unknown sections: {unknown}")
     return sections
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate Round 2 resource-rational allocation results.")
+    parser = argparse.ArgumentParser(
+        description="Generate resource-rational allocation results and diagnostic grids."
+    )
     parser.add_argument("--preset", choices=sorted(PRESETS), default="smoke")
     parser.add_argument("--output-dir", default="results/round2_current")
-    parser.add_argument("--sections", default="all", help="Comma-separated: step7,sweeps,regimes,dp,gh or all.")
+    parser.add_argument(
+        "--sections",
+        default="all",
+        help="Comma-separated: step7,sweeps,regimes,regime_grid,r4_diagnostics,dp,gh or all.",
+    )
     parser.add_argument("--episodes", type=int, default=None)
     parser.add_argument("--voi-samples", type=int, default=None)
     parser.add_argument("--blinkered-samples", type=int, default=None)
@@ -87,6 +102,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-regime-grid-points", type=int, default=None)
     parser.add_argument("--regime-grid-chunk-index", type=int, default=0)
     parser.add_argument("--regime-grid-chunks", type=int, default=1)
+    parser.add_argument("--manual-active-samples-per-person", type=int, default=3)
     parser.add_argument("--dp-max-samples-values", default="2,4,6,10")
     parser.add_argument("--dp-mean-grid-sizes", default="7,11,21,50")
     parser.add_argument("--dp-observation-branches", default="3,5")
@@ -428,6 +444,33 @@ def run_targeted_regime_outputs(
     }
 
 
+def run_r4_diagnostic_outputs(
+    output_dir: Path,
+    regime_configs: List[tuple[str, int, str, Dict[str, float], EnvironmentConfig]],
+    settings: EvaluationSettings,
+    manual_active_samples_per_person: int,
+) -> Dict[str, List[Dict[str, object]]]:
+    behavior_rows = run_r4_diagnostic_policy_grid(
+        regime_configs=regime_configs,
+        settings=settings,
+        manual_samples_per_person=manual_active_samples_per_person,
+    )
+    summary_rows = summarize_r4_diagnostic_policies(behavior_rows)
+    candidate_rows = identify_r4_manual_advantage_candidates(behavior_rows)
+    write_csv(output_dir / "r4_diagnostic_policy_profiles.csv", behavior_rows)
+    write_csv(output_dir / "r4_diagnostic_environment_summary.csv", summary_rows)
+    write_csv(
+        output_dir / "r4_diagnostic_manual_advantage_candidates.csv",
+        candidate_rows,
+        fieldnames=candidate_fieldnames(summary_rows or behavior_rows),
+    )
+    return {
+        "r4_diagnostic_policy_profiles": behavior_rows,
+        "r4_diagnostic_environment_summary": summary_rows,
+        "r4_diagnostic_manual_advantage_candidates": candidate_rows,
+    }
+
+
 def run_dp_outputs(
     output_dir: Path,
     environments: Dict[str, EnvironmentConfig],
@@ -640,6 +683,37 @@ def write_figures(output_dir: Path, result_sets: Dict[str, List[Dict[str, object
             title="Targeted regime mean realized true-outcome gap",
             max_labels=80,
         )
+    if "r4_diagnostic_policy_profiles" in result_sets:
+        rows = result_sets["r4_diagnostic_policy_profiles"]
+        write_heatmap_svg(
+            figures_dir / "r4_diagnostic_true_equal_outcome_rate.svg",
+            rows,
+            x_key="grid_index",
+            y_key="policy",
+            value_key="true_equal_outcome_rate",
+            title="R4 diagnostic true-state equal-outcome rate",
+            max_labels=80,
+        )
+        write_heatmap_svg(
+            figures_dir / "r4_diagnostic_mean_sample_count.svg",
+            rows,
+            x_key="grid_index",
+            y_key="policy",
+            value_key="mean_sample_count",
+            title="R4 diagnostic mean sample count",
+            max_labels=80,
+        )
+    if "r4_diagnostic_environment_summary" in result_sets:
+        rows = result_sets["r4_diagnostic_environment_summary"]
+        write_heatmap_svg(
+            figures_dir / "r4_diagnostic_manual_utility_advantage.svg",
+            rows,
+            x_key="grid_index",
+            y_key="regime_grid",
+            value_key="manual_active_minus_equal_split_utility",
+            title="Manual active-search utility advantage over equal split",
+            max_labels=80,
+        )
 
 
 def write_summary(
@@ -649,7 +723,7 @@ def write_summary(
     result_sets: Dict[str, List[Dict[str, object]]],
 ) -> None:
     lines = [
-        "# Round 2 Results Summary",
+        "# Resource-Rational Allocation Results Summary",
         "",
         "These outputs are generated from the current codebase. Treat smoke/local runs as preliminary until the server-scale configuration is run.",
         "",
@@ -676,7 +750,7 @@ def write_summary(
             "- Expected average utility is the performance criterion.",
             "- Final-choice distances and information-acquisition metrics are diagnostics.",
             "- Do not over-interpret mean utility differences when confidence intervals overlap.",
-            "- The one-dimensional sweeps are designed to identify candidate regimes for 50/50 splits and equal-outcome choices before experiment design.",
+            "- Sweep and diagnostic outputs identify candidate regimes before experiment design; smoke runs only test wiring.",
         ]
     )
     (output_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")
@@ -700,6 +774,18 @@ def main() -> None:
     if "regime_grid" in sections:
         regime_configs = build_targeted_regime_configs_for_args(args)
         result_sets.update(run_targeted_regime_outputs(output_dir, regime_configs, settings))
+    if "r4_diagnostics" in sections:
+        if not args.regime_grid:
+            args.regime_grid = ["r4_diagnostic_active_search"]
+        regime_configs = build_targeted_regime_configs_for_args(args)
+        result_sets.update(
+            run_r4_diagnostic_outputs(
+                output_dir,
+                regime_configs,
+                settings,
+                manual_active_samples_per_person=args.manual_active_samples_per_person,
+            )
+        )
     if "regimes" in sections and "sweeps" not in sections:
         sweep_configs = build_sweep_configs_for_args(args)
         sweep_results = run_sweep_outputs(output_dir, sweep_configs, settings)

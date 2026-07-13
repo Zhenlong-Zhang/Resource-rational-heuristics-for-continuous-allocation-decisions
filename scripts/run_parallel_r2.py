@@ -42,6 +42,11 @@ EXPECTED_OUTPUTS: Dict[str, Sequence[str]] = {
         "targeted_regime_final_choice_candidates.csv",
         "targeted_regime_behavior_candidates.csv",
     ),
+    "r4_diagnostics": (
+        "r4_diagnostic_policy_profiles.csv",
+        "r4_diagnostic_environment_summary.csv",
+        "r4_diagnostic_manual_advantage_candidates.csv",
+    ),
     "dp": ("dp_sensitivity_analysis.csv",),
     "gh": ("gauss_hermite_diagnostics.csv",),
 }
@@ -59,6 +64,9 @@ RESULT_SET_BY_FILE = {
     "targeted_regime_rr_behavior_profiles.csv": "targeted_regime_behavior",
     "targeted_regime_final_choice_candidates.csv": "targeted_regime_final_choice_candidates",
     "targeted_regime_behavior_candidates.csv": "targeted_regime_behavior_candidates",
+    "r4_diagnostic_policy_profiles.csv": "r4_diagnostic_policy_profiles",
+    "r4_diagnostic_environment_summary.csv": "r4_diagnostic_environment_summary",
+    "r4_diagnostic_manual_advantage_candidates.csv": "r4_diagnostic_manual_advantage_candidates",
     "dp_sensitivity_analysis.csv": "dp_sensitivity",
     "gauss_hermite_diagnostics.csv": "gauss_hermite",
 }
@@ -102,10 +110,14 @@ def parse_sections(value: str) -> List[str]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run Round 2 result generation as parallel, resumable shards."
+        description="Run result generation as parallel, resumable shards."
     )
     parser.add_argument("--preset", choices=["smoke", "serious", "server"], default="serious")
-    parser.add_argument("--sections", default="all", help="Comma-separated: step7,sweeps,dp,gh or all.")
+    parser.add_argument(
+        "--sections",
+        default="all",
+        help="Comma-separated: step7,sweeps,regime_grid,r4_diagnostics,dp,gh or all.",
+    )
     parser.add_argument("--output-dir", default="")
     parser.add_argument("--max-workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     parser.add_argument("--resume", action="store_true", help="Skip shards that already have all expected files.")
@@ -126,6 +138,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--regime-grid", action="append", default=[])
     parser.add_argument("--regime-grid-chunks", type=int, default=1)
     parser.add_argument("--max-regime-grid-points", type=int, default=None)
+    parser.add_argument("--manual-active-samples-per-person", type=int, default=3)
     parser.add_argument("--dp-max-samples-values", default="2,4,6,10")
     parser.add_argument("--dp-mean-grid-sizes", default="7,11,21,50")
     parser.add_argument("--dp-observation-branches", default="3,5")
@@ -186,6 +199,7 @@ def add_optional_args(command: List[str], args: argparse.Namespace) -> None:
         "--terminal-integration": args.terminal_integration,
         "--max-sweep-values-per-feature": args.max_sweep_values_per_feature,
         "--max-regime-grid-points": args.max_regime_grid_points,
+        "--manual-active-samples-per-person": args.manual_active_samples_per_person,
     }
     for flag, value in optional.items():
         if value is not None:
@@ -255,6 +269,29 @@ def build_tasks(args: argparse.Namespace, run_dir: Path) -> List[TaskSpec]:
                         args,
                         run_dir,
                         "regime_grid",
+                        shard,
+                        [
+                            "--regime-grid",
+                            grid,
+                            "--regime-grid-chunk-index",
+                            str(chunk_index),
+                            "--regime-grid-chunks",
+                            str(args.regime_grid_chunks),
+                        ],
+                    )
+                )
+    if "r4_diagnostics" in sections:
+        if args.regime_grid_chunks <= 0:
+            raise ValueError("--regime-grid-chunks must be positive")
+        selected_grids = args.regime_grid or ["r4_diagnostic_active_search"]
+        for grid in selected_grids:
+            for chunk_index in range(args.regime_grid_chunks):
+                shard = f"{grid}_chunk{chunk_index:02d}_of{args.regime_grid_chunks:02d}"
+                tasks.append(
+                    build_task(
+                        args,
+                        run_dir,
+                        "r4_diagnostics",
                         shard,
                         [
                             "--regime-grid",
@@ -422,9 +459,9 @@ def write_parallel_summary(
     failed = [status for status in statuses if status.status == "failed"]
     ok = [status for status in statuses if status.status in {"ok", "skipped_existing"}]
     lines = [
-        "# Parallel Round 2 Run Summary",
+        "# Parallel Result Run Summary",
         "",
-        "This run splits Round 2 into section/environment or section/feature shards.",
+        "This run splits result generation into section/environment, feature, or diagnostic shards.",
         "",
         "## Settings",
         "",
