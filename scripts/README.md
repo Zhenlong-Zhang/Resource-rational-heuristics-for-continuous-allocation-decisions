@@ -158,21 +158,39 @@ python3 scripts/generate_results.py \
   --output-dir results/r4_diagnostic_smoke
 ```
 
-Parallel/server-style command:
+For the full Hoffman2 run, use the one-slot array submitter:
 
 ```bash
-python3 scripts/run_parallel_r2.py \
-  --preset server \
-  --sections r4_diagnostics \
-  --regime-grid r4_diagnostic_active_search \
-  --regime-grid-chunks 486 \
-  --episodes 1200 \
-  --voi-samples 500 \
-  --common-observations on \
-  --observations-per-person 500 \
-  --manual-active-samples-per-person 3 \
-  --max-workers 80 \
-  --output-dir results/r4_diagnostic_active_search_server
+bash scripts/submit_hoffman2_round4_array.sh
+```
+
+The submitter maps the 972-environment grid to 486 independent one-core SGE
+array tasks, preserving the established two-environment modulo shards. It limits
+the number running at once with `MAX_CONCURRENT_TASKS`
+(default: 160). It preserves the full scientific settings: 1200 episodes, 500
+VOI samples, common observation streams, and 500 pre-generated observations per
+recipient. A dependent collector validates every shard and its provenance before
+combining outputs; it never reruns missing simulations.
+
+To inspect progress without starting computation:
+
+```bash
+python3 scripts/r4_array_workflow.py progress \
+  --manifest results/r4_diagnostic_active_search_server/r4_array_manifest.json
+```
+
+For a small Hoffman2 wiring test, override the submission settings without
+changing the full-run defaults:
+
+```bash
+OUTPUT_DIR=results/r4_array_smoke \
+MAX_GRID_POINTS=2 \
+EPISODES=3 \
+VOI_SAMPLES=4 \
+OBSERVATIONS_PER_PERSON=20 \
+MANUAL_ACTIVE_SAMPLES_PER_PERSON=1 \
+MAX_CONCURRENT_TASKS=2 \
+bash scripts/submit_hoffman2_round4_array.sh
 ```
 
 Main outputs:
