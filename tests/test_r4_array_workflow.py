@@ -170,6 +170,9 @@ class R4ArrayWorkflowTest(unittest.TestCase):
         self.assertIn("#$ -t 1-${GRID_TASKS}", script)
         self.assertIn("#$ -tc ${MAX_CONCURRENT_TASKS}", script)
         self.assertNotIn("#$ -pe", script)
+        self.assertIn("s/^Your job-array ([0-9]+).*/\\1/p", script)
+        self.assertIn("s/^Your job ([0-9]+).*/\\1/p", script)
+        self.assertNotIn("awk '/Your job-array/", script)
 
     def test_missing_shard_fails_strict_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_dir:

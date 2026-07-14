@@ -104,7 +104,11 @@ chmod +x "${ARRAY_JOB_FILE}"
 
 array_submit_output="$(env LC_ALL=C LANG=C qsub "${ARRAY_JOB_FILE}")"
 echo "${array_submit_output}"
-array_job_id="$(echo "${array_submit_output}" | awk '/Your job-array/ {print $3} /Your job/ {print $3}' | tr -d '"' | sed 's/[.:].*$//')"
+array_job_id="$(
+  printf '%s\n' "${array_submit_output}" \
+    | sed -nE 's/^Your job-array ([0-9]+).*/\1/p' \
+    | head -1
+)"
 if [[ -z "${array_job_id}" ]]; then
   echo "Could not parse R4 array job id." >&2
   exit 1
@@ -134,7 +138,11 @@ chmod +x "${COLLECT_JOB_FILE}"
 
 collect_submit_output="$(env LC_ALL=C LANG=C qsub -hold_jid "${array_job_id}" "${COLLECT_JOB_FILE}")"
 echo "${collect_submit_output}"
-collector_job_id="$(echo "${collect_submit_output}" | awk '/Your job/ {print $3}' | tr -d '"' | sed 's/[.:].*$//')"
+collector_job_id="$(
+  printf '%s\n' "${collect_submit_output}" \
+    | sed -nE 's/^Your job ([0-9]+).*/\1/p' \
+    | head -1
+)"
 if [[ -z "${collector_job_id}" ]]; then
   echo "Could not parse R4 collector job id." >&2
   exit 1
