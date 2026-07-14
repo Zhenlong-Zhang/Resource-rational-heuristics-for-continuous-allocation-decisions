@@ -173,6 +173,8 @@ class R4ArrayWorkflowTest(unittest.TestCase):
         self.assertIn("s/^Your job-array ([0-9]+).*/\\1/p", script)
         self.assertIn("s/^Your job ([0-9]+).*/\\1/p", script)
         self.assertNotIn("awk '/Your job-array/", script)
+        self.assertIn("record-jobs \\\n  --manifest", script)
+        self.assertNotIn("record-jobs \\\\\n", script)
 
     def test_missing_shard_fails_strict_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_dir:

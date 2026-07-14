@@ -148,9 +148,9 @@ if [[ -z "${collector_job_id}" ]]; then
   exit 1
 fi
 
-"${PYTHON_BIN}" scripts/r4_array_workflow.py record-jobs \\
-  --manifest "${MANIFEST}" \\
-  --array-job-id "${array_job_id}" \\
+"${PYTHON_BIN}" scripts/r4_array_workflow.py record-jobs \
+  --manifest "${MANIFEST}" \
+  --array-job-id "${array_job_id}" \
   --collector-job-id "${collector_job_id}"
 
 echo "R4 array job: ${array_job_id}"
