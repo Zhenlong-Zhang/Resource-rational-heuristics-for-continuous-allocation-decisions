@@ -1053,6 +1053,30 @@ def validate_stage_evidence(
     return evidence
 
 
+def build_stage_evidence(
+    manifest_fingerprint: str,
+    command: Sequence[str],
+    stage_inventory: Sequence[Mapping[str, object]],
+    selected_attempts: Mapping[int, str],
+) -> Dict[str, object]:
+    """Build JSON-stable evidence for a fully validated staging tree."""
+
+    evidence: Dict[str, object] = {
+        "manifest_fingerprint": manifest_fingerprint,
+        "global_combiner_command": list(command),
+        "stage_tree_fingerprint": fingerprint(stage_inventory),
+        "stage_inventory": list(stage_inventory),
+        # JSON object keys are strings. Normalize before hashing so task IDs >= 10
+        # cannot change sort order during the write/read round trip.
+        "selected_attempts": {
+            str(task_id): attempt_id
+            for task_id, attempt_id in selected_attempts.items()
+        },
+    }
+    evidence["evidence_fingerprint"] = fingerprint(evidence)
+    return evidence
+
+
 def validate_negative_evidence(
     manifest: Mapping[str, object], path: Path
 ) -> Dict[str, object]:
@@ -1758,14 +1782,12 @@ def build_staged_complete_view(manifest: Mapping[str, object]) -> Path:
         validate_combined_stage(manifest, temporary)
         stage_inventory = tree_inventory(temporary)
         os.replace(temporary, stage_root)
-        stage_evidence = {
-            "manifest_fingerprint": manifest["manifest_fingerprint"],
-            "global_combiner_command": command,
-            "stage_tree_fingerprint": fingerprint(stage_inventory),
-            "stage_inventory": stage_inventory,
-            "selected_attempts": validation.selected_attempts,
-        }
-        stage_evidence["evidence_fingerprint"] = fingerprint(stage_evidence)
+        stage_evidence = build_stage_evidence(
+            str(manifest["manifest_fingerprint"]),
+            command,
+            stage_inventory,
+            validation.selected_attempts,
+        )
         write_json_atomic(run_dir / "stage_validation.json", stage_evidence)
         return stage_root
 

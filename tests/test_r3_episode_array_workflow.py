@@ -20,6 +20,7 @@ from scripts.r3_episode_array_workflow import (
     METADATA_FILENAME,
     SUMMARY_FILENAME,
     attempt_provenance,
+    build_stage_evidence,
     build_staged_complete_view,
     certify_smoke,
     current_git_commit,
@@ -561,6 +562,26 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
         self.assertEqual(combined_input, combined_output)
         self.assertTrue(combined_input.resolve().is_relative_to(self.workflow.resolve()))
         self.assertNotEqual(combined_input.resolve(), self.canonical.resolve())
+
+    def test_stage_evidence_fingerprint_survives_double_digit_task_ids(self) -> None:
+        inventory = [{"path": "result.csv", "size": 12, "sha256": "abc"}]
+        evidence = build_stage_evidence(
+            "manifest-fingerprint",
+            ["combine", "--require-complete"],
+            inventory,
+            {task_id: f"attempt-{task_id}" for task_id in range(1, 12)},
+        )
+        path = self.root / "stage_evidence.json"
+        write_json_atomic(path, evidence)
+        persisted = json.loads(path.read_text(encoding="utf-8"))
+        payload = {
+            key: value
+            for key, value in persisted.items()
+            if key != "evidence_fingerprint"
+        }
+
+        self.assertEqual(persisted["evidence_fingerprint"], fingerprint(payload))
+        self.assertEqual(persisted["selected_attempts"]["10"], "attempt-10")
 
     def test_promotion_crash_recovers_original_and_retry_is_idempotent(self) -> None:
         manifest = self._freeze()
