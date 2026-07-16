@@ -887,6 +887,7 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
         self.assertIn('LANE_THROTTLE="${LANE_THROTTLE:-80}"', cutover)
         self.assertIn("SMOKE_GATE", cutover)
         self.assertIn("qacct", cutover.lower())
+        self.assertNotIn("for (index", cutover)
 
 
 if __name__ == "__main__":

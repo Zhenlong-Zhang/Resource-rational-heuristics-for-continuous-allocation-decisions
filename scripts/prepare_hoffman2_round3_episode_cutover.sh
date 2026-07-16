@@ -69,9 +69,9 @@ after_file="${CUTOVER_EVIDENCE_DIR}/qstat_after.txt"
 unaccounted_ids=$(awk -v pattern="${WRITER_JOB_NAME_PATTERN}" -v known_csv="${all_writer_ids}" '
   BEGIN {
     count = split(known_csv, known, ",")
-    for (index = 1; index <= count; index++) {
-      gsub(/[[:space:]]/, "", known[index])
-      accounted[known[index]] = 1
+    for (item_index = 1; item_index <= count; item_index++) {
+      gsub(/[[:space:]]/, "", known[item_index])
+      accounted[known[item_index]] = 1
     }
   }
   NR > 2 && $3 ~ pattern && !($1 in accounted) {print $1}
@@ -142,9 +142,9 @@ final_file="${CUTOVER_EVIDENCE_DIR}/qstat_final.txt"
 final_unaccounted_ids=$(awk -v pattern="${WRITER_JOB_NAME_PATTERN}" -v known_csv="${all_writer_ids}" '
   BEGIN {
     count = split(known_csv, known, ",")
-    for (index = 1; index <= count; index++) {
-      gsub(/[[:space:]]/, "", known[index])
-      accounted[known[index]] = 1
+    for (item_index = 1; item_index <= count; item_index++) {
+      gsub(/[[:space:]]/, "", known[item_index])
+      accounted[known[item_index]] = 1
     }
   }
   NR > 2 && (($1 in accounted) || $3 ~ pattern) {print $1}
