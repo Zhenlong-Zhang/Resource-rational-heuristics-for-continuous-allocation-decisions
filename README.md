@@ -91,6 +91,19 @@ python3 scripts/summarize_round2_results.py \
   --output results/equal_outcome_distinct_summary.md
 ```
 
+Create the reproducible Round 3/4 paired analysis and professor-facing report:
+
+```bash
+python3 scripts/analyze_round3_round4.py \
+  --r3-dir results/r3_approximation_methods_checkpointed_1200ep_20260713 \
+  --r4-dir results/r4_diagnostic_active_search_server_20260714_array486 \
+  --output-dir results/round3_round4_report
+```
+
+This analysis uses episode-level pairing for the canonical R3 approximation
+methods and aggregate diagnostic comparisons for R4. It writes a self-contained
+HTML report and a `supporting_data/` folder without rerunning simulations.
+
 You can override the main computational knobs:
 
 ```bash

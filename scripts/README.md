@@ -200,3 +200,22 @@ Main outputs:
 - `r4_diagnostic_manual_advantage_candidates.csv`: environments where the manual active-search baseline clearly beats equal split under the current thresholds
 
 Interpretation note: the current utility family can approximate "quickly flattening after needs are met" through stronger concavity, but it does not implement a literal post-threshold plateau.
+
+## Round 3/4 Analysis Report
+
+After the validated R3 and R4 result directories are available locally, create
+the paired method analysis, diagnostic-policy summary, and professor-facing HTML:
+
+```bash
+python3 scripts/analyze_round3_round4.py \
+  --r3-dir results/r3_approximation_methods_checkpointed_1200ep_20260713 \
+  --r4-dir results/r4_diagnostic_active_search_server_20260714_array486 \
+  --output-dir results/round3_round4_report
+```
+
+The R3 input must include both the 700-row method summary and the 840,000-row
+episode file. The script retains only the canonical myopic VOI, blinkered, and
+DP episodes in memory, verifies common-randomness fingerprints, and computes
+paired utility and sample-count confidence intervals. The R4 analysis uses the
+validated environment summary and policy-profile tables. It does not rerun any
+policy simulation.
