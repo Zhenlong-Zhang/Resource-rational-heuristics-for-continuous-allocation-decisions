@@ -51,6 +51,9 @@ SUMMARY_FILENAME = "rr_approximation_methods_comparison.csv"
 METADATA_FILENAME = "task_metadata.json"
 REQUIRED_TASK_FILES = (EPISODE_FILENAME, SUMMARY_FILENAME, METADATA_FILENAME)
 NON_SCIENTIFIC_RETRY_FIELDS = {"elapsed_seconds"}
+SERIAL_REFERENCE_FIELDNAMES = tuple(
+    field for field in EPISODE_FIELDNAMES if field not in NON_SCIENTIFIC_RETRY_FIELDS
+)
 PRODUCTION_SCIENTIFIC_SETTINGS = {
     "n_episodes": 1200,
     "rr_observation_draws": 500,
@@ -193,6 +196,52 @@ def scientific_row(row: Mapping[str, str]) -> Dict[str, str]:
 
 def scientific_row_fingerprint(row: Mapping[str, str]) -> str:
     return fingerprint(scientific_row(row))
+
+
+def serial_reference_key(row: Mapping[str, str], *, label: str) -> tuple[str, str, int]:
+    environment = row.get("environment", "")
+    policy = row.get("policy", "")
+    try:
+        episode_index = int(row.get("episode_index", ""))
+    except ValueError as error:
+        raise RuntimeError(f"Invalid episode index in {label}") from error
+    if not environment or not policy:
+        raise RuntimeError(f"Missing environment or policy in {label}")
+    return environment, policy, episode_index
+
+
+def read_serial_reference_rows(
+    path: Path,
+) -> tuple[List[Dict[str, str]], Dict[tuple[str, str, int], Dict[str, str]]]:
+    fieldnames, rows = read_csv(path)
+    if fieldnames != EPISODE_FIELDNAMES:
+        raise RuntimeError("Serial reference CSV does not have canonical episode fields")
+    references: Dict[tuple[str, str, int], Dict[str, str]] = {}
+    for row_number, row in enumerate(rows, start=2):
+        if None in row or any(value is None for value in row.values()):
+            raise RuntimeError(f"Malformed serial reference row {row_number}")
+        key = serial_reference_key(row, label=f"serial reference row {row_number}")
+        if key in references:
+            raise RuntimeError(f"Duplicate serial reference identity: {key}")
+        references[key] = row
+    return rows, references
+
+
+def serial_reference_target_record(
+    task: Mapping[str, object], reference_row: Mapping[str, str]
+) -> Dict[str, object]:
+    scientific = {field: reference_row[field] for field in SERIAL_REFERENCE_FIELDNAMES}
+    return {
+        "task_id": int(task["task_id"]),
+        "environment": str(task["environment"]),
+        "policy": str(task["policy"]),
+        "episode_index": int(task["episode_index"]),
+        "scientific_row_fingerprint": fingerprint(scientific),
+    }
+
+
+def path_is_within(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
 
 
 def evidence_file_record(path: Path) -> Dict[str, object]:
@@ -351,13 +400,12 @@ def freeze_checkpoint(
     run_mode: str = "test",
     reviewed_commit: str = "",
     enforce_clean_checkout: bool | None = None,
+    serial_reference_path: Path | None = None,
 ) -> Dict[str, object]:
     canonical_run_dir = canonical_run_dir.resolve()
     workflow_run_dir = workflow_run_dir.resolve()
     if workflow_run_dir == canonical_run_dir or canonical_run_dir in workflow_run_dir.parents:
         raise RuntimeError("Workflow run directory must be outside the canonical run directory")
-    if workflow_run_dir.exists() and any(workflow_run_dir.iterdir()):
-        raise RuntimeError(f"Workflow run directory is not empty: {workflow_run_dir}")
     if array_lanes < 1 or array_lanes > 4:
         raise RuntimeError("array_lanes must be in [1, 4]")
     if lane_throttle < 1 or lane_throttle > 100:
@@ -366,6 +414,30 @@ def freeze_checkpoint(
         raise RuntimeError("Lane concurrency plus collector exceeds max_u_jobs=500")
     if run_mode not in {"production", "smoke", "test"}:
         raise RuntimeError(f"Unsupported run mode: {run_mode}")
+    serial_reference: Dict[str, object] | None = None
+    serial_references: Dict[tuple[str, str, int], Dict[str, str]] = {}
+    if run_mode == "smoke":
+        if serial_reference_path is None:
+            raise RuntimeError("Smoke freeze requires a serial-reference CSV")
+        resolved_reference = serial_reference_path.resolve()
+        if not resolved_reference.is_file():
+            raise RuntimeError(f"Serial reference CSV is missing: {resolved_reference}")
+        if path_is_within(resolved_reference, canonical_run_dir) or path_is_within(
+            resolved_reference, workflow_run_dir
+        ):
+            raise RuntimeError(
+                "Serial reference CSV must be outside canonical and workflow run directories"
+            )
+        _, serial_references = read_serial_reference_rows(resolved_reference)
+        serial_reference = {
+            "path": str(resolved_reference),
+            "size": resolved_reference.stat().st_size,
+            "sha256": file_sha256(resolved_reference),
+        }
+    elif serial_reference_path is not None:
+        raise RuntimeError("Serial reference is only valid for smoke freeze")
+    if workflow_run_dir.exists() and any(workflow_run_dir.iterdir()):
+        raise RuntimeError(f"Workflow run directory is not empty: {workflow_run_dir}")
     if enforce_clean_checkout is None:
         enforce_clean_checkout = run_mode in {"production", "smoke"}
     if run_mode in {"production", "smoke"}:
@@ -516,6 +588,27 @@ def freeze_checkpoint(
                 "task_file_sha256": file_sha256(lane_file),
             }
         )
+    if serial_reference is not None:
+        target_rows: List[Dict[str, object]] = []
+        for task in episode_tasks:
+            key = (
+                str(task["environment"]),
+                str(task["policy"]),
+                int(task["episode_index"]),
+            )
+            reference_row = serial_references.get(key)
+            if reference_row is None:
+                raise RuntimeError(f"Serial reference is missing smoke target identity: {key}")
+            target_rows.append(serial_reference_target_record(task, reference_row))
+        resolved_reference = Path(str(serial_reference["path"]))
+        if (
+            resolved_reference.stat().st_size != serial_reference["size"]
+            or file_sha256(resolved_reference) != serial_reference["sha256"]
+        ):
+            raise RuntimeError("Serial reference changed during smoke freeze")
+        serial_reference["compared_fields"] = list(SERIAL_REFERENCE_FIELDNAMES)
+        serial_reference["target_rows"] = target_rows
+        serial_reference["target_rows_fingerprint"] = fingerprint(target_rows)
     manifest = {
         "schema_version": 1,
         "workflow": WORKFLOW,
@@ -551,6 +644,8 @@ def freeze_checkpoint(
         "affected_tasks": affected,
         "tasks": episode_tasks,
     }
+    if serial_reference is not None:
+        manifest["serial_reference"] = serial_reference
     manifest_path = workflow_run_dir / MANIFEST_FILENAME
     write_manifest(manifest_path, manifest)
     set_tree_read_only(snapshot_root)
@@ -571,6 +666,7 @@ def validate_manifest_structure(manifest: Mapping[str, object]) -> None:
         "reviewed_commit"
     ):
         raise RuntimeError("Manifest is not bound to its reviewed commit")
+    validate_manifest_serial_reference(manifest)
     code_hashes = dict(manifest.get("execution_code_hashes", {}))
     if set(code_hashes) != set(EXECUTION_CODE_PATHS):
         raise RuntimeError("Manifest execution-code coverage is incomplete")
@@ -646,6 +742,46 @@ def validate_manifest_structure(manifest: Mapping[str, object]) -> None:
         ]
         if file_task_ids != lane["task_ids"]:
             raise RuntimeError(f"Lane task mapping mismatch: {task_file}")
+
+
+def validate_manifest_serial_reference(manifest: Mapping[str, object]) -> Dict[str, object] | None:
+    run_mode = str(manifest.get("run_mode", ""))
+    if run_mode != "smoke":
+        if "serial_reference" in manifest:
+            raise RuntimeError("Non-smoke manifest unexpectedly binds a serial reference")
+        return None
+    record = dict(manifest.get("serial_reference", {}))
+    path = Path(str(record.get("path", "")))
+    if not path.is_absolute() or path.resolve() != path or not path.is_file():
+        raise RuntimeError("Smoke manifest serial reference path is missing or not resolved")
+    canonical = Path(str(manifest["canonical_run_dir"])).resolve()
+    workflow = Path(str(manifest["workflow_run_dir"])).resolve()
+    if path_is_within(path, canonical) or path_is_within(path, workflow):
+        raise RuntimeError("Smoke manifest serial reference is inside a run directory")
+    if (
+        path.stat().st_size != int(record.get("size", -1))
+        or file_sha256(path) != record.get("sha256")
+    ):
+        raise RuntimeError("Smoke manifest serial reference changed")
+    if record.get("compared_fields") != list(SERIAL_REFERENCE_FIELDNAMES):
+        raise RuntimeError("Smoke manifest serial-reference field binding mismatch")
+    _, references = read_serial_reference_rows(path)
+    expected_targets: List[Dict[str, object]] = []
+    for task in manifest.get("tasks", []):
+        key = (
+            str(task["environment"]),
+            str(task["policy"]),
+            int(task["episode_index"]),
+        )
+        reference_row = references.get(key)
+        if reference_row is None:
+            raise RuntimeError(f"Serial reference is missing smoke target identity: {key}")
+        expected_targets.append(serial_reference_target_record(task, reference_row))
+    if record.get("target_rows") != expected_targets or record.get(
+        "target_rows_fingerprint"
+    ) != fingerprint(expected_targets):
+        raise RuntimeError("Smoke manifest serial-reference target binding mismatch")
+    return record
 
 
 def require_execution_checkout(manifest: Mapping[str, object]) -> None:
@@ -1147,6 +1283,68 @@ def validate_scheduler_smoke_evidence(
     return evidence
 
 
+def validate_smoke_serial_reference(
+    manifest: Mapping[str, object],
+    validation: ShardValidation,
+) -> Dict[str, object]:
+    serial_reference = validate_manifest_serial_reference(manifest)
+    if serial_reference is None:
+        raise RuntimeError("Smoke manifest does not bind a serial reference")
+    serial_reference_path = Path(str(serial_reference["path"]))
+    reference_rows, references = read_serial_reference_rows(serial_reference_path)
+
+    matches: List[Dict[str, object]] = []
+    for task in sorted(manifest["tasks"], key=lambda value: int(value["task_id"])):
+        task_id = int(task["task_id"])
+        shard_row = validation.selected.get(task_id)
+        if shard_row is None:
+            raise RuntimeError(f"Smoke shard {task_id} is not valid and selected")
+        key = (
+            str(task["environment"]),
+            str(task["policy"]),
+            int(task["episode_index"]),
+        )
+        reference_row = references.get(key)
+        if reference_row is None:
+            raise RuntimeError(f"Serial reference is missing smoke shard identity: {key}")
+        mismatched_fields = [
+            field
+            for field in SERIAL_REFERENCE_FIELDNAMES
+            if shard_row.get(field) != reference_row.get(field)
+        ]
+        if mismatched_fields:
+            raise RuntimeError(
+                f"Serial reference mismatch for smoke task {task_id}: {mismatched_fields}"
+            )
+        shard_scientific = {
+            field: shard_row[field] for field in SERIAL_REFERENCE_FIELDNAMES
+        }
+        reference_scientific = {
+            field: reference_row[field] for field in SERIAL_REFERENCE_FIELDNAMES
+        }
+        matches.append(
+            {
+                "task_id": task_id,
+                "environment": key[0],
+                "policy": key[1],
+                "episode_index": key[2],
+                "selected_attempt": validation.selected_attempts[task_id],
+                "matching_field_count": len(SERIAL_REFERENCE_FIELDNAMES),
+                "shard_scientific_row_fingerprint": fingerprint(shard_scientific),
+                "serial_reference_row_fingerprint": fingerprint(reference_scientific),
+            }
+        )
+
+    evidence: Dict[str, object] = {
+        "compared_fields": list(SERIAL_REFERENCE_FIELDNAMES),
+        "reference_row_count": len(reference_rows),
+        "matched_shard_count": len(matches),
+        "matches": matches,
+    }
+    evidence["evidence_fingerprint"] = fingerprint(evidence)
+    return evidence
+
+
 def certify_smoke(
     manifest: Mapping[str, object], negative_evidence_path: Path,
     scheduler_evidence_path: Path, output_path: Path
@@ -1179,8 +1377,12 @@ def certify_smoke(
     stage = validate_stage_evidence(manifest)
     validate_negative_evidence(manifest, negative_evidence_path)
     scheduler = validate_scheduler_smoke_evidence(manifest, scheduler_evidence_path)
+    serial_reference = validate_manifest_serial_reference(manifest)
+    if serial_reference is None:
+        raise RuntimeError("Smoke manifest does not bind a serial reference")
+    serial_parity = validate_smoke_serial_reference(manifest, validation)
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "smoke_manifest_path": str(
             (Path(str(manifest["workflow_run_dir"])) / MANIFEST_FILENAME).resolve()
         ),
@@ -1196,6 +1398,7 @@ def certify_smoke(
         "smoke_passed": True,
         "retry_determinism_passed": True,
         "negative_case_passed": True,
+        "serial_reference_parity_passed": True,
         "validated_shards": len(validation.selected),
         "validated_blinkered_250_task_ids": blinkered_tasks,
         "retried_task_ids": retried,
@@ -1208,6 +1411,13 @@ def certify_smoke(
         "scheduler_evidence_fingerprint": scheduler["evidence_fingerprint"],
         "negative_evidence_path": str(negative_evidence_path.resolve()),
         "scheduler_evidence_path": str(scheduler_evidence_path.resolve()),
+        "serial_reference_path": serial_reference["path"],
+        "serial_reference_size": serial_reference["size"],
+        "serial_reference_sha256": serial_reference["sha256"],
+        "serial_reference_target_rows_fingerprint": serial_reference[
+            "target_rows_fingerprint"
+        ],
+        "serial_reference_parity_evidence": serial_parity,
     }
     payload["gate_fingerprint"] = fingerprint(payload)
     write_json_atomic(output_path, payload)
@@ -1223,7 +1433,12 @@ def verify_smoke_gate(path: Path, reviewed_commit: str) -> Dict[str, object]:
         raise RuntimeError("Smoke gate is not bound to the executing reviewed commit")
     if gate.get("scientific_baseline_commit") != SCIENTIFIC_BASELINE_COMMIT:
         raise RuntimeError("Smoke gate scientific baseline mismatch")
-    for name in ("smoke_passed", "retry_determinism_passed", "negative_case_passed"):
+    for name in (
+        "smoke_passed",
+        "retry_determinism_passed",
+        "negative_case_passed",
+        "serial_reference_parity_passed",
+    ):
         if gate.get(name) is not True:
             raise RuntimeError(f"Smoke gate did not pass: {name}")
     if len(gate.get("validated_blinkered_250_task_ids", [])) < 2:
@@ -1245,6 +1460,26 @@ def verify_smoke_gate(path: Path, reviewed_commit: str) -> Dict[str, object]:
     ):
         raise RuntimeError("Smoke gate configuration or execution-code binding mismatch")
     require_execution_checkout(manifest)
+    serial_reference = validate_manifest_serial_reference(manifest)
+    if serial_reference is None:
+        raise RuntimeError("Smoke manifest does not bind a serial reference")
+    serial_reference_path = Path(str(serial_reference["path"]))
+    if (
+        gate.get("serial_reference_path") != serial_reference["path"]
+        or int(gate.get("serial_reference_size", -1)) != serial_reference["size"]
+        or gate.get("serial_reference_sha256") != serial_reference["sha256"]
+        or gate.get("serial_reference_target_rows_fingerprint")
+        != serial_reference["target_rows_fingerprint"]
+    ):
+        raise RuntimeError("Smoke gate serial reference does not match the manifest binding")
+    validation = validate_shards(manifest)
+    if not validation.ok:
+        raise RuntimeError("Smoke gate shards are no longer valid")
+    serial_parity = validate_smoke_serial_reference(manifest, validation)
+    if serial_parity != gate.get("serial_reference_parity_evidence"):
+        raise RuntimeError("Smoke gate serial-reference parity evidence mismatch")
+    if int(gate.get("validated_shards", -1)) != len(validation.selected):
+        raise RuntimeError("Smoke gate validated shard count mismatch")
     stage_path = Path(str(manifest["workflow_run_dir"])) / "stage_validation.json"
     if file_sha256(stage_path) != gate.get("stage_validation_sha256"):
         raise RuntimeError("Smoke gate stage evidence changed")
@@ -1923,6 +2158,7 @@ def parse_args() -> argparse.Namespace:
     freeze.add_argument("--expected-task-count", type=int, default=700)
     freeze.add_argument("--run-mode", choices=["production", "smoke"], default="production")
     freeze.add_argument("--reviewed-commit", required=True)
+    freeze.add_argument("--serial-reference")
 
     shard = subparsers.add_parser("run-shard")
     shard.add_argument("--manifest", required=True)
@@ -2010,6 +2246,9 @@ def main() -> int:
             expected_task_count=args.expected_task_count,
             run_mode=args.run_mode,
             reviewed_commit=args.reviewed_commit,
+            serial_reference_path=(
+                Path(args.serial_reference) if args.serial_reference else None
+            ),
         )
         print(Path(str(manifest["workflow_run_dir"])) / MANIFEST_FILENAME)
         return 0

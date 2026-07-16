@@ -300,6 +300,7 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
         run_mode: str = "test",
         reviewed_commit: str = "",
         enforce_clean_checkout: bool = False,
+        serial_reference: Path | None = None,
     ) -> dict[str, object]:
         return freeze_checkpoint(
             canonical_run_dir=self.canonical,
@@ -314,24 +315,27 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
             run_mode=run_mode,
             reviewed_commit=reviewed_commit,
             enforce_clean_checkout=enforce_clean_checkout,
+            serial_reference_path=serial_reference,
         )
 
     def _run_all_tasks(self, manifest: dict[str, object]) -> None:
         for task in manifest["tasks"]:
             run_manifest_task(manifest, int(task["task_id"]), f"attempt_{task['task_id']}")
 
-    def _write_synthetic_attempt(
-        self, manifest: dict[str, object], task_id: int, attempt_id: str
-    ) -> Path:
-        task = next(item for item in manifest["tasks"] if int(item["task_id"]) == task_id)
-        metadata = json.loads(Path(task["metadata_path"]).read_text(encoding="utf-8"))
-        identity = expected_identity(metadata, int(task["episode_index"]))
+    def _synthetic_episode_row(
+        self,
+        metadata: dict[str, object],
+        episode_index: int,
+        *,
+        elapsed_seconds: str = "0.0",
+    ) -> dict[str, str]:
+        identity = expected_identity(metadata, episode_index)
         row = {field: "" for field in EPISODE_FIELDNAMES}
         row.update(
             {
-                "environment": str(task["environment"]),
-                "episode_index": str(task["episode_index"]),
-                "policy": str(task["policy"]),
+                "environment": str(metadata["environment"]),
+                "episode_index": str(episode_index),
+                "policy": str(metadata["policy"]["name"]),
                 "policy_observation_draws": "250",
                 "policy_horizon": "2",
                 "true_need_1": str(identity["true_need_1"]),
@@ -346,9 +350,17 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
                 "terminated": "1.0",
                 "action_sequence": "terminate",
                 "allocation_to_person1": "0.5",
-                "elapsed_seconds": "0.0",
+                "elapsed_seconds": elapsed_seconds,
             }
         )
+        return row
+
+    def _write_synthetic_attempt(
+        self, manifest: dict[str, object], task_id: int, attempt_id: str
+    ) -> Path:
+        task = next(item for item in manifest["tasks"] if int(item["task_id"]) == task_id)
+        metadata = json.loads(Path(task["metadata_path"]).read_text(encoding="utf-8"))
+        row = self._synthetic_episode_row(metadata, int(task["episode_index"]))
         attempt = Path(task["attempts_dir"]) / attempt_id
         attempt.mkdir(parents=True)
         write_csv_atomic(attempt / EPISODE_FILENAME, EPISODE_FIELDNAMES, [row])
@@ -369,6 +381,72 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
             encoding="utf-8",
         )
         self._write_writer_evidence()
+
+    def _configure_smoke_metadata(self) -> None:
+        self.policy_label = "blinkered_samples250"
+        self.metadata["policy_arg"] = "blinkered"
+        self.metadata["policy"] = {
+            "name": self.policy_label,
+            "class": "BlinkeredPolicy",
+            "observation_draws": 250,
+            "horizon": 2,
+            "max_samples": "",
+            "mean_grid_size": "",
+            "observation_branches": "",
+        }
+        self.metadata["settings"].update(
+            {
+                "rr_observation_draws": 500,
+                "blinkered_observation_draws": 250,
+                "blinkered_horizon": 2,
+                "use_common_observation_streams": True,
+                "observations_per_person": 500,
+            }
+        )
+
+    def _write_pre_freeze_serial_reference(
+        self,
+        path: Path,
+        updates: dict[int, dict[str, str]] | None = None,
+    ) -> list[dict[str, str]]:
+        rows = []
+        for episode_index in range(int(self.metadata["settings"]["n_episodes"])):
+            row = self._synthetic_episode_row(
+                self.metadata,
+                episode_index,
+                elapsed_seconds=f"independent-serial-runtime-{episode_index}",
+            )
+            row.update((updates or {}).get(episode_index, {}))
+            rows.append(row)
+        write_csv_atomic(path, EPISODE_FIELDNAMES, rows)
+        return rows
+
+    def _prepare_certifiable_smoke(
+        self,
+        reference_updates: dict[int, dict[str, str]] | None = None,
+    ) -> tuple[dict[str, object], Path, str, dict[str, object]]:
+        shutil.rmtree(self.canonical)
+        self._configure_smoke_metadata()
+        self._write_empty_current_fixture()
+        serial_reference = self.root / "independent_serial_reference.csv"
+        self._write_pre_freeze_serial_reference(serial_reference, reference_updates)
+        commit = current_git_commit()
+        manifest = self._freeze(
+            run_mode="smoke",
+            reviewed_commit=commit,
+            enforce_clean_checkout=False,
+            serial_reference=serial_reference,
+        )
+        for task in manifest["tasks"]:
+            self._write_synthetic_attempt(
+                manifest, int(task["task_id"]), f"attempt_{task['task_id']}"
+            )
+        self._write_synthetic_attempt(manifest, 1, "retry_scheduler")
+        build_staged_complete_view(manifest)
+        negative = self.root / "negative.json"
+        negative_payload = run_missing_shard_negative_check(manifest, 2, negative)
+        self._write_scheduler_evidence(manifest)
+        return manifest, negative, commit, negative_payload
 
     def test_indexed_episode_is_identical_to_batch_episode(self) -> None:
         batch = build_evaluation_episodes(
@@ -510,51 +588,33 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
         self.assertEqual(promote_staged_view(manifest), marker)
 
     def test_smoke_gate_requires_two_shards_retry_stage_and_negative_evidence(self) -> None:
-        shutil.rmtree(self.canonical)
-        self.policy_label = "blinkered_samples250"
-        self.metadata["policy_arg"] = "blinkered"
-        self.metadata["policy"] = {
-            "name": self.policy_label,
-            "class": "BlinkeredPolicy",
-            "observation_draws": 250,
-            "horizon": 2,
-            "max_samples": "",
-            "mean_grid_size": "",
-            "observation_branches": "",
-        }
-        self.metadata["settings"].update(
-            {
-                "rr_observation_draws": 500,
-                "blinkered_observation_draws": 250,
-                "blinkered_horizon": 2,
-                "use_common_observation_streams": True,
-                "observations_per_person": 500,
-            }
-        )
-        self._write_empty_current_fixture()
-        commit = current_git_commit()
-        manifest = self._freeze(
-            run_mode="smoke",
-            reviewed_commit=commit,
-            enforce_clean_checkout=False,
-        )
-        for task in manifest["tasks"]:
-            self._write_synthetic_attempt(
-                manifest, int(task["task_id"]), f"attempt_{task['task_id']}"
-            )
-        self._write_synthetic_attempt(manifest, 1, "retry_scheduler")
-        build_staged_complete_view(manifest)
-        negative = self.root / "negative.json"
-        negative_payload = run_missing_shard_negative_check(manifest, 2, negative)
+        manifest, negative, commit, negative_payload = self._prepare_certifiable_smoke()
         self.assertTrue(negative_payload["collector_failed_nonzero"])
         self.assertTrue(negative_payload["canonical_hash_unchanged"])
         self.assertTrue(negative_payload["isolated_shard_restored"])
-        self._write_scheduler_evidence(manifest)
+        serial_reference = Path(manifest["serial_reference"]["path"])
+        _, serial_rows = self._read_episode(serial_reference)
+        self.assertEqual(manifest["serial_reference"]["size"], serial_reference.stat().st_size)
+        self.assertEqual(manifest["serial_reference"]["sha256"], file_sha256(serial_reference))
+        self.assertEqual(len(manifest["serial_reference"]["target_rows"]), 3)
+        self.assertEqual(
+            manifest["serial_reference"]["target_rows_fingerprint"],
+            fingerprint(manifest["serial_reference"]["target_rows"]),
+        )
         gate = self.root / "smoke_gate.json"
         payload = certify_smoke(manifest, negative, self.scheduler_evidence, gate)
         self.assertTrue(payload["smoke_passed"])
         self.assertTrue(payload["retry_determinism_passed"])
         self.assertTrue(payload["negative_case_passed"])
+        self.assertTrue(payload["serial_reference_parity_passed"])
+        self.assertEqual(payload["serial_reference_path"], str(serial_reference.resolve()))
+        self.assertEqual(
+            payload["serial_reference_parity_evidence"]["matched_shard_count"], 3
+        )
+        self.assertEqual(
+            payload["serial_reference_parity_evidence"]["compared_fields"],
+            [field for field in EPISODE_FIELDNAMES if field != "elapsed_seconds"],
+        )
         self.assertTrue(gate.is_file())
         self.assertEqual(
             verify_smoke_gate(gate, commit)["manifest_fingerprint"],
@@ -571,11 +631,103 @@ class R3EpisodeArrayWorkflowTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(RuntimeError, "fingerprint"):
             verify_smoke_gate(forged, commit)
+        forged_parity = json.loads(gate.read_text(encoding="utf-8"))
+        parity = forged_parity["serial_reference_parity_evidence"]
+        parity["matched_shard_count"] = 2
+        parity.pop("evidence_fingerprint")
+        parity["evidence_fingerprint"] = fingerprint(parity)
+        forged_parity.pop("gate_fingerprint")
+        forged_parity["gate_fingerprint"] = fingerprint(forged_parity)
+        forged_parity_path = self.root / "forged_parity_gate.json"
+        write_json_atomic(forged_parity_path, forged_parity)
+        with self.assertRaisesRegex(RuntimeError, "parity evidence mismatch"):
+            verify_smoke_gate(forged_parity_path, commit)
+        serial_rows[0]["realized_utility"] = "tampered-after-certification"
+        write_csv_atomic(serial_reference, EPISODE_FIELDNAMES, serial_rows)
+        with self.assertRaisesRegex(RuntimeError, "serial reference changed"):
+            verify_smoke_gate(gate, commit)
+        self._write_pre_freeze_serial_reference(serial_reference)
+        verify_smoke_gate(gate, commit)
         scheduler_payload = json.loads(self.scheduler_evidence.read_text(encoding="utf-8"))
         qacct_path = Path(scheduler_payload["qacct_records"][0]["file"]["path"])
         qacct_path.write_text("slots 8\nexit_status 0\n", encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "qacct"):
             verify_smoke_gate(gate, commit)
+
+    def test_synthetic_smoke_rows_cannot_certify_against_different_serial_reference(
+        self,
+    ) -> None:
+        manifest, negative, _, _ = self._prepare_certifiable_smoke(
+            reference_updates={0: {"realized_utility": "not-the-synthetic-result"}}
+        )
+        with self.assertRaisesRegex(RuntimeError, "Serial reference mismatch.*realized_utility"):
+            certify_smoke(
+                manifest,
+                negative,
+                self.scheduler_evidence,
+                self.root / "must_not_certify.json",
+            )
+        self.assertFalse((self.root / "must_not_certify.json").exists())
+
+    def test_smoke_freeze_requires_external_serial_reference(self) -> None:
+        shutil.rmtree(self.canonical)
+        self._configure_smoke_metadata()
+        self._write_empty_current_fixture()
+        commit = current_git_commit()
+        with self.assertRaisesRegex(RuntimeError, "requires a serial-reference CSV"):
+            self._freeze(
+                run_mode="smoke",
+                reviewed_commit=commit,
+                enforce_clean_checkout=False,
+            )
+        self.assertFalse(self.workflow.exists())
+
+    def test_smoke_freeze_rejects_in_tree_serial_references_after_symlink_resolution(
+        self,
+    ) -> None:
+        shutil.rmtree(self.canonical)
+        self._configure_smoke_metadata()
+        self._write_empty_current_fixture()
+        commit = current_git_commit()
+        canonical_reference = self.canonical / "serial_reference.csv"
+        self._write_pre_freeze_serial_reference(canonical_reference)
+        symlink_reference = self.root / "serial_reference_link.csv"
+        symlink_reference.symlink_to(canonical_reference)
+        with self.assertRaisesRegex(RuntimeError, "outside canonical and workflow"):
+            self._freeze(
+                run_mode="smoke",
+                reviewed_commit=commit,
+                enforce_clean_checkout=False,
+                serial_reference=symlink_reference,
+            )
+
+        workflow_reference = self.workflow / "serial_reference.csv"
+        self._write_pre_freeze_serial_reference(workflow_reference)
+        with self.assertRaisesRegex(RuntimeError, "outside canonical and workflow"):
+            self._freeze(
+                run_mode="smoke",
+                reviewed_commit=commit,
+                enforce_clean_checkout=False,
+                serial_reference=workflow_reference,
+            )
+
+    def test_smoke_manifest_rejects_post_freeze_serial_reference_tampering(self) -> None:
+        shutil.rmtree(self.canonical)
+        self._configure_smoke_metadata()
+        self._write_empty_current_fixture()
+        serial_reference = self.root / "serial_reference_before_freeze.csv"
+        rows = self._write_pre_freeze_serial_reference(serial_reference)
+        commit = current_git_commit()
+        self._freeze(
+            run_mode="smoke",
+            reviewed_commit=commit,
+            enforce_clean_checkout=False,
+            serial_reference=serial_reference,
+        )
+        rows[0]["realized_utility"] = "tampered-after-freeze"
+        write_csv_atomic(serial_reference, EPISODE_FIELDNAMES, rows)
+        with self.assertRaisesRegex(RuntimeError, "serial reference changed"):
+            load_manifest(self.workflow / MANIFEST_FILENAME)
 
     def test_missing_or_tampered_shard_cannot_stage_or_promote(self) -> None:
         manifest = self._freeze()
