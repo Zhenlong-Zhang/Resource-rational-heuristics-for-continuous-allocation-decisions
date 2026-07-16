@@ -17,10 +17,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from generate_results import PRESETS, apply_environment_overrides  # noqa: E402
+try:  # noqa: E402
+    from .generate_results import PRESETS, apply_environment_overrides
+except ImportError:  # Direct execution places scripts/ on sys.path.
+    from generate_results import PRESETS, apply_environment_overrides
 from src.experiments.compare import ENVIRONMENT_LIBRARY  # noqa: E402
 from src.experiments.randomization import (  # noqa: E402
     EvaluationEpisode,
+    build_evaluation_episode,
     build_evaluation_episodes,
     observation_streams_for_mdp,
 )
@@ -240,6 +244,107 @@ def task_metadata(args: argparse.Namespace, settings, config: EnvironmentConfig,
     }
 
 
+def policy_from_task_metadata(metadata: Dict[str, object]) -> MetaPolicy:
+    """Reconstruct an existing method-task policy without changing its settings."""
+
+    policy_metadata = dict(metadata["policy"])
+    policy_class = str(policy_metadata["class"])
+    if policy_class == "MyopicValueOfInformationPolicy":
+        policy = MyopicValueOfInformationPolicy(
+            observation_draws=int(float(policy_metadata["observation_draws"])),
+        )
+    elif policy_class == "BlinkeredPolicy":
+        policy = BlinkeredPolicy(
+            horizon=int(float(policy_metadata["horizon"])),
+            observation_draws=int(float(policy_metadata["observation_draws"])),
+        )
+    elif policy_class == "DiscretizedDynamicProgrammingPolicy":
+        policy = DiscretizedDynamicProgrammingPolicy(
+            max_samples=int(float(policy_metadata["max_samples"])),
+            mean_grid_size=int(float(policy_metadata["mean_grid_size"])),
+            observation_branches=int(float(policy_metadata["observation_branches"])),
+        )
+    else:
+        raise ValueError(f"Unsupported method-task policy class: {policy_class}")
+    policy.name = str(policy_metadata["name"])
+    return policy
+
+
+def run_method_episode_row(
+    *,
+    environment: str,
+    config: EnvironmentConfig,
+    policy: MetaPolicy,
+    episode: EvaluationEpisode,
+    use_common_observation_streams: bool,
+) -> Dict[str, object]:
+    """Run one preconstructed episode and return the existing scientific row schema."""
+
+    start = time.time()
+    mdp = mdp_for_episode(
+        config=config,
+        episode=episode,
+        policy_name=policy.name,
+        use_common_observation_streams=use_common_observation_streams,
+    )
+    result = mdp.run_episode(policy, true_state=episode.true_state)
+    observation_hash_1, observation_hash_2 = observation_hashes(episode)
+    sample_1_count = sum(1 for action in result.actions if action == mdp.SAMPLE_PERSON_1)
+    sample_2_count = sum(1 for action in result.actions if action == mdp.SAMPLE_PERSON_2)
+    return {
+        "environment": environment,
+        "episode_index": episode.episode_index,
+        "policy": policy.name,
+        "policy_observation_draws": policy_parameter(policy, "observation_draws"),
+        "policy_horizon": policy_parameter(policy, "horizon"),
+        "policy_max_samples": policy_parameter(policy, "max_samples"),
+        "policy_mean_grid_size": policy_parameter(policy, "mean_grid_size"),
+        "policy_observation_branches": policy_parameter(policy, "observation_branches"),
+        "true_need_1": episode.true_state.need_1,
+        "true_need_2": episode.true_state.need_2,
+        "observation_stream_hash_1": observation_hash_1,
+        "observation_stream_hash_2": observation_hash_2,
+        "episode_fingerprint": episode_fingerprint(episode),
+        "realized_utility": result.realized_utility,
+        "sample_count": len(result.samples),
+        "sample_1_count": sample_1_count,
+        "sample_2_count": sample_2_count,
+        "terminated": 1.0 if result.terminated else 0.0,
+        "action_sequence": ";".join(result.actions),
+        "allocation_to_person1": result.final_allocation_to_person1,
+        "elapsed_seconds": time.time() - start,
+    }
+
+
+def run_single_episode_from_task_metadata(
+    metadata: Dict[str, object],
+    episode_index: int,
+) -> Dict[str, object]:
+    """Reproduce one indexed episode from a frozen method task's metadata."""
+
+    settings = dict(metadata["settings"])
+    target_episodes = int(settings["n_episodes"])
+    if episode_index < 0 or episode_index >= target_episodes:
+        raise ValueError(
+            f"episode_index must be in [0, {target_episodes}); received {episode_index}"
+        )
+    config = EnvironmentConfig(**dict(metadata["environment_config"]))
+    episode = build_evaluation_episode(
+        config=config,
+        episode_index=episode_index,
+        include_observation_streams=bool(settings["use_common_observation_streams"]),
+        observations_per_person=int(settings["observations_per_person"]),
+    )
+    policy = policy_from_task_metadata(metadata)
+    return run_method_episode_row(
+        environment=str(metadata["environment"]),
+        config=config,
+        policy=policy,
+        episode=episode,
+        use_common_observation_streams=bool(settings["use_common_observation_streams"]),
+    )
+
+
 def load_metadata(path: Path) -> Dict[str, object] | None:
     if not path.exists():
         return None
@@ -316,19 +421,29 @@ def append_episode_row(path: Path, row: Dict[str, object], write_header: bool) -
         handle.flush()
 
 
-def write_summary(path: Path, args: argparse.Namespace, settings, policy: MetaPolicy, episode_rows: List[Dict[str, str]]) -> None:
+def build_summary(
+    *,
+    environment: str,
+    target_episodes: int,
+    use_common_observation_streams: bool,
+    observations_per_person: int,
+    config: EnvironmentConfig,
+    policy: MetaPolicy,
+    episode_rows: List[Dict[str, str]],
+) -> Dict[str, object]:
+    """Build the existing per-task summary without running an episode."""
+
     utilities = [float(row["realized_utility"]) for row in episode_rows]
     sample_counts = [float(row["sample_count"]) for row in episode_rows]
     sample_1_counts = [float(row["sample_1_count"]) for row in episode_rows]
     sample_2_counts = [float(row["sample_2_count"]) for row in episode_rows]
     allocations = [float(row["allocation_to_person1"]) for row in episode_rows]
     terminated = [float(row["terminated"]) for row in episode_rows]
-    config = environment_config(args)
     config_dict = asdict(config)
     summary = {
-        "environment": args.environment,
+        "environment": environment,
         "n_episodes": len(episode_rows),
-        "target_episodes": settings.n_episodes,
+        "target_episodes": target_episodes,
         "policy": policy.name,
         "policy_observation_draws": policy_parameter(policy, "observation_draws"),
         "policy_horizon": policy_parameter(policy, "horizon"),
@@ -336,8 +451,8 @@ def write_summary(path: Path, args: argparse.Namespace, settings, policy: MetaPo
         "policy_mean_grid_size": policy_parameter(policy, "mean_grid_size"),
         "policy_observation_branches": policy_parameter(policy, "observation_branches"),
         "common_true_states": 1.0,
-        "common_observation_streams": 1.0 if settings.use_common_observation_streams else 0.0,
-        "observations_per_person": settings.observations_per_person,
+        "common_observation_streams": 1.0 if use_common_observation_streams else 0.0,
+        "observations_per_person": observations_per_person,
         "mean_utility": mean(utilities),
         "std_utility": population_stdev(utilities),
         "mean_utility_ci95": ci95(utilities),
@@ -353,10 +468,47 @@ def write_summary(path: Path, args: argparse.Namespace, settings, policy: MetaPo
         "std_allocation_to_person1": population_stdev(allocations),
         "mean_allocation_to_person1_ci95": ci95(allocations),
         "completed_episodes": len(episode_rows),
-        "complete": 1.0 if len(episode_rows) >= settings.n_episodes else 0.0,
+        "complete": 1.0 if len(episode_rows) >= target_episodes else 0.0,
     }
     for field in CONFIG_SUMMARY_FIELDS:
         summary[field] = config_dict.get(field, "")
+    return summary
+
+
+def write_summary_from_task_metadata(
+    path: Path,
+    metadata: Dict[str, object],
+    episode_rows: List[Dict[str, str]],
+) -> None:
+    """Write a complete summary from frozen task metadata and existing rows."""
+
+    settings = dict(metadata["settings"])
+    summary = build_summary(
+        environment=str(metadata["environment"]),
+        target_episodes=int(settings["n_episodes"]),
+        use_common_observation_streams=bool(settings["use_common_observation_streams"]),
+        observations_per_person=int(settings["observations_per_person"]),
+        config=EnvironmentConfig(**dict(metadata["environment_config"])),
+        policy=policy_from_task_metadata(metadata),
+        episode_rows=episode_rows,
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(summary.keys()))
+        writer.writeheader()
+        writer.writerow(summary)
+
+
+def write_summary(path: Path, args: argparse.Namespace, settings, policy: MetaPolicy, episode_rows: List[Dict[str, str]]) -> None:
+    summary = build_summary(
+        environment=args.environment,
+        target_episodes=settings.n_episodes,
+        use_common_observation_streams=settings.use_common_observation_streams,
+        observations_per_person=settings.observations_per_person,
+        config=environment_config(args),
+        policy=policy,
+        episode_rows=episode_rows,
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(summary.keys()))
@@ -394,42 +546,16 @@ def main() -> None:
     for episode in episodes:
         if episode.episode_index in completed:
             continue
-        start = time.time()
-        mdp = mdp_for_episode(
+        row = run_method_episode_row(
+            environment=args.environment,
             config=config,
+            policy=policy,
             episode=episode,
-            policy_name=policy.name,
             use_common_observation_streams=settings.use_common_observation_streams,
         )
-        result = mdp.run_episode(policy, true_state=episode.true_state)
-        observation_hash_1, observation_hash_2 = observation_hashes(episode)
-        sample_1_count = sum(1 for action in result.actions if action == mdp.SAMPLE_PERSON_1)
-        sample_2_count = sum(1 for action in result.actions if action == mdp.SAMPLE_PERSON_2)
         append_episode_row(
             episode_path,
-            {
-                "environment": args.environment,
-                "episode_index": episode.episode_index,
-                "policy": policy.name,
-                "policy_observation_draws": policy_parameter(policy, "observation_draws"),
-                "policy_horizon": policy_parameter(policy, "horizon"),
-                "policy_max_samples": policy_parameter(policy, "max_samples"),
-                "policy_mean_grid_size": policy_parameter(policy, "mean_grid_size"),
-                "policy_observation_branches": policy_parameter(policy, "observation_branches"),
-                "true_need_1": episode.true_state.need_1,
-                "true_need_2": episode.true_state.need_2,
-                "observation_stream_hash_1": observation_hash_1,
-                "observation_stream_hash_2": observation_hash_2,
-                "episode_fingerprint": episode_fingerprint(episode),
-                "realized_utility": result.realized_utility,
-                "sample_count": len(result.samples),
-                "sample_1_count": sample_1_count,
-                "sample_2_count": sample_2_count,
-                "terminated": 1.0 if result.terminated else 0.0,
-                "action_sequence": ";".join(result.actions),
-                "allocation_to_person1": result.final_allocation_to_person1,
-                "elapsed_seconds": time.time() - start,
-            },
+            row,
             write_header=write_header,
         )
         write_header = False

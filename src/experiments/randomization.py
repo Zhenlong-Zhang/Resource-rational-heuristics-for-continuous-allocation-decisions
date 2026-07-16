@@ -40,6 +40,53 @@ def build_observation_streams(
     }
 
 
+def required_observations_per_person(
+    config: EnvironmentConfig,
+    observations_per_person: int,
+) -> int:
+    """Return the stream length used by the existing common-randomness path."""
+
+    max_possible_samples = math.ceil(config.total_time / max(config.sample_time_cost, 1e-9))
+    max_prior_samples = max(config.prior_sample_count_1, config.prior_sample_count_2)
+    return max(
+        observations_per_person,
+        max_possible_samples + max_prior_samples + 5,
+    )
+
+
+def build_evaluation_episode(
+    config: EnvironmentConfig,
+    episode_index: int,
+    include_observation_streams: bool = False,
+    observations_per_person: int = 100,
+    seed_stride: int = 17,
+    seed_offset: int = 1,
+    observation_seed_offset: int = 100_000,
+) -> EvaluationEpisode:
+    """Build one episode with the same index-based seeds as the batch builder."""
+
+    if episode_index < 0:
+        raise ValueError("episode_index must be non-negative")
+    base_seed = config.random_seed or 0
+    true_state_seed = base_seed + episode_index * seed_stride + seed_offset
+    mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=true_state_seed))
+    true_state = mdp.sample_true_state()
+    streams = None
+    if include_observation_streams:
+        stream_length = required_observations_per_person(config, observations_per_person)
+        streams = build_observation_streams(
+            config=config,
+            true_state=true_state,
+            seed=base_seed + observation_seed_offset + episode_index * seed_stride,
+            observations_per_person=stream_length,
+        )
+    return EvaluationEpisode(
+        episode_index=episode_index,
+        true_state=true_state,
+        observation_streams=streams,
+    )
+
+
 def build_evaluation_episodes(
     config: EnvironmentConfig,
     n_episodes: int,
@@ -51,35 +98,18 @@ def build_evaluation_episodes(
 ) -> List[EvaluationEpisode]:
     """Draw common true states and optionally common observation streams."""
 
-    episodes: List[EvaluationEpisode] = []
-    base_seed = config.random_seed or 0
-    if include_observation_streams:
-        max_possible_samples = math.ceil(config.total_time / max(config.sample_time_cost, 1e-9))
-        max_prior_samples = max(config.prior_sample_count_1, config.prior_sample_count_2)
-        observations_per_person = max(
-            observations_per_person,
-            max_possible_samples + max_prior_samples + 5,
+    return [
+        build_evaluation_episode(
+            config=config,
+            episode_index=episode_index,
+            include_observation_streams=include_observation_streams,
+            observations_per_person=observations_per_person,
+            seed_stride=seed_stride,
+            seed_offset=seed_offset,
+            observation_seed_offset=observation_seed_offset,
         )
-    for episode_index in range(n_episodes):
-        true_state_seed = base_seed + episode_index * seed_stride + seed_offset
-        mdp = ContinuousAllocationMetaMDP(replace(config, random_seed=true_state_seed))
-        true_state = mdp.sample_true_state()
-        streams = None
-        if include_observation_streams:
-            streams = build_observation_streams(
-                config=config,
-                true_state=true_state,
-                seed=base_seed + observation_seed_offset + episode_index * seed_stride,
-                observations_per_person=observations_per_person,
-            )
-        episodes.append(
-            EvaluationEpisode(
-                episode_index=episode_index,
-                true_state=true_state,
-                observation_streams=streams,
-            )
-        )
-    return episodes
+        for episode_index in range(n_episodes)
+    ]
 
 
 def ensure_evaluation_episodes(
