@@ -83,6 +83,20 @@ def true_equal_outcome_allocation(
     return _clip_allocation(allocation)
 
 
+def unconstrained_true_equal_outcome_allocation(
+    mdp: ContinuousAllocationMetaMDP,
+    true_state: TrueState,
+    remaining_time: float,
+) -> float:
+    """Allocation required for exact equality before enforcing feasibility."""
+
+    rate_1, rate_2 = mdp.learning_rates()
+    denominator = (rate_1 + rate_2) * remaining_time
+    if denominator <= 0.0:
+        return math.nan
+    return (true_state.need_1 - true_state.need_2 + rate_2 * remaining_time) / denominator
+
+
 def _realized_outcome_gap(
     true_state: TrueState,
     amount_1: float,
@@ -101,6 +115,7 @@ def true_outcome_metrics_for_allocation(
     belief,
     allocation_to_person1: float,
     allocation_tolerance: float,
+    classification_tolerance: Optional[float] = None,
 ) -> Dict[str, float]:
     """Compute true-state equity/maximin diagnostics for one final choice.
 
@@ -122,7 +137,16 @@ def true_outcome_metrics_for_allocation(
     # The feasible true-equal-outcome reference is the best outcome gap that
     # could be achieved if the hidden true needs were known. A nonzero reference
     # gap can remain when exact equalization is infeasible within [0, 1].
-    true_equal_allocation = true_equal_outcome_allocation(mdp, true_state, remaining_time)
+    unconstrained_true_equal_allocation = unconstrained_true_equal_outcome_allocation(
+        mdp,
+        true_state,
+        remaining_time,
+    )
+    exact_true_equal_feasible = (
+        not math.isnan(unconstrained_true_equal_allocation)
+        and 0.0 <= unconstrained_true_equal_allocation <= 1.0
+    )
+    true_equal_allocation = _clip_allocation(unconstrained_true_equal_allocation)
     true_equal_amount_1, true_equal_amount_2 = mdp.allocation_to_learning_outcomes(
         true_equal_allocation,
         remaining_time,
@@ -144,6 +168,11 @@ def true_outcome_metrics_for_allocation(
     outcome_distance_to_true_equal = max(0.0, realized_gap - true_equal_solution_gap)
     equal_split_outcome_distance_to_true_equal = max(0.0, equal_split_gap - true_equal_solution_gap)
     outcome_tolerance = allocation_tolerance * remaining_time * sum(mdp.learning_rates())
+    numerical_tie_tolerance = (
+        classification_tolerance
+        if classification_tolerance is not None
+        else 1e-9 * max(1.0, remaining_time * sum(mdp.learning_rates()))
+    )
     outcome_distance_difference = (
         outcome_distance_to_true_equal - equal_split_outcome_distance_to_true_equal
     )
@@ -152,7 +181,7 @@ def true_outcome_metrics_for_allocation(
     # chosen allocation closer to the feasible true equal-outcome/maximin
     # reference than a 50/50 split is? Ties are tracked separately so they are not
     # misread as either equity/maximin success or equal-split success.
-    if abs(outcome_distance_difference) <= outcome_tolerance:
+    if abs(outcome_distance_difference) <= numerical_tie_tolerance:
         closer_true_equal_outcome = 0.0
         closer_equal_split = 0.0
         tie = 1.0
@@ -170,10 +199,22 @@ def true_outcome_metrics_for_allocation(
     )
     true_equal_allocation_close = 1.0 if true_equal_allocation_gap <= allocation_tolerance else 0.0
 
+    if abs(outcome_distance_difference) <= outcome_tolerance:
+        legacy_closer_true = 0.0
+        legacy_tie = 1.0
+    elif outcome_distance_difference < 0.0:
+        legacy_closer_true = 1.0
+        legacy_tie = 0.0
+    else:
+        legacy_closer_true = 0.0
+        legacy_tie = 0.0
+
     return {
         "realized_outcome_gap": realized_gap,
         "equal_split_realized_outcome_gap": equal_split_gap,
         "true_equal_outcome_solution_gap": true_equal_solution_gap,
+        "unconstrained_true_equal_outcome_allocation": unconstrained_true_equal_allocation,
+        "exact_true_equal_outcome_feasible": 1.0 if exact_true_equal_feasible else 0.0,
         "true_equal_outcome_allocation": true_equal_allocation,
         "true_equal_outcome_allocation_gap": true_equal_allocation_gap,
         "true_equal_outcome": true_outcome_near_feasible_equal,
@@ -186,6 +227,14 @@ def true_outcome_metrics_for_allocation(
         "closer_to_true_equal_outcome_than_equal_split": closer_true_equal_outcome,
         "closer_to_equal_split_than_true_equal_outcome": closer_equal_split,
         "true_outcome_classification_tie": tie,
+        "legacy_tolerance_closer_to_true_equal_outcome_than_equal_split": legacy_closer_true,
+        "legacy_tolerance_true_outcome_classification_tie": legacy_tie,
+        "outcome_success_tolerance": outcome_tolerance,
+        "classification_tie_tolerance": numerical_tie_tolerance,
+        "negative_need_person1": 1.0 if true_state.need_1 < 0.0 else 0.0,
+        "negative_need_person2": 1.0 if true_state.need_2 < 0.0 else 0.0,
+        "negative_need_either": 1.0 if true_state.need_1 < 0.0 or true_state.need_2 < 0.0 else 0.0,
+        "negative_need_both": 1.0 if true_state.need_1 < 0.0 and true_state.need_2 < 0.0 else 0.0,
     }
 
 
@@ -494,6 +543,10 @@ def _behavior_indicators(
         "equal_split_realized_outcome_gap": true_metrics["equal_split_realized_outcome_gap"],
         "true_equal_outcome_solution_gap": true_metrics["true_equal_outcome_solution_gap"],
         "true_equal_outcome_allocation": true_metrics["true_equal_outcome_allocation"],
+        "abs_true_equal_outcome_allocation_from_equal_split": abs(
+            true_metrics["true_equal_outcome_allocation"] - 0.5
+        ),
+        "exact_true_equal_outcome_feasible": true_metrics["exact_true_equal_outcome_feasible"],
         "true_equal_outcome_allocation_gap": true_metrics["true_equal_outcome_allocation_gap"],
         "true_equal_outcome": true_metrics["true_equal_outcome"],
         "true_equal_outcome_allocation_close": true_metrics["true_equal_outcome_allocation_close"],
@@ -515,6 +568,10 @@ def _behavior_indicators(
             "closer_to_equal_split_than_true_equal_outcome"
         ],
         "true_outcome_classification_tie": true_metrics["true_outcome_classification_tie"],
+        "negative_need_person1": true_metrics["negative_need_person1"],
+        "negative_need_person2": true_metrics["negative_need_person2"],
+        "negative_need_either": true_metrics["negative_need_either"],
+        "negative_need_both": true_metrics["negative_need_both"],
         "threshold_gap_stop": 1.0 if threshold_gap_stop else 0.0,
         "final_belief_need_gap": final_gap,
         "abs_final_belief_need_gap": abs(final_gap),
@@ -608,6 +665,12 @@ def compare_policy_behavior_profiles(
                 "mean_equal_split_realized_outcome_gap": _mean(metric_values("equal_split_realized_outcome_gap")),
                 "mean_true_equal_outcome_solution_gap": _mean(metric_values("true_equal_outcome_solution_gap")),
                 "mean_true_equal_outcome_allocation": _mean(metric_values("true_equal_outcome_allocation")),
+                "mean_abs_true_equal_outcome_allocation_from_equal_split": _mean(
+                    metric_values("abs_true_equal_outcome_allocation_from_equal_split")
+                ),
+                "exact_true_equal_outcome_feasibility_rate": _mean(
+                    metric_values("exact_true_equal_outcome_feasible")
+                ),
                 "mean_true_equal_outcome_allocation_gap": _mean(
                     metric_values("true_equal_outcome_allocation_gap")
                 ),
@@ -635,6 +698,10 @@ def compare_policy_behavior_profiles(
                 "true_outcome_classification_tie_rate": _mean(
                     metric_values("true_outcome_classification_tie")
                 ),
+                "negative_need_person1_rate": _mean(metric_values("negative_need_person1")),
+                "negative_need_person2_rate": _mean(metric_values("negative_need_person2")),
+                "negative_need_either_rate": _mean(metric_values("negative_need_either")),
+                "negative_need_both_rate": _mean(metric_values("negative_need_both")),
                 "threshold_gap_stop_rate": _mean(metric_values("threshold_gap_stop")),
                 "mean_final_belief_need_gap": _mean(metric_values("final_belief_need_gap")),
                 "mean_abs_final_belief_need_gap": _mean(metric_values("abs_final_belief_need_gap")),

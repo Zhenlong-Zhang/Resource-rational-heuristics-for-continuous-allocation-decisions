@@ -139,17 +139,73 @@ def expected_terminal_utility_gauss_hermite(
     amount_1, amount_2 = mdp.allocation_to_learning_outcomes(allocation_to_person1, remaining_time)
     alpha = mdp.utility_exponent()
 
-    def terminal_utility(need_1: float, need_2: float) -> float:
-        return (
-            utility(amount_1 - need_1, mdp.config.lambda_shortfall, alpha)
-            + utility(amount_2 - need_2, mdp.config.lambda_shortfall, alpha)
-        )
-
-    return independent_normal_expectation_2d(
-        mean_1=belief.mean_1,
-        variance_1=belief.var_1,
-        mean_2=belief.mean_2,
-        variance_2=belief.var_2,
-        fn=terminal_utility,
-        order=order,
+    # Additive utility and independent beliefs make the 2D expectation exactly
+    # separable, avoiding an unnecessary Cartesian product of quadrature nodes.
+    return normal_expectation_1d(
+        belief.mean_1,
+        belief.var_1,
+        lambda need: utility(amount_1 - need, mdp.config.lambda_shortfall, alpha),
+        order,
+    ) + normal_expectation_1d(
+        belief.mean_2,
+        belief.var_2,
+        lambda need: utility(amount_2 - need, mdp.config.lambda_shortfall, alpha),
+        order,
     )
+
+
+def solve_terminal_allocation_gauss_hermite(
+    mdp: ContinuousAllocationMetaMDP,
+    belief: BeliefState,
+    order: int = 15,
+) -> Tuple[float, float]:
+    """Evaluate the allocation grid with separable Gauss-Hermite expectations."""
+
+    grid_size = mdp.config.allocation_grid_size
+    if grid_size <= 1:
+        grid = [0.5]
+    else:
+        grid = [index / (grid_size - 1) for index in range(grid_size)]
+
+    try:
+        import numpy as np  # type: ignore
+
+        allocations = np.asarray(grid, dtype=float)[:, None]
+        nodes, weights = gauss_hermite_nodes_weights(order)
+        nodes_array = np.asarray(nodes, dtype=float)[None, :]
+        normalized_weights = np.asarray(weights, dtype=float) / sqrt(pi)
+        remaining_time = mdp.remaining_time_after_termination(belief)
+        rate_1, rate_2 = mdp.learning_rates()
+        need_1 = belief.mean_1 + sqrt(2.0 * max(0.0, belief.var_1)) * nodes_array
+        need_2 = belief.mean_2 + sqrt(2.0 * max(0.0, belief.var_2)) * nodes_array
+        outcome_1 = rate_1 * allocations * remaining_time - need_1
+        outcome_2 = rate_2 * (1.0 - allocations) * remaining_time - need_2
+        alpha = mdp.utility_exponent()
+        utility_1 = np.where(
+            outcome_1 < 0.0,
+            -mdp.config.lambda_shortfall * np.power(np.maximum(-outcome_1, 0.0), alpha),
+            np.power(np.maximum(outcome_1, 0.0), alpha),
+        )
+        utility_2 = np.where(
+            outcome_2 < 0.0,
+            -mdp.config.lambda_shortfall * np.power(np.maximum(-outcome_2, 0.0), alpha),
+            np.power(np.maximum(outcome_2, 0.0), alpha),
+        )
+        values = utility_1 @ normalized_weights + utility_2 @ normalized_weights
+        best_value = float(np.max(values))
+        tolerance = 1e-12 * max(1.0, abs(best_value))
+        candidates = np.flatnonzero(values >= best_value - tolerance)
+        best_index = min(candidates, key=lambda index: abs(float(grid[int(index)]) - 0.5))
+        return float(grid[int(best_index)]), float(values[int(best_index)])
+    except ImportError:
+        values = [
+            expected_terminal_utility_gauss_hermite(mdp, belief, allocation, order)
+            for allocation in grid
+        ]
+        best_value = max(values)
+        tolerance = 1e-12 * max(1.0, abs(best_value))
+        candidates = [
+            index for index, value in enumerate(values) if value >= best_value - tolerance
+        ]
+        best_index = min(candidates, key=lambda index: abs(grid[index] - 0.5))
+        return float(grid[best_index]), float(values[best_index])

@@ -38,6 +38,7 @@ class EnvironmentConfig:
     initial_var_2: Optional[float] = None
     prior_sample_count_1: int = 0
     prior_sample_count_2: int = 0
+    max_meta_samples: Optional[int] = None
     random_seed: Optional[int] = None
 
     def __post_init__(self) -> None:
@@ -49,6 +50,12 @@ class EnvironmentConfig:
             )
         if self.expected_utility_method not in {"monte_carlo", "gauss_hermite"}:
             raise ValueError("expected_utility_method must be 'monte_carlo' or 'gauss_hermite'")
+        if self.sample_time_cost < 0:
+            raise ValueError("sample_time_cost must be non-negative")
+        if self.sample_time_cost == 0 and self.max_meta_samples is None:
+            raise ValueError("zero sample_time_cost requires an explicit max_meta_samples cap")
+        if self.max_meta_samples is not None and self.max_meta_samples < 0:
+            raise ValueError("max_meta_samples must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -302,6 +309,13 @@ class ContinuousAllocationMetaMDP:
             return []
 
         actions = [self.TERMINATE]
+        online_samples = sum(
+            1
+            for event in belief.history
+            if event.get("action") in (1.0, 2.0)
+        )
+        if self.config.max_meta_samples is not None and online_samples >= self.config.max_meta_samples:
+            return actions
         if belief.deliberation_time + self.sample_cost(self.SAMPLE_PERSON_1, belief) + terminal_cost <= self.config.total_time:
             actions.append(self.SAMPLE_PERSON_1)
         if belief.deliberation_time + self.sample_cost(self.SAMPLE_PERSON_2, belief) + terminal_cost <= self.config.total_time:
@@ -385,7 +399,10 @@ class ContinuousAllocationMetaMDP:
                 np.power(np.maximum(outcome_2, 0.0), alpha),
             )
             values = np.mean(utility_1 + utility_2, axis=1)
-            best_index = int(np.argmax(values))
+            best_value = float(np.max(values))
+            value_tolerance = 1e-12 * max(1.0, abs(best_value))
+            best_indices = np.flatnonzero(values >= best_value - value_tolerance)
+            best_index = min(best_indices, key=lambda idx: abs(float(grid[int(idx)]) - 0.5))
             return float(grid[best_index]), float(values[best_index])
         except Exception:
             if self.config.allocation_grid_size <= 1:
@@ -401,7 +418,14 @@ class ContinuousAllocationMetaMDP:
                 )
                 for allocation_to_person1 in grid
             ]
-            best_index = max(range(len(values)), key=lambda idx: values[idx])
+            best_value = max(values)
+            value_tolerance = 1e-12 * max(1.0, abs(best_value))
+            best_indices = [
+                index
+                for index, value in enumerate(values)
+                if value >= best_value - value_tolerance
+            ]
+            best_index = min(best_indices, key=lambda idx: abs(grid[idx] - 0.5))
             return float(grid[best_index]), float(values[best_index])
 
     def expected_terminal_utility(self, belief: BeliefState, allocation_to_person1: float) -> float:
@@ -427,10 +451,36 @@ class ContinuousAllocationMetaMDP:
 
     def solve_terminal_allocation(self, belief: BeliefState) -> Tuple[float, float]:
         if self.config.expected_utility_method == "gauss_hermite":
-            def evaluator(allocation_to_person1: float) -> float:
-                return self.expected_terminal_utility(belief, allocation_to_person1)
+            try:
+                from ..solvers.gauss_hermite import solve_terminal_allocation_gauss_hermite
+            except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
+                from solvers.gauss_hermite import solve_terminal_allocation_gauss_hermite
+
+            return solve_terminal_allocation_gauss_hermite(
+                self,
+                belief,
+                order=self.config.gauss_hermite_order,
+            )
         else:
             need_1_samples, need_2_samples = self.draw_need_samples_from_belief(belief)
+
+            rate_1, rate_2 = self.learning_rates()
+            exchangeable = (
+                abs(belief.mean_1 - belief.mean_2) <= self.config.equal_perception_tolerance
+                and abs(belief.var_1 - belief.var_2) <= self.config.equal_perception_tolerance
+                and abs(rate_1 - rate_2) <= self.config.equal_perception_tolerance
+            )
+            if exchangeable and need_1_samples:
+                target_draws = len(need_1_samples)
+                paired_1: List[float] = []
+                paired_2: List[float] = []
+                for need_1, need_2 in zip(need_1_samples, need_2_samples):
+                    paired_1.extend((need_1, need_2))
+                    paired_2.extend((need_2, need_1))
+                    if len(paired_1) >= target_draws:
+                        break
+                need_1_samples = paired_1[:target_draws]
+                need_2_samples = paired_2[:target_draws]
 
             def evaluator(allocation_to_person1: float) -> float:
                 return self.expected_terminal_utility_from_samples(
@@ -440,27 +490,11 @@ class ContinuousAllocationMetaMDP:
                     need_2_samples,
                 )
 
-        rate_1, rate_2 = self.learning_rates()
-        if (
-            abs(belief.mean_1 - belief.mean_2) <= self.config.equal_perception_tolerance
-            and abs(belief.var_1 - belief.var_2) <= self.config.equal_perception_tolerance
-            and abs(rate_1 - rate_2) <= self.config.equal_perception_tolerance
-        ):
-            symmetric_a = 0.5
-            return symmetric_a, evaluator(symmetric_a)
-        if self.config.expected_utility_method != "gauss_hermite":
-            return self._solve_terminal_allocation_from_samples(
-                belief,
-                need_1_samples,
-                need_2_samples,
-            )
-        if self.config.allocation_grid_size <= 1:
-            grid = [0.5]
-        else:
-            grid = [i / (self.config.allocation_grid_size - 1) for i in range(self.config.allocation_grid_size)]
-        values = [evaluator(a) for a in grid]
-        best_index = max(range(len(values)), key=lambda idx: values[idx])
-        return float(grid[best_index]), float(values[best_index])
+        return self._solve_terminal_allocation_from_samples(
+            belief,
+            need_1_samples,
+            need_2_samples,
+        )
 
     def final_allocation_equal_division(self, belief: BeliefState) -> float:
         return 0.5
@@ -549,8 +583,10 @@ class ContinuousAllocationMetaMDP:
                 samples.append(belief.history[-1])
 
         if not terminated:
-            belief = self.terminate_belief(belief, policy)
-            actions.append(self.TERMINATE)
+            raise RuntimeError(
+                "Episode reached max_steps without policy termination. "
+                "Increase max_steps or set max_meta_samples for low-cost diagnostics."
+            )
 
         allocation_to_person1, _ = self.resolve_final_allocation(policy, belief)
         amount_1, amount_2, remaining_time, realized = self.realized_utility(

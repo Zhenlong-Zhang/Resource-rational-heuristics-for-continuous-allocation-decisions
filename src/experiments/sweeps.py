@@ -139,6 +139,27 @@ SERVER_SWEEP_EPISODES = 200
 DEFAULT_MAX_GRID_POINTS = 36
 SERVER_MAX_GRID_POINTS = 2000
 
+R5_SAMPLING_COST_PERCENTAGES: Sequence[float] = (
+    0.0,
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+)
+
+R5_ORACLE_GRID_VALUES: Dict[str, Sequence[float]] = {
+    "mu_need": [40.0, 60.0, 80.0],
+    "sigma_need": [10.0, 20.0, 30.0],
+    "total_time": [80.0, 120.0, 160.0],
+    "utility_exponent": [0.25, 0.5],
+    "lambda_shortfall": [2.0, 2.25],
+}
+
 
 def build_environment(name: str = "baseline") -> EnvironmentConfig:
     if name != "baseline":
@@ -153,6 +174,131 @@ def build_environment(name: str = "baseline") -> EnvironmentConfig:
         allocation_grid_size=31,
         random_seed=11,
     )
+
+
+def build_r5_oracle_map_configs(
+    grid_values: Mapping[str, Sequence[float]] | None = None,
+) -> List[tuple[str, EnvironmentConfig]]:
+    """Build the prespecified unchanged-objective oracle discovery grid."""
+
+    values = dict(grid_values or R5_ORACLE_GRID_VALUES)
+    keys = list(values)
+    configs: List[tuple[str, EnvironmentConfig]] = []
+    for index, combo in enumerate(product(*(values[key] for key in keys))):
+        config = replace(
+            build_environment(),
+            sigma_sample=20.0,
+            sample_time_cost=0.1,
+            prior_sample_count_1=0,
+            prior_sample_count_2=0,
+            allocation_grid_size=401,
+            expected_utility_draws=500,
+        )
+        for key, value in zip(keys, combo):
+            config = replace(config, **{key: value})
+        label = f"r5_oracle_{index:04d}_" + "_".join(
+            f"{key}={value:g}" for key, value in zip(keys, combo)
+        )
+        configs.append((label, config))
+    return configs
+
+
+def build_r5_sampling_cost_configs(
+    anchors: Sequence[tuple[str, EnvironmentConfig]],
+    percentages: Sequence[float] = R5_SAMPLING_COST_PERCENTAGES,
+    zero_cost_cap: int = 12,
+    positive_cost_cap: int = 40,
+) -> List[tuple[str, EnvironmentConfig]]:
+    """Vary only sample time while preserving every anchor parameter."""
+
+    configs: List[tuple[str, EnvironmentConfig]] = []
+    for anchor_name, anchor in anchors:
+        for percentage in percentages:
+            sample_time_cost = anchor.total_time * float(percentage) / 100.0
+            cap = zero_cost_cap if percentage == 0.0 else positive_cost_cap
+            label = f"{anchor_name}_sample_pct={percentage:g}"
+            configs.append(
+                (
+                    label,
+                    replace(
+                        anchor,
+                        sample_time_cost=sample_time_cost,
+                        max_meta_samples=cap,
+                        prior_sample_count_1=0,
+                        prior_sample_count_2=0,
+                    ),
+                )
+            )
+    return configs
+
+
+def build_r5_oat_configs(
+    anchor_name: str,
+    anchor: EnvironmentConfig,
+    feature_values: Mapping[str, Sequence[float]],
+) -> List[tuple[str, str, float, EnvironmentConfig]]:
+    """Build controlled one-factor-at-a-time slices around one frozen anchor."""
+
+    configs: List[tuple[str, str, float, EnvironmentConfig]] = []
+    for feature, values in feature_values.items():
+        for value in values:
+            if feature == "sample_time_cost_percent":
+                config = replace(
+                    anchor,
+                    sample_time_cost=anchor.total_time * float(value) / 100.0,
+                    max_meta_samples=12 if value == 0 else 40,
+                )
+            else:
+                config = replace(anchor, **{feature: value})
+            configs.append(
+                (
+                    feature,
+                    float(value),
+                    f"{anchor_name}_{feature}={value:g}",
+                    config,
+                )
+            )
+    return configs
+
+
+def build_r5_six_sample_configs() -> List[tuple[str, EnvironmentConfig]]:
+    """Discovery grid where repeated observations can remain decision-relevant."""
+
+    values: Dict[str, Sequence[float]] = {
+        # Center the discovery grid on the strongest high-separation oracle
+        # region from the R5 full-information map (mu=60, T=160).
+        "sigma_need": [20.0, 30.0, 40.0],
+        "sigma_sample": [10.0, 20.0, 30.0],
+        "total_time": [140.0, 160.0, 180.0],
+        "utility_exponent": [0.25, 0.5],
+        "sample_time_cost_percent": [0.0, 0.001, 0.005, 0.01, 0.025, 0.05],
+    }
+    keys = list(values)
+    configs: List[tuple[str, EnvironmentConfig]] = []
+    for index, combo in enumerate(product(*(values[key] for key in keys))):
+        parameters = dict(zip(keys, combo))
+        total_time = float(parameters.pop("total_time"))
+        percentage = float(parameters.pop("sample_time_cost_percent"))
+        config = replace(
+            build_environment(),
+            mu_need=60.0,
+            total_time=total_time,
+            learning_per_unit_of_tutoring=1.0,
+            delta_learning_per_unit_tutoring=0.0,
+            lambda_shortfall=2.25,
+            sample_time_cost=total_time * percentage / 100.0,
+            prior_sample_count_1=0,
+            prior_sample_count_2=0,
+            max_meta_samples=12 if percentage == 0.0 else 40,
+            allocation_grid_size=401,
+            expected_utility_draws=500,
+            **parameters,
+        )
+        label = f"r5_six_{index:04d}_" + "_".join(
+            f"{key}={value:g}" for key, value in zip(keys, combo)
+        )
+        configs.append((label, config))
+    return configs
 
 
 def build_positive_and_near_zero_utility_configs() -> List[tuple[str, EnvironmentConfig]]:

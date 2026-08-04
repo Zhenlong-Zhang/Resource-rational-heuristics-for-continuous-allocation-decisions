@@ -219,3 +219,58 @@ DP episodes in memory, verifies common-randomness fingerprints, and computes
 paired utility and sample-count confidence intervals. The R4 analysis uses the
 validated environment summary and policy-profile tables. It does not rerun any
 policy simulation.
+
+## Round 5 Frozen Array Workflow
+
+`r5_array_workflow.py` provides four operations:
+
+- `create`: freeze a manifest containing environments, seeds, commit, thresholds, and solver settings
+- `run-task`: evaluate exactly one independent episode block
+- `progress`: count atomic task status files and report completed, failed, and remaining shards
+- `collect`: reject missing, duplicated, non-finite, hash-mismatched, or provenance-mismatched rows before writing combined tables
+
+`submit_hoffman2_round5_array.sh` creates the manifest, submits a one-core SGE
+array, and holds a strict collector on the array. The main families are:
+
+- `oracle`: deterministic full-information utility benchmark
+- `six_sample`: broad active-search discovery grid
+- `custom_rr`: frozen confirmation or held-out solver environments supplied through `CONFIGS_JSON`
+- `fixed_budget`: paired manual policies with fixed balanced observation budgets
+
+Example independent confirmation:
+
+```bash
+FAMILY=custom_rr \
+CONFIGS_JSON=results/r5_discovery/r5_confirmation_configs.json \
+OUTPUT_DIR=results/r5_confirmation_1200 \
+EPISODES=1200 \
+EPISODES_PER_TASK=10 \
+OBSERVATION_DRAWS=500 \
+SEED_NAMESPACE_OFFSET=1000000 \
+MAX_CONCURRENT=300 \
+bash scripts/submit_hoffman2_round5_array.sh
+```
+
+If an interrupted array must be resumed, first quiesce the old array and then
+use `submit_hoffman2_r5_resume_lanes.sh`. It audits existing shards and assigns
+only missing task indices to mutually exclusive lanes.
+
+## Round 5 Analysis Report
+
+`analyze_r5.py` contains the scientific analysis commands used to select frozen
+anchors, create controlled sweeps, select confirmation environments, and compare
+paired held-out solvers. `analyze_round5.py` is the final read-only report layer.
+
+```bash
+python3 scripts/analyze_round5.py \
+  --oracle-dir results/r5_oracle_full \
+  --oracle-analysis-dir results/r5_oracle_analysis \
+  --formal-dir results/r5_formal_summaries \
+  --discovery-dir results/r5_six_sample_discovery \
+  --confirmation-dir results/r5_six_sample_confirmation \
+  --solver-dir results/r5_solver_comparison \
+  --output-dir results/round5_report
+```
+
+The output contains `index.html`, relative SVG figures, a compact report summary,
+and supporting CSVs. It never reads individual array shards or reruns a policy.

@@ -10,6 +10,7 @@ Main modules:
 - `settings.py`: smoke, serious local, and server-scale evaluation presets
 - `sweeps.py`: one-dimensional parameter sweeps and targeted candidate-regime searches, including focused near-50/50, symmetric equal-outcome, and distinct equal-outcome grids
 - `dp_diagnostics.py`: DP sensitivity analysis for investigating discretized DP underperformance
+- `r5.py`: true-state equal-outcome metrics, the full-information oracle, fixed-budget information-value curves, and frozen R5 RR evaluation
 
 Important functions:
 
@@ -21,5 +22,10 @@ Important functions:
 - `run_targeted_regime_final_choice_grid(...)`: evaluates a targeted multidimensional regime grid
 - `run_targeted_regime_behavior_grid(...)`: records RR behavior diagnostics for a targeted multidimensional regime grid
 - `identify_final_choice_regime_candidates(...)`: finds candidate conditions where RR resembles known heuristics
+- `full_information_oracle_metrics(...)`: compares the utilitarian full-information allocation with true equal outcome and equal split
+- `evaluate_r5_rr_environment(...)`: evaluates a frozen RR approximation one episode at a time with common true-state and observation provenance
+- `summarize_r5_rr_environments(...)`: reports rates, one-sided Wilson lower bounds, online sample counts, and active-search diagnostics
+- `evaluate_r5_fixed_sampling_budgets(...)`: compares fixed balanced observation budgets on paired episodes
 
-The preferred public entrypoint is `scripts/generate_results.py`, which calls these functions and writes CSV/SVG/Markdown outputs.
+Use `scripts/generate_results.py` for the earlier interactive pipeline and
+`scripts/r5_array_workflow.py` for frozen Hoffman2 R5 runs.

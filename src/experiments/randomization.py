@@ -43,14 +43,27 @@ def build_observation_streams(
 def required_observations_per_person(
     config: EnvironmentConfig,
     observations_per_person: int,
+    max_online_samples: Optional[int] = None,
 ) -> int:
-    """Return the stream length used by the existing common-randomness path."""
+    """Return a bounded common-random stream length for one recipient."""
 
-    max_possible_samples = math.ceil(config.total_time / max(config.sample_time_cost, 1e-9))
+    online_cap = max_online_samples
+    if online_cap is None:
+        online_cap = config.max_meta_samples
+    if config.sample_time_cost == 0 and online_cap is None:
+        raise ValueError("zero-cost common-randomness runs require max_online_samples")
+    if config.sample_time_cost > 0:
+        time_limited_samples = math.ceil(config.total_time / config.sample_time_cost)
+        online_cap = (
+            time_limited_samples
+            if online_cap is None
+            else min(online_cap, time_limited_samples)
+        )
+    assert online_cap is not None
     max_prior_samples = max(config.prior_sample_count_1, config.prior_sample_count_2)
     return max(
         observations_per_person,
-        max_possible_samples + max_prior_samples + 5,
+        online_cap + max_prior_samples + 5,
     )
 
 
@@ -59,6 +72,7 @@ def build_evaluation_episode(
     episode_index: int,
     include_observation_streams: bool = False,
     observations_per_person: int = 100,
+    max_online_samples: Optional[int] = None,
     seed_stride: int = 17,
     seed_offset: int = 1,
     observation_seed_offset: int = 100_000,
@@ -73,7 +87,11 @@ def build_evaluation_episode(
     true_state = mdp.sample_true_state()
     streams = None
     if include_observation_streams:
-        stream_length = required_observations_per_person(config, observations_per_person)
+        stream_length = required_observations_per_person(
+            config,
+            observations_per_person,
+            max_online_samples=max_online_samples,
+        )
         streams = build_observation_streams(
             config=config,
             true_state=true_state,

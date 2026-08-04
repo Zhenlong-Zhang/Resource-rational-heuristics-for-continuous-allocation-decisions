@@ -243,7 +243,7 @@ def summarize_r4_diagnostic_policies(
                 split["closer_to_true_equal_outcome_than_equal_split_rate"]
             ),
             "mean_abs_true_equal_allocation_from_equal_split": abs(
-                float(active["mean_true_equal_outcome_allocation"]) - 0.5
+                float(active["mean_abs_true_equal_outcome_allocation_from_equal_split"])
             ),
         }
         if rr is not None:

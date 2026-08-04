@@ -15,3 +15,8 @@
 - `expected_terminal_utility_gauss_hermite(...)`: evaluates terminal expected utility without Monte Carlo sampling
 
 The DP solver is intentionally approximate. Use `src/experiments/dp_diagnostics.py` to test whether increasing `max_samples`, `mean_grid_size`, and `observation_branches` improves performance.
+
+The frozen Round 5 comparison uses a 10-sample horizon, 50-point posterior-mean
+grid, 3-SD grid radius, seven-point Gauss-Hermite future-observation integration,
+and 15-point Gauss-Hermite terminal expectations. These settings are a
+prespecified approximation, not an exact continuous-state optimal policy.

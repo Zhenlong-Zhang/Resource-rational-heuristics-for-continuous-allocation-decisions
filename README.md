@@ -104,6 +104,59 @@ This analysis uses episode-level pairing for the canonical R3 approximation
 methods and aggregate diagnostic comparisons for R4. It writes a self-contained
 HTML report and a `supporting_data/` folder without rerunning simulations.
 
+## Round 5 Workflow
+
+Round 5 separates four questions that should not be collapsed into one result:
+
+- whether the full-information utilitarian objective favors true equal outcome
+- whether repeated observations are useful enough to justify active search
+- whether an RR approximation discovers that active-search behavior
+- whether a prespecified non-myopic DP changes the conclusion
+
+On Hoffman2, submit a frozen array workflow from a clean commit. For example:
+
+```bash
+FAMILY=six_sample \
+OUTPUT_DIR=results/r5_six_sample_discovery \
+EPISODES=120 \
+EPISODES_PER_TASK=5 \
+OBSERVATION_DRAWS=500 \
+SEED_NAMESPACE_OFFSET=0 \
+MAX_CONCURRENT=300 \
+bash scripts/submit_hoffman2_round5_array.sh
+```
+
+The submitter writes a manifest containing the commit, environment grid, seeds,
+metrics, and computational settings. A held collector validates all shards before
+writing combined episode and summary tables. Inspect progress without rerunning
+any simulation:
+
+```bash
+python3 scripts/r5_array_workflow.py progress \
+  --manifest results/r5_six_sample_discovery/r5_manifest.json
+```
+
+After the validated oracle, discovery, independent confirmation, and held-out
+solver outputs are available locally, generate the Round 5 report:
+
+```bash
+python3 scripts/analyze_round5.py \
+  --oracle-dir results/r5_oracle_full \
+  --oracle-analysis-dir results/r5_oracle_analysis \
+  --formal-dir results/r5_formal_summaries \
+  --discovery-dir results/r5_six_sample_discovery \
+  --confirmation-dir results/r5_six_sample_confirmation \
+  --solver-dir results/r5_solver_comparison \
+  --output-dir results/round5_report
+```
+
+The report generator does not simulate. It rejects incomplete result folders,
+requires independent discovery and confirmation seed namespaces, checks the
+1,200-episode/500-VOI confirmation settings, and reports point-estimate discovery
+separately from the one-sided Wilson confirmation criterion. The generated
+professor-facing package also includes a short README and a copy of the Round 5
+notebook that calls this same source-controlled workflow.
+
 You can override the main computational knobs:
 
 ```bash
@@ -122,6 +175,10 @@ python3 scripts/generate_results.py \
 
 Open `notebooks/run_round2_pipeline.ipynb`. The notebook installs common Python packages in the first cell, exposes the main knobs as variables, and then calls `scripts/generate_results.py`.
 
+For Round 5, open `notebooks/run_round5_pipeline.ipynb`. It exposes the array
+settings, prints or submits the Hoffman2 command, checks manifest progress, and
+calls the validated report generator after result folders have been collected.
+
 Use the notebook when you want to inspect outputs interactively. Use the script directly when running on a server.
 
 ## Tests
@@ -134,7 +191,7 @@ python3 -m unittest discover -s tests
 
 The current test suite includes an observation-stream regression check. It verifies that common observation streams are tied to the same hidden true state used for realized utility, and that stream averages are highly correlated with the corresponding true needs.
 
-## Current Round 2 Coverage
+## Earlier Round 2 Coverage
 
 The current pipeline implements the main items from Falk's second-round feedback:
 
