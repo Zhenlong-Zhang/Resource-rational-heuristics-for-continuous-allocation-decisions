@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "round_classification": "r6_pre_feedback_exploration",
+  "scientific_status": "development_grid_frozen_before_execution",
+  "generator": {
+    "family": "finite_support_total_gap",
+    "total_need_support": [132.0, 137.0, 142.0],
+    "total_need_weights": [0.3333333333333333, 0.3333333333333333, 0.3333333333333333],
+    "gap_supports": {
+      "low": [10.0, 20.0, 30.0],
+      "medium": [40.0, 60.0, 80.0],
+      "high": [80.0, 100.0, 120.0]
+    },
+    "gap_weights": [0.3333333333333333, 0.3333333333333333, 0.3333333333333333],
+    "orientation_support": [-1, 1],
+    "orientation_weights": [0.5, 0.5]
+  },
+  "environment_grid": {
+    "sigma_sample": [1.0, 2.0, 4.0],
+    "sample_time_cost": [0.02, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0],
+    "total_time": 120.0,
+    "terminate_cost": 1.0,
+    "max_meta_samples": 20,
+    "learning_per_unit_of_tutoring": 1.25,
+    "delta_learning_per_unit_tutoring": 0.0,
+    "utility_exponent": 0.35,
+    "lambda_shortfall": 2.0,
+    "prior_sample_count_1": 0,
+    "prior_sample_count_2": 0
+  },
+  "numerical_settings": {
+    "matched_voi_gauss_hermite_order": 31,
+    "gauss_hermite_reference_order": 61,
+    "rr_terminal_grid_size": 401,
+    "rr_terminal_reference_grid_size": 1601,
+    "oracle_grid_size": 4001,
+    "allocation_tolerance": 0.05,
+    "action_tie_tolerance": 1e-10,
+    "action_value_convergence_tolerance": 0.0001,
+    "allocation_convergence_tolerance": 0.0025
+  },
+  "development": {
+    "episodes_per_environment": 360,
+    "repeats_per_latent_atom": 20,
+    "manual_samples_per_person": [0, 1, 2, 3, 5],
+    "confirmation_manual_samples_per_person": 3,
+    "seed_namespace_offset": 81000000
+  },
+  "smoke": {
+    "episodes_per_environment": 18,
+    "seed_namespace_offset": 82000000
+  },
+  "serious": {
+    "episodes_per_condition": 1200,
+    "observations_per_person": 25,
+    "episode_rows_expected": 9600,
+    "seed_namespace_offset": 83000000
+  },
+  "selection": {
+    "target_cost_rule": "lowest_cost_passing_all_target_gates",
+    "control_cost_rule": "lowest_higher_cost_with_manual_minus_split_ci95_high_at_most_zero",
+    "pair_rank": [
+      "target_manual_minus_split_ci95_low_desc",
+      "gap_class_high_medium_low",
+      "sigma_sample_asc",
+      "target_cost_asc",
+      "control_cost_asc"
+    ],
+    "serious_candidate_count": 1,
+    "allow_candidate_replacement_after_serious": false,
+    "rr_behavior_used_for_selection": false
+  },
+  "strict_target_thresholds": {
+    "true_equal_outcome_rate": 0.8,
+    "closer_to_true_equal_than_equal_split_rate": 0.8,
+    "true_equal_one_sided_95_low": 0.8,
+    "closer_one_sided_95_low": 0.8,
+    "mean_sample_count_min_exclusive": 1.0,
+    "sampled_both_rate": 0.8,
+    "mean_abs_allocation_from_equal_min": 0.05,
+    "historical_true_equal_descriptive_threshold": 0.9
+  },
+  "strict_control_thresholds": {
+    "immediate_termination_one_sided_95_low": 0.8,
+    "near_equal_allocation_one_sided_95_low": 0.8,
+    "mean_sample_count_max": 0.5,
+    "near_equal_allocation_tolerance": 0.05,
+    "utility_noninferiority_margin_scale": 0.01
+  }
+}
