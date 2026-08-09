@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -15,10 +16,12 @@ from scripts.r6_prefeedback_workflow import (
     create_confirmation,
     create_development,
     current_sge_task_id,
+    diagnose_quadrature_orders,
     find_environment,
     load_manifest,
     load_version_pointer,
     manifest_hash,
+    parse_quadrature_order_pair,
     next_version_path,
     parse_qacct_records,
     progress,
@@ -109,6 +112,7 @@ class R6PreFeedbackWorkflowTests(unittest.TestCase):
             self.assertEqual(manifest["task_count"], 162)
             self.assertEqual(manifest["environment_task_count"], 72)
             self.assertEqual(manifest["numerical_task_count"], 90)
+            self.assertEqual(manifest["expected_rows_per_task"], 2160)
             self.assertEqual(len(manifest["numerical_validation_cases"]), 90)
             self.assertTrue(manifest["git_tree_hash"])
             self.assertTrue(
@@ -131,6 +135,32 @@ class R6PreFeedbackWorkflowTests(unittest.TestCase):
             self.assertFalse(state["complete"])
             with self.assertRaises(RuntimeError):
                 collect(manifest_path)
+
+    def test_quadrature_diagnostic_uses_explicit_odd_order_pairs(self) -> None:
+        self.assertEqual(parse_quadrature_order_pair("41:81"), (41, 81))
+        for value in ("41", "40:81", "41:40", "41:82"):
+            with self.subTest(value=value), self.assertRaises(
+                argparse.ArgumentTypeError
+            ):
+                parse_quadrature_order_pair(value)
+        with patch(
+            "scripts.r6_prefeedback_workflow.validate_numerical_case"
+        ) as validate:
+            validate.side_effect = lambda case, spec: {
+                "case_id": case["case_id"],
+                "gh_order": spec["numerical_settings"][
+                    "matched_voi_gauss_hermite_order"
+                ],
+                "gh_reference_order": spec["numerical_settings"][
+                    "gauss_hermite_reference_order"
+                ],
+            }
+            rows = diagnose_quadrature_orders(0, [(41, 81), (51, 101)])
+        self.assertEqual(
+            [(row["gh_order"], row["gh_reference_order"]) for row in rows],
+            [(41, 81), (51, 101)],
+        )
+        self.assertTrue(all(row["diagnostic_only"] for row in rows))
 
     @patch("scripts.r6_prefeedback_workflow.load_version_pointer")
     @patch("scripts.r6_prefeedback_workflow.validate_development_for_confirmation")

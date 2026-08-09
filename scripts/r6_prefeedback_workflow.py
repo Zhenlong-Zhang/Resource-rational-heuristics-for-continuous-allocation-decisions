@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from copy import deepcopy
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -342,7 +343,7 @@ def create_development(output_dir: Path, require_clean: bool = True) -> Path:
         "manual_samples_per_person": list(development["manual_samples_per_person"]),
         "episode_schema": list(DEVELOPMENT_EPISODE_SCHEMA),
         "episode_schema_hash": digest(list(DEVELOPMENT_EPISODE_SCHEMA)),
-        "expected_rows_per_environment_task": int(development["episodes_per_environment"])
+        "expected_rows_per_task": int(development["episodes_per_environment"])
         * (len(development["manual_samples_per_person"]) + 1),
         "numerical_validation_cases": numerical_cases,
         "numerical_validation_cases_hash": digest(numerical_cases),
@@ -547,6 +548,40 @@ def current_sge_task_id() -> str:
     """Return a real array task ID, ignoring Hoffman's non-array sentinel."""
     value = os.environ.get("SGE_TASK_ID", "").strip()
     return value if value.isdigit() and int(value) > 0 else ""
+
+
+def parse_quadrature_order_pair(value: str) -> tuple[int, int]:
+    try:
+        primary_text, reference_text = value.split(":", 1)
+        primary = int(primary_text)
+        reference = int(reference_text)
+    except (TypeError, ValueError) as error:
+        raise argparse.ArgumentTypeError("order pairs must use PRIMARY:REFERENCE") from error
+    if primary < 3 or reference <= primary or primary % 2 == 0 or reference % 2 == 0:
+        raise argparse.ArgumentTypeError(
+            "quadrature orders must be odd and REFERENCE must exceed PRIMARY"
+        )
+    return primary, reference
+
+
+def diagnose_quadrature_orders(
+    case_id: int,
+    order_pairs: Sequence[tuple[int, int]],
+) -> List[Dict[str, object]]:
+    spec = load_positive_need_spec()
+    cases = build_numerical_validation_cases(spec)
+    if not 0 <= case_id < len(cases):
+        raise ValueError("numerical case ID is outside the frozen suite")
+    rows = []
+    for primary, reference in order_pairs:
+        diagnostic_spec = deepcopy(spec)
+        numerical = diagnostic_spec["numerical_settings"]
+        numerical["matched_voi_gauss_hermite_order"] = primary  # type: ignore[index]
+        numerical["gauss_hermite_reference_order"] = reference  # type: ignore[index]
+        row = validate_numerical_case(cases[case_id], diagnostic_spec)
+        row["diagnostic_only"] = True
+        rows.append(row)
+    return rows
 
 
 def run_task(manifest_path: Path, task_index: int) -> None:
@@ -1730,6 +1765,14 @@ def parser() -> argparse.ArgumentParser:
     audit.add_argument("--job-id", action="append", required=True)
     readback = commands.add_parser("verify-local-readback")
     readback.add_argument("--manifest", type=Path, required=True)
+    diagnose = commands.add_parser("diagnose-quadrature")
+    diagnose.add_argument("--case-id", type=int, required=True)
+    diagnose.add_argument(
+        "--order-pair",
+        type=parse_quadrature_order_pair,
+        action="append",
+        required=True,
+    )
     return root
 
 
@@ -1756,6 +1799,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         audit_qacct(args.manifest, args.job_id)
     elif args.command == "verify-local-readback":
         verify_local_readback(args.manifest)
+    elif args.command == "diagnose-quadrature":
+        print(
+            json.dumps(
+                diagnose_quadrature_orders(args.case_id, args.order_pair),
+                indent=2,
+                sort_keys=True,
+            )
+        )
     return 0
 
 
