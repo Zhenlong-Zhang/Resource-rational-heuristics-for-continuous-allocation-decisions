@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
+from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -17,9 +19,11 @@ from scripts.r6_prefeedback_workflow import (
     create_development,
     current_sge_task_id,
     diagnose_quadrature_orders,
+    diagnose_quadrature_suite,
     find_environment,
     load_manifest,
     load_version_pointer,
+    main,
     manifest_hash,
     parse_quadrature_order_pair,
     next_version_path,
@@ -161,6 +165,88 @@ class R6PreFeedbackWorkflowTests(unittest.TestCase):
             [(41, 81), (51, 101)],
         )
         self.assertTrue(all(row["diagnostic_only"] for row in rows))
+
+    def test_quadrature_suite_reports_all_frozen_cases_and_pair_summaries(self) -> None:
+        spec = {
+            "numerical_settings": {
+                "matched_voi_gauss_hermite_order": 31,
+                "gauss_hermite_reference_order": 61,
+                "action_value_convergence_tolerance": 1e-4,
+                "allocation_convergence_tolerance": 0.0025,
+                "action_tie_tolerance": 1e-10,
+            }
+        }
+        cases = [{"case_id": case_id} for case_id in range(90)]
+
+        def fake_validation(case, diagnostic_spec):
+            primary = diagnostic_spec["numerical_settings"][
+                "matched_voi_gauss_hermite_order"
+            ]
+            failed = primary == 41 and case["case_id"] == 7
+            return {
+                "case_id": case["case_id"],
+                "gh_order": primary,
+                "gh_reference_order": diagnostic_spec["numerical_settings"][
+                    "gauss_hermite_reference_order"
+                ],
+                "gh_max_action_value_error": 2e-4 if failed else 5e-5,
+                "terminal_grid_allocation_error": 0.0,
+                "terminal_grid_value_error": 0.0,
+                "dense_reference_error": 0.0,
+                "dense_reference_performed": 1.0 if case["case_id"] < 36 else 0.0,
+                "passed": 0.0 if failed else 1.0,
+            }
+
+        with patch(
+            "scripts.r6_prefeedback_workflow.load_positive_need_spec",
+            return_value=spec,
+        ), patch(
+            "scripts.r6_prefeedback_workflow.build_numerical_validation_cases",
+            return_value=cases,
+        ), patch(
+            "scripts.r6_prefeedback_workflow.validate_numerical_case",
+            side_effect=fake_validation,
+        ) as validate:
+            result = diagnose_quadrature_suite([(41, 81), (51, 101)])
+
+        self.assertEqual(validate.call_count, 180)
+        self.assertEqual(result["frozen_case_count"], 90)
+        self.assertEqual(result["frozen_dense_reference_case_count"], 36)
+        self.assertEqual(len(result["per_case"]), 180)
+        self.assertEqual(len(result["aggregate"]), 2)
+        first, second = result["aggregate"]
+        self.assertEqual(first["failed_case_ids"], [7])
+        self.assertFalse(first["valid"])
+        self.assertTrue(second["valid"])
+        self.assertEqual(first["dense_reference_case_count"], 36)
+        self.assertEqual(
+            result["frozen_numerical_settings"][
+                "action_value_convergence_tolerance"
+            ],
+            1e-4,
+        )
+        self.assertEqual(
+            spec["numerical_settings"]["matched_voi_gauss_hermite_order"], 31
+        )
+
+    def test_quadrature_suite_cli_emits_machine_readable_json(self) -> None:
+        diagnostic = {
+            "diagnostic_only": True,
+            "per_case": [{"case_id": 0}],
+            "aggregate": [{"gh_order": 41, "valid": True}],
+        }
+        output = StringIO()
+        with patch(
+            "scripts.r6_prefeedback_workflow.diagnose_quadrature_suite",
+            return_value=diagnostic,
+        ) as diagnose, redirect_stdout(output):
+            exit_code = main(
+                ["diagnose-quadrature-suite", "--order-pair", "41:81"]
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(json.loads(output.getvalue()), diagnostic)
+        diagnose.assert_called_once_with([(41, 81)])
 
     @patch("scripts.r6_prefeedback_workflow.load_version_pointer")
     @patch("scripts.r6_prefeedback_workflow.validate_development_for_confirmation")
@@ -532,6 +618,21 @@ exit_status 0
                 **case,
                 "gh_order": 31,
                 "gh_reference_order": 61,
+                "primary_action_values": {
+                    "terminate": 1.0,
+                    "sample_1": 2.0,
+                    "sample_2": 1.5,
+                },
+                "reference_action_values": {
+                    "terminate": 1.0,
+                    "sample_1": 2.0,
+                    "sample_2": 1.5,
+                },
+                "primary_reference_action_errors": {
+                    "terminate": 0.0,
+                    "sample_1": 0.0,
+                    "sample_2": 0.0,
+                },
                 "gh_max_action_value_error": 0.0,
                 "gh_action": "terminate",
                 "gh_reference_action": "terminate",
@@ -539,6 +640,16 @@ exit_status 0
                 "terminal_grid_value_error": 0.0,
                 "terminal_reference_action": "terminate",
                 "dense_reference_error": 0.0,
+                "dense_action_values": {
+                    "terminate": 1.0,
+                    "sample_1": 2.0,
+                    "sample_2": 1.5,
+                },
+                "primary_dense_action_errors": {
+                    "terminate": 0.0,
+                    "sample_1": 0.0,
+                    "sample_2": 0.0,
+                },
                 "dense_reference_action": "terminate",
                 "dense_reference_performed": 1.0,
                 "passed": 1.0,

@@ -1308,6 +1308,125 @@ def _selected_action_from_values(
     return next(action for action in samples if float(values[action]) >= best - tolerance)
 
 
+NUMERICAL_ACTIONS = ("terminate", "sample_1", "sample_2")
+DENSE_NUMERICAL_BELIEF_KINDS = frozenset(
+    {
+        "uniform_prior",
+        "person1_predictive_mean",
+        "person1_minimum_support",
+        "person1_maximum_support",
+    }
+)
+
+
+def dense_numerical_validation_case_ids(
+    cases: Sequence[Mapping[str, object]],
+    spec: Optional[Mapping[str, object]] = None,
+) -> List[int]:
+    """Return the exact frozen case IDs that require dense integration."""
+
+    spec = dict(spec or load_positive_need_spec())
+    environments = {item.name: item for item in build_development_environments(spec)}
+    dense_ids = [
+        int(case["case_id"])
+        for case in cases
+        if environments[str(case["environment"])].sample_time_cost == 0.02
+        and str(case["belief_kind"]) in DENSE_NUMERICAL_BELIEF_KINDS
+    ]
+    if len(dense_ids) != 36 or len(set(dense_ids)) != 36:
+        raise RuntimeError("the frozen dense-reference subset must contain 36 cases")
+    return dense_ids
+
+
+def _finite_action_value_map(
+    values: Mapping[str, object], field: str
+) -> Dict[str, float]:
+    if not isinstance(values, Mapping):
+        raise RuntimeError(f"{field} must be an action-value map")
+    if set(values) != set(NUMERICAL_ACTIONS):
+        raise RuntimeError(f"{field} must contain terminate, sample_1, and sample_2")
+    result = {action: float(values[action]) for action in NUMERICAL_ACTIONS}
+    if any(not math.isfinite(value) for value in result.values()):
+        raise RuntimeError(f"{field} contains a non-finite action value")
+    return result
+
+
+def validate_numerical_action_value_maps(row: Mapping[str, object]) -> None:
+    """Fail closed unless all action-level numerical evidence is self-consistent."""
+
+    required = {
+        "primary_action_values",
+        "reference_action_values",
+        "primary_reference_action_errors",
+        "gh_max_action_value_error",
+        "dense_reference_performed",
+        "dense_reference_error",
+    }
+    missing = sorted(required.difference(row))
+    if missing:
+        raise RuntimeError(f"numerical action-value evidence is incomplete: {missing}")
+    primary = _finite_action_value_map(
+        row["primary_action_values"], "primary_action_values"  # type: ignore[arg-type]
+    )
+    reference = _finite_action_value_map(
+        row["reference_action_values"], "reference_action_values"  # type: ignore[arg-type]
+    )
+    errors = _finite_action_value_map(
+        row["primary_reference_action_errors"],  # type: ignore[arg-type]
+        "primary_reference_action_errors",
+    )
+    expected_errors = {
+        action: abs(primary[action] - reference[action]) for action in NUMERICAL_ACTIONS
+    }
+    for action in NUMERICAL_ACTIONS:
+        if not math.isclose(errors[action], expected_errors[action], rel_tol=0.0, abs_tol=1e-15):
+            raise RuntimeError(f"primary/reference action error mismatch: {action}")
+    if not math.isclose(
+        float(row["gh_max_action_value_error"]),
+        max(expected_errors.values()),
+        rel_tol=0.0,
+        abs_tol=1e-15,
+    ):
+        raise RuntimeError("maximum primary/reference action error mismatch")
+
+    dense_performed = float(row["dense_reference_performed"]) >= 0.5
+    dense_values = row.get("dense_action_values")
+    dense_errors = row.get("primary_dense_action_errors")
+    if not dense_performed:
+        if dense_values is not None or dense_errors is not None:
+            raise RuntimeError("non-dense cases must store null dense action maps")
+        if float(row["dense_reference_error"]) != 0.0:
+            raise RuntimeError("non-dense cases must store zero dense-reference error")
+        return
+
+    if dense_values is None or dense_errors is None:
+        raise RuntimeError("dense cases require explicit dense action maps")
+    dense = _finite_action_value_map(
+        dense_values, "dense_action_values"  # type: ignore[arg-type]
+    )
+    observed_dense_errors = _finite_action_value_map(
+        dense_errors, "primary_dense_action_errors"  # type: ignore[arg-type]
+    )
+    expected_dense_errors = {
+        action: abs(primary[action] - dense[action]) for action in NUMERICAL_ACTIONS
+    }
+    for action in NUMERICAL_ACTIONS:
+        if not math.isclose(
+            observed_dense_errors[action],
+            expected_dense_errors[action],
+            rel_tol=0.0,
+            abs_tol=1e-15,
+        ):
+            raise RuntimeError(f"primary/dense action error mismatch: {action}")
+    if not math.isclose(
+        float(row["dense_reference_error"]),
+        max(expected_dense_errors.values()),
+        rel_tol=0.0,
+        abs_tol=1e-15,
+    ):
+        raise RuntimeError("maximum primary/dense action error mismatch")
+
+
 def _dense_sample_action_value(
     mdp: FiniteSupportMetaMDP,
     belief,
@@ -1354,12 +1473,6 @@ def validate_numerical_case(
     allocation_tolerance = float(numerical["allocation_convergence_tolerance"])
     tie_tolerance = float(numerical["action_tie_tolerance"])
     environments = {item.name: item for item in build_development_environments(spec)}
-    dense_kinds = {
-        "uniform_prior",
-        "person1_predictive_mean",
-        "person1_minimum_support",
-        "person1_maximum_support",
-    }
     environment = environments[str(case["environment"])]
     belief = _numerical_belief(environment, str(case["belief_kind"]))
     if _belief_hash(belief) != case["belief_hash"]:
@@ -1371,9 +1484,17 @@ def validate_numerical_case(
     )
     values = policy.action_values(mdp, belief)
     reference_values = reference_policy.action_values(mdp, belief)
+    primary_action_values = _finite_action_value_map(values, "primary_action_values")
+    reference_action_values = _finite_action_value_map(
+        reference_values, "reference_action_values"
+    )
+    primary_reference_action_errors = {
+        key: abs(primary_action_values[key] - reference_action_values[key])
+        for key in NUMERICAL_ACTIONS
+    }
     action = policy.choose_action(mdp, belief)
     reference_action = reference_policy.choose_action(mdp, belief)
-    gh_error = max(abs(float(values[key]) - float(reference_values[key])) for key in values)
+    gh_error = max(primary_reference_action_errors.values())
 
     reference_environment = PositiveNeedEnvironment(
         name=environment.name,
@@ -1401,8 +1522,11 @@ def validate_numerical_case(
 
     dense_error = 0.0
     dense_action = action
+    dense_action_values = None
+    primary_dense_action_errors = None
     dense_reference_performed = (
-        environment.sample_time_cost == 0.02 and case["belief_kind"] in dense_kinds
+        environment.sample_time_cost == 0.02
+        and case["belief_kind"] in DENSE_NUMERICAL_BELIEF_KINDS
     )
     if dense_reference_performed:
         dense_values = {mdp.TERMINATE: float(values[mdp.TERMINATE])}
@@ -1410,9 +1534,14 @@ def validate_numerical_case(
             dense_values[sample_action] = _dense_sample_action_value(
                 mdp, belief, sample_action
             )
-        dense_error = max(
-            abs(float(values[key]) - float(dense_values[key])) for key in values
+        dense_action_values = _finite_action_value_map(
+            dense_values, "dense_action_values"
         )
+        primary_dense_action_errors = {
+            key: abs(primary_action_values[key] - dense_action_values[key])
+            for key in NUMERICAL_ACTIONS
+        }
+        dense_error = max(primary_dense_action_errors.values())
         dense_action = _selected_action_from_values(mdp, dense_values, tie_tolerance)
 
     passed = (
@@ -1424,10 +1553,13 @@ def validate_numerical_case(
         and dense_error <= value_tolerance
         and action == dense_action
     )
-    return {
+    row = {
         **case,
         "gh_order": order,
         "gh_reference_order": reference_order,
+        "primary_action_values": primary_action_values,
+        "reference_action_values": reference_action_values,
+        "primary_reference_action_errors": primary_reference_action_errors,
         "gh_max_action_value_error": gh_error,
         "gh_action": action,
         "gh_reference_action": reference_action,
@@ -1435,10 +1567,14 @@ def validate_numerical_case(
         "terminal_grid_value_error": grid_value_error,
         "terminal_reference_action": grid_action,
         "dense_reference_error": dense_error,
+        "dense_action_values": dense_action_values,
+        "primary_dense_action_errors": primary_dense_action_errors,
         "dense_reference_action": dense_action,
         "dense_reference_performed": 1.0 if dense_reference_performed else 0.0,
         "passed": 1.0 if passed else 0.0,
     }
+    validate_numerical_action_value_maps(row)
+    return row
 
 
 def summarize_numerical_validation(

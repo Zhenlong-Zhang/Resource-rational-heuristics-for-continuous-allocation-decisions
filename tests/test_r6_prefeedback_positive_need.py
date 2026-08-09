@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import replace
+import math
 import unittest
+from unittest.mock import patch
 
 from src.experiments.r6_prefeedback_positive_need import (
     POLICY_ORACLE,
@@ -12,12 +15,15 @@ from src.experiments.r6_prefeedback_positive_need import (
     build_finite_support_episodes,
     build_latent_support_table,
     build_numerical_validation_cases,
+    dense_numerical_validation_case_ids,
     evaluate_fixed_budgets,
     evaluate_serious_environment,
     load_positive_need_spec,
     select_target_control_pair,
     solver_diagnosis_trigger,
     summarize_serious,
+    validate_numerical_action_value_maps,
+    validate_numerical_case,
     validate_serious_common_randomness,
 )
 
@@ -55,9 +61,67 @@ class R6PreFeedbackPositiveNeedTests(unittest.TestCase):
             and case["belief_kind"] in dense_kinds
         ]
         self.assertEqual(len(dense), 36)
+        self.assertEqual(
+            dense_numerical_validation_case_ids(cases, self.spec),
+            [int(case["case_id"]) for case in dense],
+        )
         support = build_latent_support_table(self.spec)
         self.assertEqual(len(support), 54)
         self.assertEqual({row["gap_class"] for row in support}, {"low", "medium", "high"})
+
+    @patch(
+        "src.experiments.r6_prefeedback_positive_need._dense_sample_action_value"
+    )
+    @patch(
+        "src.experiments.r6_prefeedback_positive_need.FiniteSupportMetaMDP.solve_terminal_allocation",
+        return_value=(0.5, 1.0),
+    )
+    @patch(
+        "src.experiments.r6_prefeedback_positive_need.FiniteSupportMyopicVOIPolicy.choose_action",
+        return_value="sample_1",
+    )
+    @patch(
+        "src.experiments.r6_prefeedback_positive_need.FiniteSupportMyopicVOIPolicy.action_values",
+        autospec=True,
+    )
+    def test_numerical_case_persists_complete_action_value_maps(
+        self, action_values, _choose_action, _solve_terminal, dense_value
+    ) -> None:
+        cases = build_numerical_validation_cases(self.spec)
+        dense_case_id = dense_numerical_validation_case_ids(cases, self.spec)[0]
+
+        def values_for_order(policy, _mdp, _belief):
+            values = {"terminate": 1.0, "sample_1": 2.0, "sample_2": 1.5}
+            if policy.quadrature_order == int(
+                self.spec["numerical_settings"]["gauss_hermite_reference_order"]
+            ):
+                values["sample_1"] += 5e-5
+            return values
+
+        action_values.side_effect = values_for_order
+        dense_value.side_effect = lambda _mdp, _belief, action: {
+            "sample_1": 2.00002,
+            "sample_2": 1.50002,
+        }[action]
+        row = validate_numerical_case(cases[dense_case_id], self.spec)
+
+        actions = {"terminate", "sample_1", "sample_2"}
+        self.assertEqual(set(row["primary_action_values"]), actions)
+        self.assertEqual(set(row["reference_action_values"]), actions)
+        self.assertEqual(set(row["primary_reference_action_errors"]), actions)
+        self.assertEqual(set(row["dense_action_values"]), actions)
+        self.assertEqual(set(row["primary_dense_action_errors"]), actions)
+        validate_numerical_action_value_maps(row)
+
+        missing_action = deepcopy(row)
+        del missing_action["reference_action_values"]["sample_2"]
+        with self.assertRaisesRegex(RuntimeError, "terminate, sample_1, and sample_2"):
+            validate_numerical_action_value_maps(missing_action)
+
+        nonfinite = deepcopy(row)
+        nonfinite["primary_action_values"]["sample_1"] = math.inf
+        with self.assertRaisesRegex(RuntimeError, "non-finite"):
+            validate_numerical_action_value_maps(nonfinite)
 
     def test_cost_conditions_share_latent_states_and_residuals(self) -> None:
         target = next(

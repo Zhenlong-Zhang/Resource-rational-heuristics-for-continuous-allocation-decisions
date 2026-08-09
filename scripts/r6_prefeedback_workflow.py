@@ -52,6 +52,7 @@ from src.experiments.r6_prefeedback_positive_need import (  # noqa: E402
     summarize_development_environment,
     summarize_numerical_validation,
     summarize_serious,
+    validate_numerical_action_value_maps,
     validate_numerical_case,
     validate_serious_common_randomness,
 )
@@ -584,6 +585,62 @@ def diagnose_quadrature_orders(
     return rows
 
 
+def diagnose_quadrature_suite(
+    order_pairs: Sequence[tuple[int, int]],
+) -> Dict[str, object]:
+    """Evaluate candidate GH order pairs on all frozen numerical cases."""
+
+    if not order_pairs:
+        raise ValueError("at least one quadrature order pair is required")
+    spec = load_positive_need_spec()
+    cases = build_numerical_validation_cases(spec)
+    if len(cases) != 90:
+        raise RuntimeError("the frozen numerical suite must contain exactly 90 beliefs")
+
+    numerical = dict(spec["numerical_settings"])  # type: ignore[arg-type]
+    per_case: List[Dict[str, object]] = []
+    aggregates: List[Dict[str, object]] = []
+    for primary, reference in order_pairs:
+        diagnostic_spec = deepcopy(spec)
+        diagnostic_numerical = diagnostic_spec["numerical_settings"]
+        diagnostic_numerical["matched_voi_gauss_hermite_order"] = primary  # type: ignore[index]
+        diagnostic_numerical["gauss_hermite_reference_order"] = reference  # type: ignore[index]
+        pair_rows = []
+        for case in cases:
+            row = validate_numerical_case(case, diagnostic_spec)
+            row["diagnostic_only"] = True
+            pair_rows.append(row)
+        dense_count = sum(
+            float(row["dense_reference_performed"]) >= 0.5 for row in pair_rows
+        )
+        if dense_count != 36:
+            raise RuntimeError(
+                "the frozen numerical suite must contain exactly 36 dense references"
+            )
+        summary = summarize_numerical_validation(pair_rows)
+        aggregates.append(
+            {
+                "diagnostic_only": True,
+                "gh_order": primary,
+                "gh_reference_order": reference,
+                "dense_reference_case_count": dense_count,
+                **summary,
+            }
+        )
+        per_case.extend(pair_rows)
+
+    return {
+        "schema_version": 1,
+        "diagnostic_only": True,
+        "frozen_case_count": len(cases),
+        "frozen_dense_reference_case_count": 36,
+        "frozen_case_suite_hash": digest(cases),
+        "frozen_numerical_settings": numerical,
+        "per_case": per_case,
+        "aggregate": aggregates,
+    }
+
+
 def run_task(manifest_path: Path, task_index: int) -> None:
     manifest = load_manifest(manifest_path)
     validate_source_identity(manifest)
@@ -921,6 +978,7 @@ def _validate_numerical_task(
         raise RuntimeError("numerical case ID is outside the frozen suite")
     expected_case = dict(cases[case_id])
     row = json.loads((directory / "numerical_validation.json").read_text(encoding="utf-8"))
+    validate_numerical_action_value_maps(row)
     for field, expected in expected_case.items():
         if row.get(field) != expected:
             raise RuntimeError(f"numerical case provenance mismatch: {field}")
@@ -1773,6 +1831,13 @@ def parser() -> argparse.ArgumentParser:
         action="append",
         required=True,
     )
+    diagnose_suite = commands.add_parser("diagnose-quadrature-suite")
+    diagnose_suite.add_argument(
+        "--order-pair",
+        type=parse_quadrature_order_pair,
+        action="append",
+        required=True,
+    )
     return root
 
 
@@ -1803,6 +1868,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             json.dumps(
                 diagnose_quadrature_orders(args.case_id, args.order_pair),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    elif args.command == "diagnose-quadrature-suite":
+        print(
+            json.dumps(
+                diagnose_quadrature_suite(args.order_pair),
                 indent=2,
                 sort_keys=True,
             )
