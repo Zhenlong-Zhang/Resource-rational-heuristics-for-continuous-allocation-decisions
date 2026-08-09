@@ -543,6 +543,12 @@ def validate_source_identity(manifest: Mapping[str, object]) -> None:
         raise RuntimeError("frozen spec differs from manifest")
 
 
+def current_sge_task_id() -> str:
+    """Return a real array task ID, ignoring Hoffman's non-array sentinel."""
+    value = os.environ.get("SGE_TASK_ID", "").strip()
+    return value if value.isdigit() and int(value) > 0 else ""
+
+
 def run_task(manifest_path: Path, task_index: int) -> None:
     manifest = load_manifest(manifest_path)
     validate_source_identity(manifest)
@@ -657,7 +663,7 @@ def run_task(manifest_path: Path, task_index: int) -> None:
             "scheduler_metadata": {
                 "hostname": platform.node(),
                 "job_id": os.environ.get("JOB_ID", ""),
-                "sge_task_id": os.environ.get("SGE_TASK_ID", ""),
+                "sge_task_id": current_sge_task_id(),
             },
             "files": file_evidence,
         }

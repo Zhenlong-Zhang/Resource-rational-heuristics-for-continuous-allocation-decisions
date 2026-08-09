@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -13,6 +14,7 @@ from scripts.r6_prefeedback_workflow import (
     collect,
     create_confirmation,
     create_development,
+    current_sge_task_id,
     find_environment,
     load_manifest,
     load_version_pointer,
@@ -89,6 +91,15 @@ def write_scheduler_fixture(run_dir: Path, manifest: dict) -> dict:
 
 
 class R6PreFeedbackWorkflowTests(unittest.TestCase):
+    def test_non_array_sge_sentinel_is_not_treated_as_a_task_id(self) -> None:
+        for value in ("", "undefined", "UNDEFINED", "none", "0", "-1"):
+            with self.subTest(value=value), patch.dict(
+                os.environ, {"SGE_TASK_ID": value}, clear=False
+            ):
+                self.assertEqual(current_sge_task_id(), "")
+        with patch.dict(os.environ, {"SGE_TASK_ID": "73"}, clear=False):
+            self.assertEqual(current_sge_task_id(), "73")
+
     def test_development_manifest_freezes_complete_grid(self) -> None:
         with TemporaryDirectory() as temporary:
             output = Path(temporary) / "development"
