@@ -63,6 +63,8 @@ READBACK_SCHEMA = "terminal_validation_independent_readback_v1"
 COMPUTE_CEILING_SCHEMA = "hoffman2_compute_ceiling_report_v1"
 SOURCE_IDENTITY_SCHEMA = "terminal_validation_source_identity_v1"
 EXECUTION_AUTHORIZATION_SCHEMA = "terminal_validation_execution_authorization_v1"
+MANIFEST_PLAN_FRAGMENT_SCHEMA = "terminal_validation_manifest_plan_fragment_v1"
+MANIFEST_PLAN_ASSEMBLY_SCHEMA = "terminal_validation_manifest_plan_assembly_v1"
 
 SMOKE_CASE_IDS = (1, 20, 72, 85)
 SUITE_ORDER = ("base", "one_step", "reachable_core")
@@ -181,6 +183,18 @@ _AUTHORIZATION_FIELDS = {
     "provider_source_identity_hash", "scientific_spec_hash",
     "numerical_method_config_hash", "compute_ceiling_report_hash",
     "resources_hash", "execution_script_hashes",
+}
+_PLAN_FRAGMENT_FIELDS = {
+    "schema", "stage", "shard_index", "shard_count", "descriptor_count",
+    "descriptors", "suite_manifest_hashes", "suite_ordered_descriptor_hashes",
+    "scientific_spec_hash", "numerical_method_config_hash", "provider_hash",
+    "provider_source_identity_hash", "source_identity", "fragment_hash",
+}
+_PLAN_ASSEMBLY_FIELDS = {
+    "schema", "stage", "fragment_count_per_replicate",
+    "replicate_a_fragment_hashes", "replicate_b_fragment_hashes",
+    "pairwise_agreement", "expected_descriptor_count", "manifest_hash",
+    "source_identity_hash", "provider_hash", "assembly_hash",
 }
 
 
@@ -565,6 +579,304 @@ def _expected_descriptor_plans(
         )
 
 
+def _selected_descriptors(
+    stage: str,
+    suites: Mapping[str, TerminalValidationSuite],
+) -> Tuple[TerminalValidationDescriptor, ...]:
+    if stage not in ("smoke", "full"):
+        raise ValueError("stage must be smoke or full")
+    all_descriptors = tuple(
+        descriptor
+        for suite_class in SUITE_ORDER
+        for descriptor in suites[suite_class].descriptors
+    )
+    return smoke_descriptors(suites) if stage == "smoke" else all_descriptors
+
+
+def _validate_manifest_planning_context(
+    suites: Mapping[str, TerminalValidationSuite],
+    provider: CanonicalBaseProvider,
+    acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
+) -> None:
+    if provider.provider_kind != AUTHORITATIVE_PROVIDER_KIND or provider.diagnostic_only:
+        raise RuntimeError("manifest planning requires an authoritative canonical provider")
+    _require_formal_canonical_acceptance(provider, acceptance_validator)
+    provider_failures = canonical_base_provider_failures(provider)
+    if provider_failures:
+        raise RuntimeError(
+            "canonical provider failed source validation: " + ",".join(provider_failures)
+        )
+    for suite in suites.values():
+        validation = validate_terminal_validation_suite(
+            suite,
+            base_provider=provider,
+            require_authoritative=True,
+            authoritative_acceptance_validator=accepted_canonical_base_provider,
+        )
+        if validation.failures:
+            raise RuntimeError("suite validation failed before manifest planning")
+
+
+def _descriptor_ref(
+    descriptor: TerminalValidationDescriptor,
+    plan: Tuple[Tuple[str, ...], int, int],
+) -> DescriptorRef:
+    methods, tie_count, symmetry_count = plan
+    if not methods or any(method not in TERMINAL_METHOD_ORDER for method in methods):
+        raise RuntimeError(f"invalid frozen method plan for {_descriptor_key(descriptor)}")
+    if methods != tuple(method for method in TERMINAL_METHOD_ORDER if method in methods):
+        raise RuntimeError("frozen method plan is not in canonical method order")
+    if not (0 <= tie_count <= len(methods) and 0 <= symmetry_count <= len(methods)):
+        raise RuntimeError("frozen path counts exceed the method plan")
+    return DescriptorRef(
+        descriptor.suite_class,
+        descriptor.descriptor_index,
+        descriptor.descriptor_hash,
+        methods,
+        tie_count,
+        symmetry_count,
+    )
+
+
+def create_manifest_plan_fragment(
+    *,
+    stage: str,
+    shard_index: int,
+    shard_count: int,
+    suites: Mapping[str, TerminalValidationSuite],
+    provider: CanonicalBaseProvider,
+    acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
+    source_identity: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Compute one deterministic, independently writable manifest-plan shard."""
+
+    if shard_count < 1 or not 1 <= shard_index <= shard_count:
+        raise ValueError("planning shard index/count is invalid")
+    _validate_manifest_planning_context(suites, provider, acceptance_validator)
+    selected = _selected_descriptors(stage, suites)
+    assigned = tuple(
+        descriptor
+        for position, descriptor in enumerate(selected)
+        if position % shard_count == shard_index - 1
+    )
+    if not assigned:
+        raise RuntimeError("manifest planning shard has no descriptors")
+    plans = _expected_descriptor_plans(assigned, provider)
+    references = tuple(
+        asdict(_descriptor_ref(descriptor, plan))
+        for descriptor, plan in zip(assigned, plans)
+    )
+    identities = load_terminal_validation_identities()
+    payload: Dict[str, Any] = {
+        "schema": MANIFEST_PLAN_FRAGMENT_SCHEMA,
+        "stage": stage,
+        "shard_index": shard_index,
+        "shard_count": shard_count,
+        "descriptor_count": len(references),
+        "descriptors": references,
+        "suite_manifest_hashes": tuple(
+            (suite_class, suites[suite_class].manifest.manifest_hash)
+            for suite_class in SUITE_ORDER
+        ),
+        "suite_ordered_descriptor_hashes": tuple(
+            (suite_class, suites[suite_class].manifest.ordered_descriptor_hash)
+            for suite_class in SUITE_ORDER
+        ),
+        "scientific_spec_hash": identities.scientific_spec_hash,
+        "numerical_method_config_hash": identities.numerical_method_config_hash,
+        "provider_hash": provider.provider_hash,
+        "provider_source_identity_hash": provider.source_identity_hash,
+        "source_identity": dict(source_identity),
+        "fragment_hash": "",
+    }
+    payload["fragment_hash"] = logical_hash(_without_hash(payload, "fragment_hash"))
+    validate_manifest_plan_fragment(
+        payload,
+        suites,
+        provider,
+        acceptance_validator,
+        reconstruct_expected=False,
+    )
+    return payload
+
+
+def validate_manifest_plan_fragment(
+    fragment: Mapping[str, Any],
+    suites: Mapping[str, TerminalValidationSuite],
+    provider: CanonicalBaseProvider,
+    acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
+    *,
+    reconstruct_expected: bool,
+) -> None:
+    if fragment.get("schema") != MANIFEST_PLAN_FRAGMENT_SCHEMA:
+        raise RuntimeError("manifest plan fragment schema mismatch")
+    if set(fragment) != _PLAN_FRAGMENT_FIELDS:
+        raise RuntimeError("manifest plan fragment fields differ from the exact schema")
+    _validate_self_hash(fragment, "fragment_hash", "manifest plan fragment")
+    _validate_manifest_planning_context(suites, provider, acceptance_validator)
+    stage = str(fragment["stage"])
+    shard_index = int(fragment["shard_index"])
+    shard_count = int(fragment["shard_count"])
+    if shard_count < 1 or not 1 <= shard_index <= shard_count:
+        raise RuntimeError("manifest plan fragment shard bounds are invalid")
+    source = fragment.get("source_identity", {})
+    if not isinstance(source, Mapping) or source.get("schema") != SOURCE_IDENTITY_SCHEMA:
+        raise RuntimeError("manifest plan fragment source identity is malformed")
+    _validate_self_hash(source, "identity_hash", "manifest plan fragment source identity")
+    identities = load_terminal_validation_identities()
+    expected_context = (
+        provider.provider_hash,
+        provider.source_identity_hash,
+        identities.scientific_spec_hash,
+        identities.numerical_method_config_hash,
+        tuple(
+            (suite_class, suites[suite_class].manifest.manifest_hash)
+            for suite_class in SUITE_ORDER
+        ),
+        tuple(
+            (suite_class, suites[suite_class].manifest.ordered_descriptor_hash)
+            for suite_class in SUITE_ORDER
+        ),
+    )
+    observed_context = (
+        fragment["provider_hash"],
+        fragment["provider_source_identity_hash"],
+        fragment["scientific_spec_hash"],
+        fragment["numerical_method_config_hash"],
+        tuple(tuple(item) for item in fragment["suite_manifest_hashes"]),
+        tuple(tuple(item) for item in fragment["suite_ordered_descriptor_hashes"]),
+    )
+    if observed_context != expected_context:
+        raise RuntimeError("manifest plan fragment context mismatch")
+    selected = _selected_descriptors(stage, suites)
+    assigned = tuple(
+        descriptor
+        for position, descriptor in enumerate(selected)
+        if position % shard_count == shard_index - 1
+    )
+    references = tuple(fragment.get("descriptors", ()))
+    if int(fragment.get("descriptor_count", -1)) != len(assigned) or len(references) != len(assigned):
+        raise RuntimeError("manifest plan fragment descriptor count mismatch")
+    for descriptor, raw_ref in zip(assigned, references):
+        if set(raw_ref) != _REF_FIELDS:
+            raise RuntimeError("manifest plan fragment descriptor fields differ")
+        observed_identity = (
+            raw_ref["suite_class"],
+            int(raw_ref["descriptor_index"]),
+            raw_ref["descriptor_hash"],
+        )
+        expected_identity = (
+            descriptor.suite_class,
+            descriptor.descriptor_index,
+            descriptor.descriptor_hash,
+        )
+        if observed_identity != expected_identity:
+            raise RuntimeError("manifest plan fragment descriptor identity mismatch")
+        _descriptor_ref(
+            descriptor,
+            (
+                tuple(raw_ref["expected_methods"]),
+                int(raw_ref["expected_tie_row_count"]),
+                int(raw_ref["expected_symmetry_row_count"]),
+            ),
+        )
+    if reconstruct_expected:
+        expected_plans = _expected_descriptor_plans(assigned, provider)
+        expected_refs = tuple(
+            asdict(_descriptor_ref(descriptor, plan))
+            for descriptor, plan in zip(assigned, expected_plans)
+        )
+        if canonical_bytes(references) != canonical_bytes(expected_refs):
+            raise RuntimeError("manifest plan fragment differs from source reconstruction")
+
+
+def merge_manifest_plan_replicates(
+    *,
+    stage: str,
+    replicate_a: Sequence[Mapping[str, Any]],
+    replicate_b: Sequence[Mapping[str, Any]],
+    suites: Mapping[str, TerminalValidationSuite],
+    provider: CanonicalBaseProvider,
+    acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
+    source_identity: Mapping[str, Any],
+    max_descriptors_per_subshard: int,
+    resources: Mapping[str, Any],
+    compute_ceiling_report_hash: str,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Merge two independently scheduled plan replicates after exact agreement."""
+
+    if not replicate_a or len(replicate_a) != len(replicate_b):
+        raise RuntimeError("manifest plan replicates must have equal nonzero shard counts")
+    shard_count = len(replicate_a)
+    ordered_a = sorted(replicate_a, key=lambda item: int(item["shard_index"]))
+    ordered_b = sorted(replicate_b, key=lambda item: int(item["shard_index"]))
+    if tuple(int(item["shard_index"]) for item in ordered_a) != tuple(range(1, shard_count + 1)):
+        raise RuntimeError("replicate A planning shard coverage is incomplete")
+    if tuple(int(item["shard_index"]) for item in ordered_b) != tuple(range(1, shard_count + 1)):
+        raise RuntimeError("replicate B planning shard coverage is incomplete")
+    plan_by_key: Dict[str, Tuple[Tuple[str, ...], int, int]] = {}
+    for fragment_a, fragment_b in zip(ordered_a, ordered_b):
+        validate_manifest_plan_fragment(
+            fragment_a, suites, provider, acceptance_validator, reconstruct_expected=False
+        )
+        validate_manifest_plan_fragment(
+            fragment_b, suites, provider, acceptance_validator, reconstruct_expected=False
+        )
+        if fragment_a["stage"] != stage or fragment_b["stage"] != stage:
+            raise RuntimeError("manifest plan fragment stage mismatch")
+        if int(fragment_a["shard_count"]) != shard_count or int(fragment_b["shard_count"]) != shard_count:
+            raise RuntimeError("manifest plan fragment shard-count mismatch")
+        if fragment_a["source_identity"] != source_identity or fragment_b["source_identity"] != source_identity:
+            raise RuntimeError("manifest plan fragment source identity mismatch")
+        if canonical_bytes(fragment_a["descriptors"]) != canonical_bytes(fragment_b["descriptors"]):
+            raise RuntimeError("independent manifest plan replicates disagree")
+        for raw_ref in fragment_a["descriptors"]:
+            key = f"{raw_ref['suite_class']}:{int(raw_ref['descriptor_index'])}"
+            if key in plan_by_key:
+                raise RuntimeError("manifest plan replicates contain duplicate descriptors")
+            plan_by_key[key] = (
+                tuple(raw_ref["expected_methods"]),
+                int(raw_ref["expected_tie_row_count"]),
+                int(raw_ref["expected_symmetry_row_count"]),
+            )
+    selected = _selected_descriptors(stage, suites)
+    expected_keys = tuple(_descriptor_key(item) for item in selected)
+    if set(plan_by_key) != set(expected_keys) or len(plan_by_key) != len(expected_keys):
+        raise RuntimeError("manifest plan replicate coverage is not exact")
+    manifest = create_execution_manifest(
+        stage=stage,
+        suites=suites,
+        provider=provider,
+        acceptance_validator=acceptance_validator,
+        source_identity=source_identity,
+        max_descriptors_per_subshard=max_descriptors_per_subshard,
+        resources=resources,
+        compute_ceiling_report_hash=compute_ceiling_report_hash,
+        _validate_result=False,
+        _precomputed_plans=plan_by_key,
+    )
+    validate_execution_manifest(
+        manifest, suites, provider, acceptance_validator, reconstruct_expected=False
+    )
+    assembly: Dict[str, Any] = {
+        "schema": MANIFEST_PLAN_ASSEMBLY_SCHEMA,
+        "stage": stage,
+        "fragment_count_per_replicate": shard_count,
+        "replicate_a_fragment_hashes": tuple(item["fragment_hash"] for item in ordered_a),
+        "replicate_b_fragment_hashes": tuple(item["fragment_hash"] for item in ordered_b),
+        "pairwise_agreement": True,
+        "expected_descriptor_count": len(selected),
+        "manifest_hash": manifest["manifest_hash"],
+        "source_identity_hash": source_identity["identity_hash"],
+        "provider_hash": provider.provider_hash,
+        "assembly_hash": "",
+    }
+    assembly["assembly_hash"] = logical_hash(_without_hash(assembly, "assembly_hash"))
+    if set(assembly) != _PLAN_ASSEMBLY_FIELDS:
+        raise RuntimeError("manifest plan assembly fields differ from the exact schema")
+    return manifest, assembly
+
+
 def _task_hash(task: Mapping[str, Any]) -> str:
     return logical_hash(_without_hash(task, "assignment_hash"))
 
@@ -618,6 +930,9 @@ def create_execution_manifest(
     resources: Mapping[str, Any],
     compute_ceiling_report_hash: str,
     _validate_result: bool = True,
+    _precomputed_plans: Optional[
+        Mapping[str, Tuple[Tuple[str, ...], int, int]]
+    ] = None,
 ) -> Dict[str, Any]:
     if stage not in ("smoke", "full"):
         raise ValueError("stage must be smoke or full")
@@ -625,46 +940,25 @@ def create_execution_manifest(
         raise ValueError("subshard bound must be positive")
     if not _is_hash(compute_ceiling_report_hash):
         raise ValueError("compute ceiling report hash is malformed")
-    if provider.provider_kind != AUTHORITATIVE_PROVIDER_KIND or provider.diagnostic_only:
-        raise RuntimeError("execution manifests require an authoritative canonical provider")
-    _require_formal_canonical_acceptance(provider, acceptance_validator)
-    provider_failures = canonical_base_provider_failures(provider)
-    if provider_failures:
-        raise RuntimeError("canonical provider failed source validation: " + ",".join(provider_failures))
-    for suite in suites.values():
-        validation = validate_terminal_validation_suite(
-            suite,
-            base_provider=provider,
-            require_authoritative=True,
-            authoritative_acceptance_validator=accepted_canonical_base_provider,
-        )
-        if validation.failures:
-            raise RuntimeError("suite validation failed before manifest freeze")
+    _validate_manifest_planning_context(suites, provider, acceptance_validator)
 
-    all_descriptors = tuple(
-        descriptor for suite_class in SUITE_ORDER
-        for descriptor in suites[suite_class].descriptors
-    )
-    selected = smoke_descriptors(suites) if stage == "smoke" else all_descriptors
+    all_descriptors = _selected_descriptors("full", suites)
+    selected = _selected_descriptors(stage, suites)
     planned_full_tasks = _planned_full_workload(
         all_descriptors,
         max_descriptors_per_subshard=max_descriptors_per_subshard,
     )
     refs: Dict[str, DescriptorRef] = {}
-    plans = _expected_descriptor_plans(selected, provider)
+    if _precomputed_plans is None:
+        plans = _expected_descriptor_plans(selected, provider)
+    else:
+        expected_keys = tuple(_descriptor_key(item) for item in selected)
+        if set(_precomputed_plans) != set(expected_keys) or len(_precomputed_plans) != len(expected_keys):
+            raise RuntimeError("precomputed manifest plans do not have exact descriptor coverage")
+        plans = tuple(_precomputed_plans[key] for key in expected_keys)
     for descriptor, plan in zip(selected, plans):
         key = _descriptor_key(descriptor)
-        methods, tie_count, symmetry_count = plan
-        if not methods or any(method not in TERMINAL_METHOD_ORDER for method in methods):
-            raise RuntimeError(f"invalid frozen method plan for {key}")
-        refs[key] = DescriptorRef(
-            descriptor.suite_class,
-            descriptor.descriptor_index,
-            descriptor.descriptor_hash,
-            methods,
-            tie_count,
-            symmetry_count,
-        )
+        refs[key] = _descriptor_ref(descriptor, plan)
 
     owners = SMOKE_CASE_IDS if stage == "smoke" else tuple(range(90))
     grouped: Dict[int, list[DescriptorRef]] = {owner: [] for owner in owners}
@@ -1148,7 +1442,16 @@ def recompute_provisional(
     acceptance_validator: Callable[[CanonicalBaseProvider], bool],
     output_root: Path,
 ) -> Mapping[str, Any]:
-    validate_execution_manifest(manifest, suites, provider, acceptance_validator)
+    # Every full-array task independently recomputes and checks its assigned plans.
+    # Repeating the complete 90-owner numerical plan in a serial collector would add no
+    # coverage and would erase the intended cross-node speedup.
+    validate_execution_manifest(
+        manifest,
+        suites,
+        provider,
+        acceptance_validator,
+        reconstruct_expected=manifest["stage"] != "full",
+    )
     descriptor_lookup = {
         (suite_class, descriptor.descriptor_index): descriptor
         for suite_class, suite in suites.items() for descriptor in suite.descriptors
@@ -2132,7 +2435,13 @@ def finalize_post_job(
         raise FileExistsError("post-job candidate already exists")
     started = time.perf_counter()
     validate_clean_source_identity(project_root, manifest["source_identity"])
-    validate_execution_manifest(manifest, suites, provider, acceptance_validator)
+    validate_execution_manifest(
+        manifest,
+        suites,
+        provider,
+        acceptance_validator,
+        reconstruct_expected=manifest["stage"] != "full",
+    )
     provisional = _decode(dict(_load_json(provisional_path)))
     scheduler = _decode(dict(_load_json(scheduler_evidence_path)))
     qacct = _decode(dict(_load_json(qacct_audit_path)))
@@ -2250,7 +2559,13 @@ def independent_readback(
     if platform.system() != "Darwin" and not allow_non_darwin_for_tests:
         raise RuntimeError("independent read-back must run on the local Mac")
     validate_clean_source_identity(project_root, manifest["source_identity"])
-    validate_execution_manifest(manifest, suites, provider, acceptance_validator)
+    validate_execution_manifest(
+        manifest,
+        suites,
+        provider,
+        acceptance_validator,
+        reconstruct_expected=manifest["stage"] != "full",
+    )
     provisional = _decode(dict(_load_json(provisional_path)))
     scheduler = _decode(dict(_load_json(scheduler_evidence_path)))
     qacct = _decode(dict(_load_json(qacct_audit_path)))
@@ -2390,6 +2705,8 @@ __all__ = [
     "DescriptorRef",
     "EXECUTION_AUTHORIZATION_SCHEMA",
     "EXECUTION_MANIFEST_SCHEMA",
+    "MANIFEST_PLAN_ASSEMBLY_SCHEMA",
+    "MANIFEST_PLAN_FRAGMENT_SCHEMA",
     "QACCT_AUDIT_SCHEMA",
     "READBACK_SCHEMA",
     "SCHEDULER_EVIDENCE_SCHEMA",
@@ -2402,12 +2719,14 @@ __all__ = [
     "compute_feasibility",
     "create_scheduler_evidence",
     "create_execution_manifest",
+    "create_manifest_plan_fragment",
     "execute_task",
     "execution_script_hashes",
     "finalize_post_job",
     "independent_readback",
     "load_accepted_canonical_base_provider",
     "logical_hash",
+    "merge_manifest_plan_replicates",
     "parse_qacct_records",
     "recompute_provisional",
     "sha256_file",
@@ -2416,6 +2735,7 @@ __all__ = [
     "validate_compute_ceiling_binding",
     "validate_execution_authorization",
     "validate_execution_manifest",
+    "validate_manifest_plan_fragment",
     "validate_task_scheduler_bindings",
     "write_new_json",
 ]

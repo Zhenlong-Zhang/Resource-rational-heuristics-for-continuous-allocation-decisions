@@ -20,6 +20,7 @@ SOURCE_PATHS = (
     "configs/terminal_evidence_numerical_method_v2.json",
     "scripts/terminal_validation_array.py",
     "scripts/submit_hoffman2_terminal_validation.sh",
+    "scripts/submit_hoffman2_terminal_manifest_setup.sh",
     "src/experiments/terminal_evidence_rows.py",
     "src/experiments/terminal_execution.py",
     "src/experiments/terminal_canonical_provider.py",
@@ -53,6 +54,26 @@ def build_parser() -> argparse.ArgumentParser:
     freeze.add_argument("--h-rt-seconds", type=int, required=True)
     freeze.add_argument("--memory-bytes", type=int, required=True)
     freeze.add_argument("--throttle", type=int, required=True)
+
+    fragment = commands.add_parser("freeze-plan-fragment")
+    fragment.add_argument("--stage", choices=("smoke", "full"), required=True)
+    fragment.add_argument("--shard-index", type=int, required=True)
+    fragment.add_argument("--shard-count", type=int, required=True)
+    fragment.add_argument("--output", type=Path, required=True)
+
+    merge = commands.add_parser("merge-plan-fragments")
+    merge.add_argument("--stage", choices=("smoke", "full"), required=True)
+    merge.add_argument("--replicate-a-dir", type=Path, required=True)
+    merge.add_argument("--replicate-b-dir", type=Path, required=True)
+    merge.add_argument("--shard-count", type=int, required=True)
+    merge.add_argument("--output", type=Path, required=True)
+    merge.add_argument("--assembly-output", type=Path, required=True)
+    merge.add_argument("--compute-ceiling", type=Path, required=True)
+    merge.add_argument("--max-descriptors-per-subshard", type=int, default=450)
+    merge.add_argument("--queue", required=True)
+    merge.add_argument("--h-rt-seconds", type=int, required=True)
+    merge.add_argument("--memory-bytes", type=int, required=True)
+    merge.add_argument("--throttle", type=int, required=True)
 
     run = commands.add_parser("run-task")
     run.add_argument("--manifest", type=Path, required=True)
@@ -100,6 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate = commands.add_parser("validate-manifest")
     validate.add_argument("--manifest", type=Path, required=True)
+    validate.add_argument("--structural-only", action="store_true")
 
     authorize = commands.add_parser("validate-authorization")
     authorize.add_argument("--manifest", type=Path, required=True)
@@ -114,7 +136,50 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    if args.command == "freeze-manifest":
+    if args.command == "freeze-plan-fragment":
+        provider, accepted = load_provider(args)
+        suites = execution.build_terminal_suites(provider, accepted)
+        source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
+        fragment = execution.create_manifest_plan_fragment(
+            stage=args.stage,
+            shard_index=args.shard_index,
+            shard_count=args.shard_count,
+            suites=suites,
+            provider=provider,
+            acceptance_validator=accepted,
+            source_identity=source,
+        )
+        execution.write_new_json(args.output, fragment)
+    elif args.command == "merge-plan-fragments":
+        provider, accepted = load_provider(args)
+        suites = execution.build_terminal_suites(provider, accepted)
+        source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
+        ceiling = load(args.compute_ceiling)
+        execution._validate_self_hash(ceiling, "report_hash", "compute ceiling report")
+        names = tuple(f"fragment_{index:03d}.json" for index in range(1, args.shard_count + 1))
+        replicate_a = tuple(load(args.replicate_a_dir / name) for name in names)
+        replicate_b = tuple(load(args.replicate_b_dir / name) for name in names)
+        manifest, assembly = execution.merge_manifest_plan_replicates(
+            stage=args.stage,
+            replicate_a=replicate_a,
+            replicate_b=replicate_b,
+            suites=suites,
+            provider=provider,
+            acceptance_validator=accepted,
+            source_identity=source,
+            max_descriptors_per_subshard=args.max_descriptors_per_subshard,
+            resources={
+                "queue": args.queue,
+                "h_rt_seconds": args.h_rt_seconds,
+                "memory_bytes": args.memory_bytes,
+                "throttle": args.throttle,
+            },
+            compute_ceiling_report_hash=ceiling["report_hash"],
+        )
+        execution.validate_compute_ceiling_binding(manifest, ceiling)
+        execution.write_new_json(args.output, manifest)
+        execution.write_new_json(args.assembly_output, assembly)
+    elif args.command == "freeze-manifest":
         provider, accepted = load_provider(args)
         suites = execution.build_terminal_suites(provider, accepted)
         source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
@@ -168,7 +233,13 @@ def main() -> None:
                 provisional_path=args.output,
             )
         else:
-            execution.validate_execution_manifest(manifest, suites, provider, accepted)
+            execution.validate_execution_manifest(
+                manifest,
+                suites,
+                provider,
+                accepted,
+                reconstruct_expected=not args.structural_only,
+            )
     elif args.command == "record-scheduler":
         manifest = load(args.manifest)
         raw = json.loads(args.submissions.read_text(encoding="utf-8"))

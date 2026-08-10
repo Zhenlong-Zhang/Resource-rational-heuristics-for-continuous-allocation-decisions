@@ -59,7 +59,8 @@ if [[ "$(tr -d '\r\n' < "${REVIEW_VERDICT_FILE}")" != "${required_verdict}" ]]; 
 fi
 
 "${PYTHON_BIN}" scripts/terminal_validation_array.py validate-manifest \
-  --manifest "${MANIFEST}"
+  --manifest "${MANIFEST}" \
+  --structural-only
 
 "${PYTHON_BIN}" scripts/terminal_validation_array.py validate-authorization \
   --manifest "${MANIFEST}" \

@@ -271,6 +271,73 @@ class TerminalExecutionTests(unittest.TestCase):
                     )
         self.assertEqual(observed, expected)
 
+    def test_distributed_plan_replicates_merge_only_after_exact_agreement(self):
+        suites = self.full_suites()
+        identities = SimpleNamespace(
+            scientific_spec_hash="a" * 64,
+            numerical_method_config_hash="b" * 64,
+        )
+        with patch.object(
+            execution,
+            "validate_terminal_validation_suite",
+            return_value=SimpleNamespace(failures=()),
+        ):
+            with patch.object(execution, "canonical_base_provider_failures", return_value=()):
+                with patch.object(
+                    execution, "load_terminal_validation_identities", return_value=identities
+                ):
+                    replicate_a = tuple(
+                        execution.create_manifest_plan_fragment(
+                            stage="full",
+                            shard_index=index,
+                            shard_count=3,
+                            suites=suites,
+                            provider=self.provider,
+                            acceptance_validator=self.accepted,
+                            source_identity=source_identity(),
+                        )
+                        for index in range(1, 4)
+                    )
+                    replicate_b = tuple(dict(item) for item in replicate_a)
+                    manifest, assembly = execution.merge_manifest_plan_replicates(
+                        stage="full",
+                        replicate_a=replicate_a,
+                        replicate_b=replicate_b,
+                        suites=suites,
+                        provider=self.provider,
+                        acceptance_validator=self.accepted,
+                        source_identity=source_identity(),
+                        max_descriptors_per_subshard=50,
+                        resources=resources(),
+                        compute_ceiling_report_hash="1" * 64,
+                    )
+                    self.assertEqual(manifest["expected_descriptor_count"], 180)
+                    self.assertEqual(assembly["fragment_count_per_replicate"], 3)
+                    self.assertTrue(assembly["pairwise_agreement"])
+                    self.assertEqual(assembly["manifest_hash"], manifest["manifest_hash"])
+
+                    forged_b = [dict(item) for item in replicate_b]
+                    forged_b[0] = dict(forged_b[0])
+                    references = [dict(item) for item in forged_b[0]["descriptors"]]
+                    references[0]["expected_tie_row_count"] = 0
+                    forged_b[0]["descriptors"] = tuple(references)
+                    forged_b[0]["fragment_hash"] = execution.logical_hash(
+                        execution._without_hash(forged_b[0], "fragment_hash")
+                    )
+                    with self.assertRaisesRegex(RuntimeError, "replicates disagree"):
+                        execution.merge_manifest_plan_replicates(
+                            stage="full",
+                            replicate_a=replicate_a,
+                            replicate_b=tuple(forged_b),
+                            suites=suites,
+                            provider=self.provider,
+                            acceptance_validator=self.accepted,
+                            source_identity=source_identity(),
+                            max_descriptors_per_subshard=50,
+                            resources=resources(),
+                            compute_ceiling_report_hash="1" * 64,
+                        )
+
     def test_manifest_rejects_all_self_rehashed_coverage_attacks(self):
         manifest, suites = self.make_manifest("smoke")
 
