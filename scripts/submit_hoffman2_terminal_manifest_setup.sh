@@ -33,7 +33,9 @@ submission_file="${SETUP_ROOT}/setup_submissions.tsv"
 : > "${submission_file}"
 
 submit() {
-  local role="$1" job_file="$2" raw_file="${SETUP_ROOT}/qsub_raw/${role}.txt"
+  local role="$1"
+  local job_file="$2"
+  local raw_file="${SETUP_ROOT}/qsub_raw/${role}.txt"
   "${QSUB_BIN}" -terse "${job_file}" > "${raw_file}"
   local raw job_id
   raw="$(tr -d '\r\n' < "${raw_file}")"
