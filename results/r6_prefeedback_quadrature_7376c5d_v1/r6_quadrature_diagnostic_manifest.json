@@ -1,0 +1,1100 @@
+{
+  "analysis": "quadrature_order_screening",
+  "automatic_production_order_freeze": false,
+  "created_at": "2026-08-09T19:36:29.702985+00:00",
+  "dense_reference_case_ids": [
+    0,
+    1,
+    3,
+    4,
+    10,
+    11,
+    13,
+    14,
+    20,
+    21,
+    23,
+    24,
+    30,
+    31,
+    33,
+    34,
+    40,
+    41,
+    43,
+    44,
+    50,
+    51,
+    53,
+    54,
+    60,
+    61,
+    63,
+    64,
+    70,
+    71,
+    73,
+    74,
+    80,
+    81,
+    83,
+    84
+  ],
+  "dense_reference_case_ids_hash": "5820dcef4d221adb507a1e5fbbf31c1ae2fd47a9c4f2948a8d0b486ef22f1486",
+  "diagnostic_only": true,
+  "expected_rows_per_task": 4,
+  "frozen_numerical_settings": {
+    "action_tie_tolerance": 1e-10,
+    "action_value_convergence_tolerance": 0.0001,
+    "allocation_convergence_tolerance": 0.0025,
+    "allocation_tolerance": 0.05,
+    "gauss_hermite_reference_order": 61,
+    "matched_voi_gauss_hermite_order": 31,
+    "oracle_grid_size": 4001,
+    "rr_terminal_grid_size": 401,
+    "rr_terminal_reference_grid_size": 1601
+  },
+  "git_clean_at_creation": true,
+  "git_commit": "7376c5d70cf2520600894853e2a1275e8d0a89e1",
+  "git_tree_hash": "87100610dfea58375147f7c5064430f5a77d5926",
+  "manifest_hash": "c05629107255799ca5f2fe537530c7f892685d2977d2584f1c39393d49b3c197",
+  "numerical_cases": [
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 0,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=0.02",
+      "environment_hash": "12ded995110c39339b11c40658e73f929bafeb45a0a1e8faacae780992c6c1eb"
+    },
+    {
+      "belief_hash": "e332f62d9512125531d9eca7464a0324b178052024e5c91a48c9f32188494f69",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 1,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=0.02",
+      "environment_hash": "12ded995110c39339b11c40658e73f929bafeb45a0a1e8faacae780992c6c1eb"
+    },
+    {
+      "belief_hash": "6f2879fae7ec76c3791808ab6d217228bd8edb9102d8787712cb30f37f855706",
+      "belief_kind": "both_predictive_means",
+      "case_id": 2,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=0.02",
+      "environment_hash": "12ded995110c39339b11c40658e73f929bafeb45a0a1e8faacae780992c6c1eb"
+    },
+    {
+      "belief_hash": "95c25ca7a1ca846d6234c1fa2f29bac62cfed41475a128eebb2082ad541cb2d9",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 3,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=0.02",
+      "environment_hash": "12ded995110c39339b11c40658e73f929bafeb45a0a1e8faacae780992c6c1eb"
+    },
+    {
+      "belief_hash": "4eef8d6030b41e86843061b8fec1c3fe7db0b2faf1cc76b294d659af52cfc264",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 4,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=0.02",
+      "environment_hash": "12ded995110c39339b11c40658e73f929bafeb45a0a1e8faacae780992c6c1eb"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 5,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=8",
+      "environment_hash": "7c628bc7e0ec3d5354988ea4b5859c4fa77b8f2f6521d34638afda3648fb6978"
+    },
+    {
+      "belief_hash": "e332f62d9512125531d9eca7464a0324b178052024e5c91a48c9f32188494f69",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 6,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=8",
+      "environment_hash": "7c628bc7e0ec3d5354988ea4b5859c4fa77b8f2f6521d34638afda3648fb6978"
+    },
+    {
+      "belief_hash": "6f2879fae7ec76c3791808ab6d217228bd8edb9102d8787712cb30f37f855706",
+      "belief_kind": "both_predictive_means",
+      "case_id": 7,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=8",
+      "environment_hash": "7c628bc7e0ec3d5354988ea4b5859c4fa77b8f2f6521d34638afda3648fb6978"
+    },
+    {
+      "belief_hash": "95c25ca7a1ca846d6234c1fa2f29bac62cfed41475a128eebb2082ad541cb2d9",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 8,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=8",
+      "environment_hash": "7c628bc7e0ec3d5354988ea4b5859c4fa77b8f2f6521d34638afda3648fb6978"
+    },
+    {
+      "belief_hash": "4eef8d6030b41e86843061b8fec1c3fe7db0b2faf1cc76b294d659af52cfc264",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 9,
+      "environment": "positive_need_gap=low_sigma=1_sample_cost=8",
+      "environment_hash": "7c628bc7e0ec3d5354988ea4b5859c4fa77b8f2f6521d34638afda3648fb6978"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 10,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=0.02",
+      "environment_hash": "58df3a8530caf5f8fbfc0088e436b2c25e84e3f67d317b6958a25f4eb951b099"
+    },
+    {
+      "belief_hash": "226031b575d14a0a622cc3fdf61e21c60b4d37e01c506651780b8524e4827f1f",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 11,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=0.02",
+      "environment_hash": "58df3a8530caf5f8fbfc0088e436b2c25e84e3f67d317b6958a25f4eb951b099"
+    },
+    {
+      "belief_hash": "6833410853a61f46f6a9d6cc4296246015a13f0edefefadb59c803de6230a3db",
+      "belief_kind": "both_predictive_means",
+      "case_id": 12,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=0.02",
+      "environment_hash": "58df3a8530caf5f8fbfc0088e436b2c25e84e3f67d317b6958a25f4eb951b099"
+    },
+    {
+      "belief_hash": "bea952366bcb5b8310be9749e5565e4edb010a692a6645cba1960d987acd6089",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 13,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=0.02",
+      "environment_hash": "58df3a8530caf5f8fbfc0088e436b2c25e84e3f67d317b6958a25f4eb951b099"
+    },
+    {
+      "belief_hash": "1b6f876bbd0643a416b2e1a0d5404eeee1ffc6e0601e85a0c638225d2314b71c",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 14,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=0.02",
+      "environment_hash": "58df3a8530caf5f8fbfc0088e436b2c25e84e3f67d317b6958a25f4eb951b099"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 15,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=8",
+      "environment_hash": "7c1e625b383ae124cc4bbc18b9452089ae21f9dc7619ad7f612825d3cb275cd8"
+    },
+    {
+      "belief_hash": "226031b575d14a0a622cc3fdf61e21c60b4d37e01c506651780b8524e4827f1f",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 16,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=8",
+      "environment_hash": "7c1e625b383ae124cc4bbc18b9452089ae21f9dc7619ad7f612825d3cb275cd8"
+    },
+    {
+      "belief_hash": "6833410853a61f46f6a9d6cc4296246015a13f0edefefadb59c803de6230a3db",
+      "belief_kind": "both_predictive_means",
+      "case_id": 17,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=8",
+      "environment_hash": "7c1e625b383ae124cc4bbc18b9452089ae21f9dc7619ad7f612825d3cb275cd8"
+    },
+    {
+      "belief_hash": "bea952366bcb5b8310be9749e5565e4edb010a692a6645cba1960d987acd6089",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 18,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=8",
+      "environment_hash": "7c1e625b383ae124cc4bbc18b9452089ae21f9dc7619ad7f612825d3cb275cd8"
+    },
+    {
+      "belief_hash": "1b6f876bbd0643a416b2e1a0d5404eeee1ffc6e0601e85a0c638225d2314b71c",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 19,
+      "environment": "positive_need_gap=low_sigma=2_sample_cost=8",
+      "environment_hash": "7c1e625b383ae124cc4bbc18b9452089ae21f9dc7619ad7f612825d3cb275cd8"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 20,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=0.02",
+      "environment_hash": "280f26b1acb43c3957f413d15604e102b26fdbb0f396d91d18bb616db1fedf03"
+    },
+    {
+      "belief_hash": "32077d9c3a3ff5d8392317f3708cd2f5db4d4cac98765edf9175d9620cd0a0c9",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 21,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=0.02",
+      "environment_hash": "280f26b1acb43c3957f413d15604e102b26fdbb0f396d91d18bb616db1fedf03"
+    },
+    {
+      "belief_hash": "b2262aabf56f97d59c3e09af49962b5265c47eb12ac83544ecfb6b6add763dcb",
+      "belief_kind": "both_predictive_means",
+      "case_id": 22,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=0.02",
+      "environment_hash": "280f26b1acb43c3957f413d15604e102b26fdbb0f396d91d18bb616db1fedf03"
+    },
+    {
+      "belief_hash": "f14fd940421ec5eb64d19624fe5a2e78d7e7db3ca6edca02c09708fbd94e7bfb",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 23,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=0.02",
+      "environment_hash": "280f26b1acb43c3957f413d15604e102b26fdbb0f396d91d18bb616db1fedf03"
+    },
+    {
+      "belief_hash": "f8bd999fb547310e7383a4db816a5a43e813ddb5d56d831f53d46d2f0a83906f",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 24,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=0.02",
+      "environment_hash": "280f26b1acb43c3957f413d15604e102b26fdbb0f396d91d18bb616db1fedf03"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 25,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=8",
+      "environment_hash": "ff8490b0ff391689a218a0a9464fabd9acd4d21d54685993a62cb4478aa09f3b"
+    },
+    {
+      "belief_hash": "32077d9c3a3ff5d8392317f3708cd2f5db4d4cac98765edf9175d9620cd0a0c9",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 26,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=8",
+      "environment_hash": "ff8490b0ff391689a218a0a9464fabd9acd4d21d54685993a62cb4478aa09f3b"
+    },
+    {
+      "belief_hash": "b2262aabf56f97d59c3e09af49962b5265c47eb12ac83544ecfb6b6add763dcb",
+      "belief_kind": "both_predictive_means",
+      "case_id": 27,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=8",
+      "environment_hash": "ff8490b0ff391689a218a0a9464fabd9acd4d21d54685993a62cb4478aa09f3b"
+    },
+    {
+      "belief_hash": "f14fd940421ec5eb64d19624fe5a2e78d7e7db3ca6edca02c09708fbd94e7bfb",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 28,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=8",
+      "environment_hash": "ff8490b0ff391689a218a0a9464fabd9acd4d21d54685993a62cb4478aa09f3b"
+    },
+    {
+      "belief_hash": "f8bd999fb547310e7383a4db816a5a43e813ddb5d56d831f53d46d2f0a83906f",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 29,
+      "environment": "positive_need_gap=low_sigma=4_sample_cost=8",
+      "environment_hash": "ff8490b0ff391689a218a0a9464fabd9acd4d21d54685993a62cb4478aa09f3b"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 30,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=0.02",
+      "environment_hash": "3e62553b23f2c78418d8fe3caebea16edc22392d3d3245513ddf1f72028447f3"
+    },
+    {
+      "belief_hash": "540b1d45017fcd11123e7f149c4b916131491dbd8966b6c08a78146a4c411603",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 31,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=0.02",
+      "environment_hash": "3e62553b23f2c78418d8fe3caebea16edc22392d3d3245513ddf1f72028447f3"
+    },
+    {
+      "belief_hash": "60c755012697fb8343773d831cb8e3accde51470df73e5dbd8d048d95570d588",
+      "belief_kind": "both_predictive_means",
+      "case_id": 32,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=0.02",
+      "environment_hash": "3e62553b23f2c78418d8fe3caebea16edc22392d3d3245513ddf1f72028447f3"
+    },
+    {
+      "belief_hash": "7922132869463f11a4dee0639d555fbfe09233d077cf0f85b9b8bc245eacfeec",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 33,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=0.02",
+      "environment_hash": "3e62553b23f2c78418d8fe3caebea16edc22392d3d3245513ddf1f72028447f3"
+    },
+    {
+      "belief_hash": "66b552b719cbfeb6d78ae8c8c9879e26569a6c9e4b2fed2352523679e1ec785a",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 34,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=0.02",
+      "environment_hash": "3e62553b23f2c78418d8fe3caebea16edc22392d3d3245513ddf1f72028447f3"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 35,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=8",
+      "environment_hash": "ba34559628606e6bb2013664af3d24d75f2e12707adfa6a38e942e72c6438096"
+    },
+    {
+      "belief_hash": "540b1d45017fcd11123e7f149c4b916131491dbd8966b6c08a78146a4c411603",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 36,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=8",
+      "environment_hash": "ba34559628606e6bb2013664af3d24d75f2e12707adfa6a38e942e72c6438096"
+    },
+    {
+      "belief_hash": "60c755012697fb8343773d831cb8e3accde51470df73e5dbd8d048d95570d588",
+      "belief_kind": "both_predictive_means",
+      "case_id": 37,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=8",
+      "environment_hash": "ba34559628606e6bb2013664af3d24d75f2e12707adfa6a38e942e72c6438096"
+    },
+    {
+      "belief_hash": "7922132869463f11a4dee0639d555fbfe09233d077cf0f85b9b8bc245eacfeec",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 38,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=8",
+      "environment_hash": "ba34559628606e6bb2013664af3d24d75f2e12707adfa6a38e942e72c6438096"
+    },
+    {
+      "belief_hash": "66b552b719cbfeb6d78ae8c8c9879e26569a6c9e4b2fed2352523679e1ec785a",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 39,
+      "environment": "positive_need_gap=medium_sigma=1_sample_cost=8",
+      "environment_hash": "ba34559628606e6bb2013664af3d24d75f2e12707adfa6a38e942e72c6438096"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 40,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=0.02",
+      "environment_hash": "e37c1da13e7a53f6d773e62b460087a0abf5396ba7e8b9c779b626140969fb0e"
+    },
+    {
+      "belief_hash": "986bf3c94bf9e2ca27f14aa2c9cfc48906916f0e315a2af6dfbb415ff105bb53",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 41,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=0.02",
+      "environment_hash": "e37c1da13e7a53f6d773e62b460087a0abf5396ba7e8b9c779b626140969fb0e"
+    },
+    {
+      "belief_hash": "2984f5cc5b0a536cc76550541bd5d304472a69e6ba921ebe2584c2394ef81743",
+      "belief_kind": "both_predictive_means",
+      "case_id": 42,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=0.02",
+      "environment_hash": "e37c1da13e7a53f6d773e62b460087a0abf5396ba7e8b9c779b626140969fb0e"
+    },
+    {
+      "belief_hash": "5e420b024002189c13f3130e01c68dd9d8c4267be17ddee5ad47b184e167e00e",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 43,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=0.02",
+      "environment_hash": "e37c1da13e7a53f6d773e62b460087a0abf5396ba7e8b9c779b626140969fb0e"
+    },
+    {
+      "belief_hash": "0ff0cfa98e64708a03382baa40fa674ed902a8c3b877dbf8b5dda5c1cca132c8",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 44,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=0.02",
+      "environment_hash": "e37c1da13e7a53f6d773e62b460087a0abf5396ba7e8b9c779b626140969fb0e"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 45,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=8",
+      "environment_hash": "6c2cd5c4d0e32078ea3a4879b4c58026f553e35eb99958a140a85142fba0d224"
+    },
+    {
+      "belief_hash": "986bf3c94bf9e2ca27f14aa2c9cfc48906916f0e315a2af6dfbb415ff105bb53",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 46,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=8",
+      "environment_hash": "6c2cd5c4d0e32078ea3a4879b4c58026f553e35eb99958a140a85142fba0d224"
+    },
+    {
+      "belief_hash": "2984f5cc5b0a536cc76550541bd5d304472a69e6ba921ebe2584c2394ef81743",
+      "belief_kind": "both_predictive_means",
+      "case_id": 47,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=8",
+      "environment_hash": "6c2cd5c4d0e32078ea3a4879b4c58026f553e35eb99958a140a85142fba0d224"
+    },
+    {
+      "belief_hash": "5e420b024002189c13f3130e01c68dd9d8c4267be17ddee5ad47b184e167e00e",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 48,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=8",
+      "environment_hash": "6c2cd5c4d0e32078ea3a4879b4c58026f553e35eb99958a140a85142fba0d224"
+    },
+    {
+      "belief_hash": "0ff0cfa98e64708a03382baa40fa674ed902a8c3b877dbf8b5dda5c1cca132c8",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 49,
+      "environment": "positive_need_gap=medium_sigma=2_sample_cost=8",
+      "environment_hash": "6c2cd5c4d0e32078ea3a4879b4c58026f553e35eb99958a140a85142fba0d224"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 50,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=0.02",
+      "environment_hash": "44dd95b3a48a42dd11c07e67f9dd8776d185de9802797c1d44b4869d4be1cce2"
+    },
+    {
+      "belief_hash": "30127f6cacb25f135f2b9ee08551cdbad2eded0eadfaa9898ece1f3ae393d01a",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 51,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=0.02",
+      "environment_hash": "44dd95b3a48a42dd11c07e67f9dd8776d185de9802797c1d44b4869d4be1cce2"
+    },
+    {
+      "belief_hash": "03197b31a8fd002945441b1a03dc0e3074a57d06c6dadd2b62b33f9dcdfaad37",
+      "belief_kind": "both_predictive_means",
+      "case_id": 52,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=0.02",
+      "environment_hash": "44dd95b3a48a42dd11c07e67f9dd8776d185de9802797c1d44b4869d4be1cce2"
+    },
+    {
+      "belief_hash": "a16c1b1aadfb85f3f1967d75536d551eba25fb501143fc6f5ce5e5e35704ef70",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 53,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=0.02",
+      "environment_hash": "44dd95b3a48a42dd11c07e67f9dd8776d185de9802797c1d44b4869d4be1cce2"
+    },
+    {
+      "belief_hash": "2193e0049db4a69d03076d6f8bb71b00714ffb8f21cc8ac105a3ad5f8433257e",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 54,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=0.02",
+      "environment_hash": "44dd95b3a48a42dd11c07e67f9dd8776d185de9802797c1d44b4869d4be1cce2"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 55,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=8",
+      "environment_hash": "9b43fa28f48f50580866895c65fe32a6b004b6616c6de9c6b58fc270e06ac821"
+    },
+    {
+      "belief_hash": "30127f6cacb25f135f2b9ee08551cdbad2eded0eadfaa9898ece1f3ae393d01a",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 56,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=8",
+      "environment_hash": "9b43fa28f48f50580866895c65fe32a6b004b6616c6de9c6b58fc270e06ac821"
+    },
+    {
+      "belief_hash": "03197b31a8fd002945441b1a03dc0e3074a57d06c6dadd2b62b33f9dcdfaad37",
+      "belief_kind": "both_predictive_means",
+      "case_id": 57,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=8",
+      "environment_hash": "9b43fa28f48f50580866895c65fe32a6b004b6616c6de9c6b58fc270e06ac821"
+    },
+    {
+      "belief_hash": "a16c1b1aadfb85f3f1967d75536d551eba25fb501143fc6f5ce5e5e35704ef70",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 58,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=8",
+      "environment_hash": "9b43fa28f48f50580866895c65fe32a6b004b6616c6de9c6b58fc270e06ac821"
+    },
+    {
+      "belief_hash": "2193e0049db4a69d03076d6f8bb71b00714ffb8f21cc8ac105a3ad5f8433257e",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 59,
+      "environment": "positive_need_gap=medium_sigma=4_sample_cost=8",
+      "environment_hash": "9b43fa28f48f50580866895c65fe32a6b004b6616c6de9c6b58fc270e06ac821"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 60,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=0.02",
+      "environment_hash": "ab6b101f0e688d0212a99a674174a3fb004dcfe036900ae07889c9c292dd2892"
+    },
+    {
+      "belief_hash": "2fdc1c1f987a3614ea4ae6d9a7c52b7be85255852ce66478f179d660f5273051",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 61,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=0.02",
+      "environment_hash": "ab6b101f0e688d0212a99a674174a3fb004dcfe036900ae07889c9c292dd2892"
+    },
+    {
+      "belief_hash": "ebce8d1ee16572a73791de4e0e7e535faebc6f249a0a2902caa040622b587827",
+      "belief_kind": "both_predictive_means",
+      "case_id": 62,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=0.02",
+      "environment_hash": "ab6b101f0e688d0212a99a674174a3fb004dcfe036900ae07889c9c292dd2892"
+    },
+    {
+      "belief_hash": "89abed2d6b666157cec8fd6a2a217dc172c083e2dfb5cb7c0e16f3d44ce271db",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 63,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=0.02",
+      "environment_hash": "ab6b101f0e688d0212a99a674174a3fb004dcfe036900ae07889c9c292dd2892"
+    },
+    {
+      "belief_hash": "9728cd1978acff9d8cc3e0bd70df6c043e21392a3357273e62c34460123c8a73",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 64,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=0.02",
+      "environment_hash": "ab6b101f0e688d0212a99a674174a3fb004dcfe036900ae07889c9c292dd2892"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 65,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=8",
+      "environment_hash": "74b9661f7e3227f4e175e88a1e2cea836ec76d8ab8474b4d0e69f5918befb958"
+    },
+    {
+      "belief_hash": "2fdc1c1f987a3614ea4ae6d9a7c52b7be85255852ce66478f179d660f5273051",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 66,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=8",
+      "environment_hash": "74b9661f7e3227f4e175e88a1e2cea836ec76d8ab8474b4d0e69f5918befb958"
+    },
+    {
+      "belief_hash": "ebce8d1ee16572a73791de4e0e7e535faebc6f249a0a2902caa040622b587827",
+      "belief_kind": "both_predictive_means",
+      "case_id": 67,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=8",
+      "environment_hash": "74b9661f7e3227f4e175e88a1e2cea836ec76d8ab8474b4d0e69f5918befb958"
+    },
+    {
+      "belief_hash": "89abed2d6b666157cec8fd6a2a217dc172c083e2dfb5cb7c0e16f3d44ce271db",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 68,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=8",
+      "environment_hash": "74b9661f7e3227f4e175e88a1e2cea836ec76d8ab8474b4d0e69f5918befb958"
+    },
+    {
+      "belief_hash": "9728cd1978acff9d8cc3e0bd70df6c043e21392a3357273e62c34460123c8a73",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 69,
+      "environment": "positive_need_gap=high_sigma=1_sample_cost=8",
+      "environment_hash": "74b9661f7e3227f4e175e88a1e2cea836ec76d8ab8474b4d0e69f5918befb958"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 70,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=0.02",
+      "environment_hash": "7cf3d6bdc920b02afcd4537e2f486c174b2787f0e0586a7f8972f87431fd98be"
+    },
+    {
+      "belief_hash": "1b800ed2dd545b9f317938244b4259eff31bf26f0001677141fb63d094a7eaf7",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 71,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=0.02",
+      "environment_hash": "7cf3d6bdc920b02afcd4537e2f486c174b2787f0e0586a7f8972f87431fd98be"
+    },
+    {
+      "belief_hash": "facf245285e21cb6b8e98b7af380d30ece154fb4d390447a42443512ee6b863a",
+      "belief_kind": "both_predictive_means",
+      "case_id": 72,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=0.02",
+      "environment_hash": "7cf3d6bdc920b02afcd4537e2f486c174b2787f0e0586a7f8972f87431fd98be"
+    },
+    {
+      "belief_hash": "f3c0e482ac720faa72a929eb3b5cacd7e44b35727e4fc08407d12dace600ef9e",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 73,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=0.02",
+      "environment_hash": "7cf3d6bdc920b02afcd4537e2f486c174b2787f0e0586a7f8972f87431fd98be"
+    },
+    {
+      "belief_hash": "bfe38e89bb184d147ede279931f586a6b0cab10a9183f7346a16ad674c38193f",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 74,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=0.02",
+      "environment_hash": "7cf3d6bdc920b02afcd4537e2f486c174b2787f0e0586a7f8972f87431fd98be"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 75,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=8",
+      "environment_hash": "d1c6382f4716fad8bafe0ce403d9f94662f7e54132e003c396a9aa260f288906"
+    },
+    {
+      "belief_hash": "1b800ed2dd545b9f317938244b4259eff31bf26f0001677141fb63d094a7eaf7",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 76,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=8",
+      "environment_hash": "d1c6382f4716fad8bafe0ce403d9f94662f7e54132e003c396a9aa260f288906"
+    },
+    {
+      "belief_hash": "facf245285e21cb6b8e98b7af380d30ece154fb4d390447a42443512ee6b863a",
+      "belief_kind": "both_predictive_means",
+      "case_id": 77,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=8",
+      "environment_hash": "d1c6382f4716fad8bafe0ce403d9f94662f7e54132e003c396a9aa260f288906"
+    },
+    {
+      "belief_hash": "f3c0e482ac720faa72a929eb3b5cacd7e44b35727e4fc08407d12dace600ef9e",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 78,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=8",
+      "environment_hash": "d1c6382f4716fad8bafe0ce403d9f94662f7e54132e003c396a9aa260f288906"
+    },
+    {
+      "belief_hash": "bfe38e89bb184d147ede279931f586a6b0cab10a9183f7346a16ad674c38193f",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 79,
+      "environment": "positive_need_gap=high_sigma=2_sample_cost=8",
+      "environment_hash": "d1c6382f4716fad8bafe0ce403d9f94662f7e54132e003c396a9aa260f288906"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 80,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=0.02",
+      "environment_hash": "2c6a3dbe9794e65044728e3dd6ad5d0c2a69e46e2f2bcbf1ce041013571b352e"
+    },
+    {
+      "belief_hash": "c217d8e14d1c60372b0bcb95bc64c6b6f366d3861508c86af23fe94c864baa7d",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 81,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=0.02",
+      "environment_hash": "2c6a3dbe9794e65044728e3dd6ad5d0c2a69e46e2f2bcbf1ce041013571b352e"
+    },
+    {
+      "belief_hash": "367c1ba97f6ecee2a2e2ca1f1eefb6b70ab124fee7ff0369776c174d78c2d3aa",
+      "belief_kind": "both_predictive_means",
+      "case_id": 82,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=0.02",
+      "environment_hash": "2c6a3dbe9794e65044728e3dd6ad5d0c2a69e46e2f2bcbf1ce041013571b352e"
+    },
+    {
+      "belief_hash": "8ca8c15263c58e15be8208376ec7ef11b2642aa1fb4ca13745a2923d75a8f795",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 83,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=0.02",
+      "environment_hash": "2c6a3dbe9794e65044728e3dd6ad5d0c2a69e46e2f2bcbf1ce041013571b352e"
+    },
+    {
+      "belief_hash": "435c6653e1d2a203f32dd5d4d72fd389cbbe01df5ed5e894e705fb9cb5c79ec6",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 84,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=0.02",
+      "environment_hash": "2c6a3dbe9794e65044728e3dd6ad5d0c2a69e46e2f2bcbf1ce041013571b352e"
+    },
+    {
+      "belief_hash": "ce5637a461d43afd6ceba257ea7660d8818ff67c9cf778cc20ceefe7093e3bbc",
+      "belief_kind": "uniform_prior",
+      "case_id": 85,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=8",
+      "environment_hash": "82ec09bd988f438a2bfd909274f4ece34e4fac6382c1a484e5d66a69a226b5c0"
+    },
+    {
+      "belief_hash": "c217d8e14d1c60372b0bcb95bc64c6b6f366d3861508c86af23fe94c864baa7d",
+      "belief_kind": "person1_predictive_mean",
+      "case_id": 86,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=8",
+      "environment_hash": "82ec09bd988f438a2bfd909274f4ece34e4fac6382c1a484e5d66a69a226b5c0"
+    },
+    {
+      "belief_hash": "367c1ba97f6ecee2a2e2ca1f1eefb6b70ab124fee7ff0369776c174d78c2d3aa",
+      "belief_kind": "both_predictive_means",
+      "case_id": 87,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=8",
+      "environment_hash": "82ec09bd988f438a2bfd909274f4ece34e4fac6382c1a484e5d66a69a226b5c0"
+    },
+    {
+      "belief_hash": "8ca8c15263c58e15be8208376ec7ef11b2642aa1fb4ca13745a2923d75a8f795",
+      "belief_kind": "person1_minimum_support",
+      "case_id": 88,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=8",
+      "environment_hash": "82ec09bd988f438a2bfd909274f4ece34e4fac6382c1a484e5d66a69a226b5c0"
+    },
+    {
+      "belief_hash": "435c6653e1d2a203f32dd5d4d72fd389cbbe01df5ed5e894e705fb9cb5c79ec6",
+      "belief_kind": "person1_maximum_support",
+      "case_id": 89,
+      "environment": "positive_need_gap=high_sigma=4_sample_cost=8",
+      "environment_hash": "82ec09bd988f438a2bfd909274f4ece34e4fac6382c1a484e5d66a69a226b5c0"
+    }
+  ],
+  "numerical_cases_hash": "90354e48a36283225b221360c91b07c21ad369fb7f6a8f8191d7f5ed85ef132b",
+  "order_pairs": [
+    [
+      51,
+      101
+    ],
+    [
+      61,
+      121
+    ],
+    [
+      81,
+      161
+    ],
+    [
+      101,
+      201
+    ]
+  ],
+  "runtime": {
+    "hostname": "login4",
+    "numpy": "2.3.1",
+    "python": "3.11.13"
+  },
+  "schema_version": 2,
+  "source_hashes": {
+    "configs/r6_prefeedback_positive_need.json": "9f3152419a6c3ef46cd33baefe6a13f00dc80004025f1fb2f1d2b08f9e307e10",
+    "scripts/r6_prefeedback_workflow.py": "9a64460e33940e4b3ac96ab1238c351acb7c00719e199bfbf971ee7b73df5ca4",
+    "scripts/r6_quadrature_array.py": "616631cbae819740de1abc02c5072a4f9aa3402180eed961dfa2b4bbe0a49085",
+    "scripts/r6_scheduler.sh": "d9bcfaf6a88e24d284eeca1b2805a1c5ca822e5ed4dbb0f02cb7e876f77e1874",
+    "scripts/submit_hoffman2_r6_prefeedback.sh": "d76af51cf4ba806118aafb0e0c5374754aa546df042f8f6346997974fc110cbf",
+    "scripts/submit_hoffman2_r6_quadrature_array.sh": "259acdbc780da188fe56ecd78d825266ce95c073c16c3123ce56542909226f95",
+    "src/experiments/r5.py": "794e7a6b23912bae51ff561f269907e908349b716d314b8c5eeb5950b3609321",
+    "src/experiments/r6_prefeedback_positive_need.py": "507e1b3f445a010f66669a29a7e1ef6a65777a71d88c83dc0c83bf7e1df90c47",
+    "src/experiments/randomization.py": "f759f3d715277dee366db5aa2e5ec7b753bc08a571164b476317b25944a3a028",
+    "src/experiments/regimes.py": "5020f40654c382e916fbf8b34b4c948cc538abdfe28f2804ffe72a0386f26f4a",
+    "src/mdp/finite_support.py": "9c2287751c0f050161932ce4192eafd42bcbd80a8b29c22e4d2da44cdc7754a8",
+    "src/mdp/meta_mdp.py": "c534be41a041a51d8268a32bc04412356192aeeb080499e61663ad7e9e86162c",
+    "src/policies/finite_support_voi.py": "3d1e834dc4995a4e79c46316b8af9758fb3fe314cbc6f709c2ad451bbe04a2f0",
+    "src/policies/heuristic.py": "60d73cf14cd6b001fd7f603a01eb0961ed30eaee52ea26860ffaebbabe51731a",
+    "src/solvers/gauss_hermite.py": "ec212cb23b1dadf47f3786002e81a37f1d33beab477e3b7c0874a218797abacc"
+  },
+  "spec_hash": "9f3152419a6c3ef46cd33baefe6a13f00dc80004025f1fb2f1d2b08f9e307e10",
+  "spec_path": "configs/r6_prefeedback_positive_need.json",
+  "task_count": 90,
+  "tasks": [
+    {
+      "case_id": 0,
+      "task_index": 0
+    },
+    {
+      "case_id": 1,
+      "task_index": 1
+    },
+    {
+      "case_id": 2,
+      "task_index": 2
+    },
+    {
+      "case_id": 3,
+      "task_index": 3
+    },
+    {
+      "case_id": 4,
+      "task_index": 4
+    },
+    {
+      "case_id": 5,
+      "task_index": 5
+    },
+    {
+      "case_id": 6,
+      "task_index": 6
+    },
+    {
+      "case_id": 7,
+      "task_index": 7
+    },
+    {
+      "case_id": 8,
+      "task_index": 8
+    },
+    {
+      "case_id": 9,
+      "task_index": 9
+    },
+    {
+      "case_id": 10,
+      "task_index": 10
+    },
+    {
+      "case_id": 11,
+      "task_index": 11
+    },
+    {
+      "case_id": 12,
+      "task_index": 12
+    },
+    {
+      "case_id": 13,
+      "task_index": 13
+    },
+    {
+      "case_id": 14,
+      "task_index": 14
+    },
+    {
+      "case_id": 15,
+      "task_index": 15
+    },
+    {
+      "case_id": 16,
+      "task_index": 16
+    },
+    {
+      "case_id": 17,
+      "task_index": 17
+    },
+    {
+      "case_id": 18,
+      "task_index": 18
+    },
+    {
+      "case_id": 19,
+      "task_index": 19
+    },
+    {
+      "case_id": 20,
+      "task_index": 20
+    },
+    {
+      "case_id": 21,
+      "task_index": 21
+    },
+    {
+      "case_id": 22,
+      "task_index": 22
+    },
+    {
+      "case_id": 23,
+      "task_index": 23
+    },
+    {
+      "case_id": 24,
+      "task_index": 24
+    },
+    {
+      "case_id": 25,
+      "task_index": 25
+    },
+    {
+      "case_id": 26,
+      "task_index": 26
+    },
+    {
+      "case_id": 27,
+      "task_index": 27
+    },
+    {
+      "case_id": 28,
+      "task_index": 28
+    },
+    {
+      "case_id": 29,
+      "task_index": 29
+    },
+    {
+      "case_id": 30,
+      "task_index": 30
+    },
+    {
+      "case_id": 31,
+      "task_index": 31
+    },
+    {
+      "case_id": 32,
+      "task_index": 32
+    },
+    {
+      "case_id": 33,
+      "task_index": 33
+    },
+    {
+      "case_id": 34,
+      "task_index": 34
+    },
+    {
+      "case_id": 35,
+      "task_index": 35
+    },
+    {
+      "case_id": 36,
+      "task_index": 36
+    },
+    {
+      "case_id": 37,
+      "task_index": 37
+    },
+    {
+      "case_id": 38,
+      "task_index": 38
+    },
+    {
+      "case_id": 39,
+      "task_index": 39
+    },
+    {
+      "case_id": 40,
+      "task_index": 40
+    },
+    {
+      "case_id": 41,
+      "task_index": 41
+    },
+    {
+      "case_id": 42,
+      "task_index": 42
+    },
+    {
+      "case_id": 43,
+      "task_index": 43
+    },
+    {
+      "case_id": 44,
+      "task_index": 44
+    },
+    {
+      "case_id": 45,
+      "task_index": 45
+    },
+    {
+      "case_id": 46,
+      "task_index": 46
+    },
+    {
+      "case_id": 47,
+      "task_index": 47
+    },
+    {
+      "case_id": 48,
+      "task_index": 48
+    },
+    {
+      "case_id": 49,
+      "task_index": 49
+    },
+    {
+      "case_id": 50,
+      "task_index": 50
+    },
+    {
+      "case_id": 51,
+      "task_index": 51
+    },
+    {
+      "case_id": 52,
+      "task_index": 52
+    },
+    {
+      "case_id": 53,
+      "task_index": 53
+    },
+    {
+      "case_id": 54,
+      "task_index": 54
+    },
+    {
+      "case_id": 55,
+      "task_index": 55
+    },
+    {
+      "case_id": 56,
+      "task_index": 56
+    },
+    {
+      "case_id": 57,
+      "task_index": 57
+    },
+    {
+      "case_id": 58,
+      "task_index": 58
+    },
+    {
+      "case_id": 59,
+      "task_index": 59
+    },
+    {
+      "case_id": 60,
+      "task_index": 60
+    },
+    {
+      "case_id": 61,
+      "task_index": 61
+    },
+    {
+      "case_id": 62,
+      "task_index": 62
+    },
+    {
+      "case_id": 63,
+      "task_index": 63
+    },
+    {
+      "case_id": 64,
+      "task_index": 64
+    },
+    {
+      "case_id": 65,
+      "task_index": 65
+    },
+    {
+      "case_id": 66,
+      "task_index": 66
+    },
+    {
+      "case_id": 67,
+      "task_index": 67
+    },
+    {
+      "case_id": 68,
+      "task_index": 68
+    },
+    {
+      "case_id": 69,
+      "task_index": 69
+    },
+    {
+      "case_id": 70,
+      "task_index": 70
+    },
+    {
+      "case_id": 71,
+      "task_index": 71
+    },
+    {
+      "case_id": 72,
+      "task_index": 72
+    },
+    {
+      "case_id": 73,
+      "task_index": 73
+    },
+    {
+      "case_id": 74,
+      "task_index": 74
+    },
+    {
+      "case_id": 75,
+      "task_index": 75
+    },
+    {
+      "case_id": 76,
+      "task_index": 76
+    },
+    {
+      "case_id": 77,
+      "task_index": 77
+    },
+    {
+      "case_id": 78,
+      "task_index": 78
+    },
+    {
+      "case_id": 79,
+      "task_index": 79
+    },
+    {
+      "case_id": 80,
+      "task_index": 80
+    },
+    {
+      "case_id": 81,
+      "task_index": 81
+    },
+    {
+      "case_id": 82,
+      "task_index": 82
+    },
+    {
+      "case_id": 83,
+      "task_index": 83
+    },
+    {
+      "case_id": 84,
+      "task_index": 84
+    },
+    {
+      "case_id": 85,
+      "task_index": 85
+    },
+    {
+      "case_id": 86,
+      "task_index": 86
+    },
+    {
+      "case_id": 87,
+      "task_index": 87
+    },
+    {
+      "case_id": 88,
+      "task_index": 88
+    },
+    {
+      "case_id": 89,
+      "task_index": 89
+    }
+  ]
+}
