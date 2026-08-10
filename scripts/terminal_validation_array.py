@@ -138,7 +138,9 @@ def main() -> None:
     args = build_parser().parse_args()
     if args.command == "freeze-plan-fragment":
         provider, accepted = load_provider(args)
-        suites = execution.build_terminal_suites(provider, accepted)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
         source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
         fragment = execution.create_manifest_plan_fragment(
             stage=args.stage,
@@ -152,7 +154,9 @@ def main() -> None:
         execution.write_new_json(args.output, fragment)
     elif args.command == "merge-plan-fragments":
         provider, accepted = load_provider(args)
-        suites = execution.build_terminal_suites(provider, accepted)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
         source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
         ceiling = load(args.compute_ceiling)
         execution._validate_self_hash(ceiling, "report_hash", "compute ceiling report")
@@ -181,7 +185,9 @@ def main() -> None:
         execution.write_new_json(args.assembly_output, assembly)
     elif args.command == "freeze-manifest":
         provider, accepted = load_provider(args)
-        suites = execution.build_terminal_suites(provider, accepted)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
         source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
         ceiling = load(args.compute_ceiling)
         execution._validate_self_hash(ceiling, "report_hash", "compute ceiling report")
@@ -206,7 +212,9 @@ def main() -> None:
     elif args.command in ("run-task", "collect-provisional", "validate-manifest"):
         manifest = load(args.manifest)
         provider, accepted = load_provider(args)
-        suites = execution.build_terminal_suites(provider, accepted)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
         execution.validate_clean_source_identity(PROJECT_ROOT, manifest["source_identity"])
         if args.command == "run-task":
             task_id = args.task_id
@@ -276,7 +284,9 @@ def main() -> None:
         )
     elif args.command == "finalize-post-job":
         provider, accepted = load_provider(args)
-        suites = execution.build_terminal_suites(provider, accepted)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
         execution.finalize_post_job(
             manifest=load(args.manifest),
             suites=suites,
@@ -293,7 +303,9 @@ def main() -> None:
         )
     elif args.command == "independent-readback":
         provider, accepted = load_provider(args)
-        suites = execution.build_terminal_suites(provider, accepted)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
         execution.independent_readback(
             manifest=load(args.manifest),
             suites=suites,

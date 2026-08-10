@@ -271,6 +271,39 @@ class TerminalExecutionTests(unittest.TestCase):
                     )
         self.assertEqual(observed, expected)
 
+    def test_fast_suite_build_skips_only_redundant_content_validation(self):
+        suites = self.full_suites()
+        identities = SimpleNamespace(
+            scientific_spec_hash="a" * 64,
+            numerical_method_config_hash="b" * 64,
+        )
+        validation = SimpleNamespace(
+            failures=(), authoritative_source_accepted=True
+        )
+        with patch.object(
+            execution, "load_terminal_validation_identities", return_value=identities
+        ), patch.object(
+            execution, "build_terminal_base_suite", return_value=suites["base"]
+        ), patch.object(
+            execution, "build_terminal_one_step_suite", return_value=suites["one_step"]
+        ), patch.object(
+            execution,
+            "build_terminal_reachable_core_suite",
+            return_value=suites["reachable_core"],
+        ), patch.object(
+            execution,
+            "validate_terminal_validation_suite",
+            return_value=validation,
+        ) as validate_suite:
+            observed = execution.build_terminal_suites(
+                self.provider, self.accepted, validate_contents=False
+            )
+            self.assertEqual(observed, suites)
+            validate_suite.assert_not_called()
+
+            execution.build_terminal_suites(self.provider, self.accepted)
+            self.assertEqual(validate_suite.call_count, 3)
+
     def test_distributed_plan_replicates_merge_only_after_exact_agreement(self):
         suites = self.full_suites()
         identities = SimpleNamespace(
@@ -281,7 +314,7 @@ class TerminalExecutionTests(unittest.TestCase):
             execution,
             "validate_terminal_validation_suite",
             return_value=SimpleNamespace(failures=()),
-        ):
+        ) as validate_suite:
             with patch.object(execution, "canonical_base_provider_failures", return_value=()):
                 with patch.object(
                     execution, "load_terminal_validation_identities", return_value=identities
@@ -299,6 +332,7 @@ class TerminalExecutionTests(unittest.TestCase):
                         for index in range(1, 4)
                     )
                     replicate_b = tuple(dict(item) for item in replicate_a)
+                    validate_suite.assert_not_called()
                     manifest, assembly = execution.merge_manifest_plan_replicates(
                         stage="full",
                         replicate_a=replicate_a,
@@ -315,6 +349,7 @@ class TerminalExecutionTests(unittest.TestCase):
                     self.assertEqual(assembly["fragment_count_per_replicate"], 3)
                     self.assertTrue(assembly["pairwise_agreement"])
                     self.assertEqual(assembly["manifest_hash"], manifest["manifest_hash"])
+                    self.assertEqual(validate_suite.call_count, 3)
 
                     forged_b = [dict(item) for item in replicate_b]
                     forged_b[0] = dict(forged_b[0])
@@ -337,6 +372,7 @@ class TerminalExecutionTests(unittest.TestCase):
                             resources=resources(),
                             compute_ceiling_report_hash="1" * 64,
                         )
+                    self.assertEqual(validate_suite.call_count, 6)
 
     def test_manifest_rejects_all_self_rehashed_coverage_attacks(self):
         manifest, suites = self.make_manifest("smoke")

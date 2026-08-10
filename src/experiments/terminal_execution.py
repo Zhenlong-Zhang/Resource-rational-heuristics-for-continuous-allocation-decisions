@@ -438,6 +438,8 @@ def validate_execution_authorization(
 def build_terminal_suites(
     provider: CanonicalBaseProvider,
     acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]] = None,
+    *,
+    validate_contents: bool = True,
 ) -> Dict[str, TerminalValidationSuite]:
     if (
         acceptance_validator is not None
@@ -452,16 +454,20 @@ def build_terminal_suites(
         "one_step": build_terminal_one_step_suite(identities, provider),
         "reachable_core": build_terminal_reachable_core_suite(identities),
     }
-    for suite in suites.values():
-        validation = validate_terminal_validation_suite(
-            suite,
-            identities,
-            base_provider=provider,
-            require_authoritative=True,
-            authoritative_acceptance_validator=accepted_canonical_base_provider,
-        )
-        if validation.failures or not validation.authoritative_source_accepted:
-            raise RuntimeError("terminal suite lacks authoritative source: " + ",".join(validation.failures))
+    if validate_contents:
+        for suite in suites.values():
+            validation = validate_terminal_validation_suite(
+                suite,
+                identities,
+                base_provider=provider,
+                require_authoritative=True,
+                authoritative_acceptance_validator=accepted_canonical_base_provider,
+            )
+            if validation.failures or not validation.authoritative_source_accepted:
+                raise RuntimeError(
+                    "terminal suite lacks authoritative source: "
+                    + ",".join(validation.failures)
+                )
     return suites
 
 
@@ -597,6 +603,8 @@ def _validate_manifest_planning_context(
     suites: Mapping[str, TerminalValidationSuite],
     provider: CanonicalBaseProvider,
     acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
+    *,
+    validate_suite_contents: bool,
 ) -> None:
     if provider.provider_kind != AUTHORITATIVE_PROVIDER_KIND or provider.diagnostic_only:
         raise RuntimeError("manifest planning requires an authoritative canonical provider")
@@ -606,15 +614,16 @@ def _validate_manifest_planning_context(
         raise RuntimeError(
             "canonical provider failed source validation: " + ",".join(provider_failures)
         )
-    for suite in suites.values():
-        validation = validate_terminal_validation_suite(
-            suite,
-            base_provider=provider,
-            require_authoritative=True,
-            authoritative_acceptance_validator=accepted_canonical_base_provider,
-        )
-        if validation.failures:
-            raise RuntimeError("suite validation failed before manifest planning")
+    if validate_suite_contents:
+        for suite in suites.values():
+            validation = validate_terminal_validation_suite(
+                suite,
+                base_provider=provider,
+                require_authoritative=True,
+                authoritative_acceptance_validator=accepted_canonical_base_provider,
+            )
+            if validation.failures:
+                raise RuntimeError("suite validation failed before manifest planning")
 
 
 def _descriptor_ref(
@@ -652,7 +661,12 @@ def create_manifest_plan_fragment(
 
     if shard_count < 1 or not 1 <= shard_index <= shard_count:
         raise ValueError("planning shard index/count is invalid")
-    _validate_manifest_planning_context(suites, provider, acceptance_validator)
+    _validate_manifest_planning_context(
+        suites,
+        provider,
+        acceptance_validator,
+        validate_suite_contents=False,
+    )
     selected = _selected_descriptors(stage, suites)
     assigned = tuple(
         descriptor
@@ -696,6 +710,7 @@ def create_manifest_plan_fragment(
         provider,
         acceptance_validator,
         reconstruct_expected=False,
+        validate_suite_contents=False,
     )
     return payload
 
@@ -707,13 +722,19 @@ def validate_manifest_plan_fragment(
     acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
     *,
     reconstruct_expected: bool,
+    validate_suite_contents: bool = True,
 ) -> None:
     if fragment.get("schema") != MANIFEST_PLAN_FRAGMENT_SCHEMA:
         raise RuntimeError("manifest plan fragment schema mismatch")
     if set(fragment) != _PLAN_FRAGMENT_FIELDS:
         raise RuntimeError("manifest plan fragment fields differ from the exact schema")
     _validate_self_hash(fragment, "fragment_hash", "manifest plan fragment")
-    _validate_manifest_planning_context(suites, provider, acceptance_validator)
+    _validate_manifest_planning_context(
+        suites,
+        provider,
+        acceptance_validator,
+        validate_suite_contents=validate_suite_contents,
+    )
     stage = str(fragment["stage"])
     shard_index = int(fragment["shard_index"])
     shard_count = int(fragment["shard_count"])
@@ -807,6 +828,12 @@ def merge_manifest_plan_replicates(
 
     if not replicate_a or len(replicate_a) != len(replicate_b):
         raise RuntimeError("manifest plan replicates must have equal nonzero shard counts")
+    _validate_manifest_planning_context(
+        suites,
+        provider,
+        acceptance_validator,
+        validate_suite_contents=True,
+    )
     shard_count = len(replicate_a)
     ordered_a = sorted(replicate_a, key=lambda item: int(item["shard_index"]))
     ordered_b = sorted(replicate_b, key=lambda item: int(item["shard_index"]))
@@ -817,10 +844,20 @@ def merge_manifest_plan_replicates(
     plan_by_key: Dict[str, Tuple[Tuple[str, ...], int, int]] = {}
     for fragment_a, fragment_b in zip(ordered_a, ordered_b):
         validate_manifest_plan_fragment(
-            fragment_a, suites, provider, acceptance_validator, reconstruct_expected=False
+            fragment_a,
+            suites,
+            provider,
+            acceptance_validator,
+            reconstruct_expected=False,
+            validate_suite_contents=False,
         )
         validate_manifest_plan_fragment(
-            fragment_b, suites, provider, acceptance_validator, reconstruct_expected=False
+            fragment_b,
+            suites,
+            provider,
+            acceptance_validator,
+            reconstruct_expected=False,
+            validate_suite_contents=False,
         )
         if fragment_a["stage"] != stage or fragment_b["stage"] != stage:
             raise RuntimeError("manifest plan fragment stage mismatch")
@@ -854,6 +891,7 @@ def merge_manifest_plan_replicates(
         compute_ceiling_report_hash=compute_ceiling_report_hash,
         _validate_result=False,
         _precomputed_plans=plan_by_key,
+        _context_prevalidated=True,
     )
     validate_execution_manifest(
         manifest, suites, provider, acceptance_validator, reconstruct_expected=False
@@ -933,6 +971,7 @@ def create_execution_manifest(
     _precomputed_plans: Optional[
         Mapping[str, Tuple[Tuple[str, ...], int, int]]
     ] = None,
+    _context_prevalidated: bool = False,
 ) -> Dict[str, Any]:
     if stage not in ("smoke", "full"):
         raise ValueError("stage must be smoke or full")
@@ -940,7 +979,12 @@ def create_execution_manifest(
         raise ValueError("subshard bound must be positive")
     if not _is_hash(compute_ceiling_report_hash):
         raise ValueError("compute ceiling report hash is malformed")
-    _validate_manifest_planning_context(suites, provider, acceptance_validator)
+    _validate_manifest_planning_context(
+        suites,
+        provider,
+        acceptance_validator,
+        validate_suite_contents=not _context_prevalidated,
+    )
 
     all_descriptors = _selected_descriptors("full", suites)
     selected = _selected_descriptors(stage, suites)
@@ -1245,6 +1289,7 @@ def validate_execution_manifest(
             resources=resources,
             compute_ceiling_report_hash=str(manifest["compute_ceiling_report_hash"]),
             _validate_result=False,
+            _context_prevalidated=True,
         )
         if canonical_bytes(manifest) != canonical_bytes(expected):
             raise RuntimeError("manifest differs from source-reconstructed frozen workload")
