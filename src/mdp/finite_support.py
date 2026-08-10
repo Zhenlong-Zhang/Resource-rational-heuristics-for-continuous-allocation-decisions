@@ -15,6 +15,11 @@ try:
         TrueState,
         utility,
     )
+    from ..solvers.terminal import (
+        TerminalOptimizationResult,
+        optimal_terminal_values_for_weight_rows,
+        optimize_terminal_allocation,
+    )
 except ImportError:  # Allows notebooks to import modules after adding src/ to sys.path.
     from mdp.meta_mdp import (  # type: ignore
         Action,
@@ -22,6 +27,11 @@ except ImportError:  # Allows notebooks to import modules after adding src/ to s
         EnvironmentConfig,
         TrueState,
         utility,
+    )
+    from solvers.terminal import (  # type: ignore
+        TerminalOptimizationResult,
+        optimal_terminal_values_for_weight_rows,
+        optimize_terminal_allocation,
     )
 
 
@@ -241,7 +251,10 @@ class FiniteSupportMetaMDP(ContinuousAllocationMetaMDP):
         return TrueState(state.need_1, state.need_2)
 
     def initial_belief(self, true_state: Optional[TrueState] = None) -> FiniteSupportBeliefState:
-        belief = FiniteSupportBeliefState(self.prior.states, self.prior.weights)
+        belief = FiniteSupportBeliefState(
+            self.prior.states,
+            self.prior.weights,
+        )
         if true_state is None:
             return belief
         for _ in range(self.config.prior_sample_count_1):
@@ -432,18 +445,30 @@ class FiniteSupportMetaMDP(ContinuousAllocationMetaMDP):
         amount_1, amount_2 = self.allocation_to_learning_outcomes(
             allocation_to_person1, remaining_time
         )
+        rate_1, rate_2 = self.learning_rates()
+        allocation_key = float(allocation_to_person1).hex()
         alpha = self.utility_exponent()
         return float(
             math.fsum(
                 weight
                 * (
                     utility(
-                        amount_1 - state.need_1,
+                        0.0
+                        if remaining_time > 0.0
+                        and rate_1 > 0.0
+                        and (state.need_1 / (rate_1 * remaining_time)).hex()
+                        == allocation_key
+                        else amount_1 - state.need_1,
                         self.config.lambda_shortfall,
                         alpha,
                     )
                     + utility(
-                        amount_2 - state.need_2,
+                        0.0
+                        if remaining_time > 0.0
+                        and rate_2 > 0.0
+                        and (1.0 - state.need_2 / (rate_2 * remaining_time)).hex()
+                        == allocation_key
+                        else amount_2 - state.need_2,
                         self.config.lambda_shortfall,
                         alpha,
                     )
@@ -487,97 +512,41 @@ class FiniteSupportMetaMDP(ContinuousAllocationMetaMDP):
         posterior_weights,
         deliberation_time: float,
     ):
-        """Vectorized terminal optimization for a batch of posterior weights."""
+        """Return batch values using the scalar continuous-optimization semantics."""
 
         try:
-            import numpy as np  # type: ignore
-        except ImportError:
-            values = []
-            for row in posterior_weights:
-                posterior = FiniteSupportBeliefState(
-                    belief.states,
-                    tuple(float(weight) for weight in row),
-                    deliberation_time=float(deliberation_time),
-                    history=list(belief.history),
-                )
-                values.append(self.solve_terminal_allocation(posterior)[1])
-            return values
-
-        weights = np.asarray(posterior_weights, dtype=float)
-        if weights.ndim != 2 or weights.shape[1] != len(belief.states):
+            rows = posterior_weights.tolist()
+        except AttributeError:
+            rows = list(posterior_weights)
+        if any(len(row) != len(belief.states) for row in rows):
             raise ValueError("posterior_weights must have shape (n, support_size)")
-        if not np.all(np.isfinite(weights)) or np.any(weights < 0.0):
-            raise ValueError("posterior weights must be finite and nonnegative")
-        row_sums = np.sum(weights, axis=1)
-        if not np.allclose(row_sums, 1.0, atol=1e-10, rtol=0.0):
-            raise ValueError("each posterior-weight row must sum to one")
+        for row in rows:
+            values = tuple(float(weight) for weight in row)
+            if any(not math.isfinite(weight) or weight < 0.0 for weight in values):
+                raise ValueError("posterior weights must be finite and nonnegative")
+            if not math.isclose(math.fsum(values), 1.0, rel_tol=0.0, abs_tol=1e-10):
+                raise ValueError("each posterior-weight row must sum to one")
+        return optimal_terminal_values_for_weight_rows(
+            self,
+            belief,
+            rows,
+            deliberation_time=float(deliberation_time),
+        )
 
-        terminal_belief = belief.copy()
-        terminal_belief.deliberation_time = float(deliberation_time)
-        remaining_time = self.remaining_time_after_termination(terminal_belief)
-        allocations = np.asarray(
-            self.terminal_allocation_grid_at_time(terminal_belief, remaining_time),
-            dtype=float,
-        )
-        need_1 = np.asarray([state.need_1 for state in belief.states], dtype=float)[None, :]
-        need_2 = np.asarray([state.need_2 for state in belief.states], dtype=float)[None, :]
-        rate_1, rate_2 = self.learning_rates()
-        amount_1 = rate_1 * allocations[:, None] * remaining_time
-        amount_2 = rate_2 * (1.0 - allocations[:, None]) * remaining_time
-        outcome_1 = amount_1 - need_1
-        outcome_2 = amount_2 - need_2
-        alpha = self.utility_exponent()
-        utility_1 = np.where(
-            outcome_1 < 0.0,
-            -self.config.lambda_shortfall * np.power(np.maximum(-outcome_1, 0.0), alpha),
-            np.power(np.maximum(outcome_1, 0.0), alpha),
-        )
-        utility_2 = np.where(
-            outcome_2 < 0.0,
-            -self.config.lambda_shortfall * np.power(np.maximum(-outcome_2, 0.0), alpha),
-            np.power(np.maximum(outcome_2, 0.0), alpha),
-        )
-        values = weights @ (utility_1 + utility_2).T
-        return np.max(values, axis=1)
+    def solve_terminal_allocation_result(
+        self,
+        belief: FiniteSupportBeliefState,
+    ) -> TerminalOptimizationResult:
+        """Return the bounded continuous terminal-optimization result."""
+
+        return optimize_terminal_allocation(self, belief)
 
     def solve_terminal_allocation(
         self,
         belief: FiniteSupportBeliefState,
     ) -> Tuple[float, float]:
-        grid = self.terminal_allocation_grid(belief)
-        try:
-            import numpy as np  # type: ignore
-
-            allocations = np.asarray(grid, dtype=float)
-            remaining_time = self.remaining_time_after_termination(belief)
-            rate_1, rate_2 = self.learning_rates()
-            need_1 = np.asarray([state.need_1 for state in belief.states], dtype=float)[None, :]
-            need_2 = np.asarray([state.need_2 for state in belief.states], dtype=float)[None, :]
-            amount_1 = rate_1 * allocations[:, None] * remaining_time
-            amount_2 = rate_2 * (1.0 - allocations[:, None]) * remaining_time
-            outcome_1 = amount_1 - need_1
-            outcome_2 = amount_2 - need_2
-            alpha = self.utility_exponent()
-            utility_1 = np.where(
-                outcome_1 < 0.0,
-                -self.config.lambda_shortfall * np.power(np.maximum(-outcome_1, 0.0), alpha),
-                np.power(np.maximum(outcome_1, 0.0), alpha),
-            )
-            utility_2 = np.where(
-                outcome_2 < 0.0,
-                -self.config.lambda_shortfall * np.power(np.maximum(-outcome_2, 0.0), alpha),
-                np.power(np.maximum(outcome_2, 0.0), alpha),
-            )
-            values = list((utility_1 + utility_2) @ np.asarray(belief.weights, dtype=float))
-        except ImportError:
-            values = [self.expected_terminal_utility(belief, allocation) for allocation in grid]
-        best_value = max(values)
-        tolerance = 1e-12 * max(1.0, abs(best_value))
-        candidates = [
-            index for index, value in enumerate(values) if value >= best_value - tolerance
-        ]
-        best_index = min(candidates, key=lambda index: (abs(grid[index] - 0.5), grid[index]))
-        return float(grid[best_index]), float(values[best_index])
+        result = self.solve_terminal_allocation_result(belief)
+        return result.allocation, result.value
 
 
 # Backward-compatible aliases for early exploratory code.

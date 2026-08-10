@@ -242,7 +242,11 @@ class FiniteSupportTests(unittest.TestCase):
             candidate: mdp.expected_terminal_utility(belief, candidate)
             for candidate in mdp.terminal_allocation_grid(belief)
         }
-        self.assertAlmostEqual(best_value, max(enumerated.values()))
+        self.assertGreaterEqual(best_value + 1e-12, max(enumerated.values()))
+        self.assertLessEqual(
+            mdp.solve_terminal_allocation_result(belief).regret_upper_bound,
+            2.5e-5 + 1e-12,
+        )
         self.assertAlmostEqual(best_allocation, 0.5)
 
     def test_episode_observation_and_utility_use_the_same_true_state(self) -> None:

@@ -1,0 +1,149 @@
+{
+  "config_name": "terminal_evidence_numerical_method_v2",
+  "evidence": {
+    "certificate_sidecar_schema": "terminal_certificate_sidecar_v1",
+    "compression": "gzip_mtime_0",
+    "hash": "sha256_canonical_json_float_hex_v1",
+    "method_priority": [
+      "production_terminal",
+      "reference_a",
+      "reference_b",
+      "agreement"
+    ],
+    "row_order": "suite_class_then_descriptor_index_then_method_priority",
+    "sidecar_index_order": "relative_path_lexicographic",
+    "sidecar_required_metadata": [
+      "sha256",
+      "byte_count",
+      "schema_version",
+      "logical_record_hash"
+    ],
+    "suite_descriptor_schema": "terminal_validation_descriptor_v1",
+    "suite_manifest_schema": "terminal_validation_suite_manifest_v1",
+    "terminal_row_schema": "terminal_evidence_row_v1"
+  },
+  "integration": {
+    "numerical_identity_requires_new_reviewed_config_version": true,
+    "status": "not_implemented_in_terminal_evidence_foundation"
+  },
+  "reference_b_tiers": {
+    "all_base_beliefs": true,
+    "first_component_z0_per_base_action": true,
+    "production_disagreement_or_failure": true,
+    "reference_a_near_tie_separation": 1e-06,
+    "reference_a_unresolved": true,
+    "structural_symmetry": true,
+    "tier_order": [
+      "all_base_beliefs",
+      "first_component_z0_per_base_action",
+      "structural_symmetry",
+      "reference_a_near_tie_separation",
+      "reference_a_unresolved",
+      "production_disagreement_or_failure"
+    ]
+  },
+  "schema_version": 2,
+  "scientific_fields_permitted": false,
+  "scope": "terminal_validation_only",
+  "source_derived_method_hash_order": [
+    "production_terminal",
+    "reference_a",
+    "reference_b",
+    "agreement"
+  ],
+  "source_derived_method_hashes": {
+    "agreement": "06697ad1107660ccc4bcbbe5be93810e2d9c92cdfc9abcdc4052afc071eb54f8",
+    "production_terminal": "b13a9ac21332c0234f7a9de20d1c1e0ca15362adfabf961a5dfec4a39a057079",
+    "reference_a": "b30926bfde26fef1751e5049bd711d0d135d365fa77637f2a5f8944cf8591f9d",
+    "reference_b": "24dc78e1281db3b34d8ed8f65a516ed356205640009f0dcd72942f4376634db1"
+  },
+  "suite_construction": {
+    "base_orientation_rule": "exact_sign_of_posterior_mean_1_minus_mean_2_with_zero_symmetric",
+    "boundary_bisection_cap": 40,
+    "boundary_grid_points": 129,
+    "boundary_proximity_tolerance": 0.0005,
+    "construction_rules": {
+      "base": {
+        "descriptor": "unchanged_original_r6_numerical_case",
+        "manifest": "unchanged_original_90_base_beliefs"
+      },
+      "one_step": {
+        "descriptor": "component_need_plus_z_sigma_actual_time",
+        "manifest": "90x2x18x11_component_z_offset_posteriors"
+      },
+      "reachable_core": {
+        "descriptor": "median_total_largest_gap_frozen_history",
+        "manifest": "72_environments_x_9_frozen_reachable_histories"
+      }
+    },
+    "deduplication": "disabled_for_descriptor_foundation",
+    "descriptor_index_rule": "exact_contiguous_zero_based_manifest_order",
+    "descriptor_schema": "terminal_validation_descriptor_v1",
+    "descriptor_selection_flags": "must_equal_manifest_flags_on_every_row",
+    "frozen_ordered_construction_hashes": {
+      "base": "b7745e7b323a078c4e03bce540b6676890cef9aa1a5ec26b943c185973760063",
+      "one_step": "be88282012d6f1b9ffdfcb12583ea0148f706bb8cd9d79a01f776e2625031f06",
+      "reachable_core": "05b6570f39078dfc8e63f16a00cc4872e7ed51176ea2e6f09f1a55de67d71866"
+    },
+    "hard_caps": {
+      "base": 90,
+      "one_step": 35640,
+      "reachable_core": 648
+    },
+    "history_offset_cycle": [-2, -1, 0, 1, 2, 0],
+    "late_depth_cap": 19,
+    "manifest_schema": "terminal_validation_suite_manifest_v1",
+    "manifest_selection_flags": {
+      "base": {
+        "component_validation_only": false,
+        "environment_selection_eligible": false
+      },
+      "one_step": {
+        "component_validation_only": true,
+        "environment_selection_eligible": false
+      },
+      "reachable_core": {
+        "component_validation_only": true,
+        "environment_selection_eligible": false
+      }
+    },
+    "orientation_semantics": {
+      "+1": "latent_or_posterior_need_orientation_toward_recipient_1",
+      "-1": "latent_or_posterior_need_orientation_toward_recipient_2",
+      "balanced": "alternating_recipient_sampling_history",
+      "symmetric": "recipient_symmetric_or_equal_posterior_mean"
+    },
+    "orientation_vocabulary": ["-1", "+1", "symmetric", "balanced"],
+    "partition_order_and_counts": {
+      "base": [
+        ["uniform_prior", 18],
+        ["person1_predictive_mean", 18],
+        ["both_predictive_means", 18],
+        ["person1_minimum_support", 18],
+        ["person1_maximum_support", 18]
+      ],
+      "one_step": [["sample_1", 17820], ["sample_2", 17820]],
+      "reachable_core": [
+        ["initial_symmetric", 72],
+        ["one_step_orientation_-1", 72],
+        ["one_step_orientation_+1", 72],
+        ["balanced_depth_6", 72],
+        ["concentrated_depth_6_-1", 72],
+        ["concentrated_depth_6_+1", 72],
+        ["balanced_late_feasible", 72],
+        ["concentrated_late_feasible_-1", 72],
+        ["concentrated_late_feasible_+1", 72]
+      ]
+    },
+    "partition_order_rule": "frozen_order_then_ordered_descriptor_hash",
+    "partition_schema": "terminal_suite_partition_v1",
+    "suite_class_order": ["base", "one_step", "reachable_core"],
+    "suite_versions": {
+      "base": "terminal_base_90_v1",
+      "boundary": "terminal_boundary_status_v1",
+      "one_step": "terminal_one_step_z_v1",
+      "reachable_core": "terminal_reachable_core_v1"
+    },
+    "z_offsets": [-8, -6, -4, -2, -1, 0, 1, 2, 4, 6, 8]
+  }
+}
