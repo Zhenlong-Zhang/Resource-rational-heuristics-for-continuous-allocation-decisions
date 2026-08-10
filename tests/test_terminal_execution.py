@@ -1164,6 +1164,21 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertLess(ceiling, create_output)
         self.assertLess(create_output, qsub)
 
+    def test_manifest_setup_submitter_uses_dual_segmented_replicates(self):
+        script = (
+            Path(__file__).resolve().parents[1]
+            / "scripts"
+            / "submit_hoffman2_terminal_manifest_setup.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('for replicate in a b; do', script)
+        self.assertIn('MANIFEST_PLAN_SHARDS:-16', script)
+        self.assertIn('MANIFEST_PLAN_SHARDS:-2000', script)
+        self.assertIn('MANIFEST_PLAN_SEGMENT_SIZE:-100', script)
+        self.assertIn('submit "${role}" "${job_file}" >/dev/null', script)
+        self.assertIn('#$ -hold_jid ${hold_ids}', script)
+        self.assertIn('merge-plan-fragments', script)
+        self.assertNotIn('-pe shared', script)
+
 
 if __name__ == "__main__":
     unittest.main()
