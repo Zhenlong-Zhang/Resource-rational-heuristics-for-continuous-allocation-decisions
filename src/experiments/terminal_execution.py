@@ -8,6 +8,7 @@ and binds provisional outputs to scheduler accounting before local read-back.
 """
 
 from dataclasses import asdict, dataclass, fields, replace
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -513,6 +514,57 @@ def _expected_descriptor_plan(
     return methods, tie_count, symmetry_count
 
 
+def _manifest_planning_worker_count(descriptor_count: int) -> int:
+    """Return a scheduler-bounded worker count for deterministic manifest planning."""
+
+    raw = os.environ.get("TERMINAL_MANIFEST_WORKERS", "1")
+    if not raw.isdigit() or int(raw) < 1:
+        raise RuntimeError("TERMINAL_MANIFEST_WORKERS must be a positive integer")
+    requested = int(raw)
+    slots = os.environ.get("NSLOTS")
+    if slots is not None:
+        if not slots.isdigit() or int(slots) < 1:
+            raise RuntimeError("NSLOTS must be a positive integer when present")
+        if requested > int(slots):
+            raise RuntimeError("manifest workers exceed the scheduler allocation")
+    return min(requested, max(1, descriptor_count))
+
+
+_MANIFEST_PLANNING_PROVIDER: Optional[CanonicalBaseProvider] = None
+
+
+def _initialize_manifest_planning_worker(provider: CanonicalBaseProvider) -> None:
+    global _MANIFEST_PLANNING_PROVIDER
+    _MANIFEST_PLANNING_PROVIDER = provider
+
+
+def _expected_descriptor_plan_worker(
+    descriptor: TerminalValidationDescriptor,
+) -> Tuple[Tuple[str, ...], int, int]:
+    if _MANIFEST_PLANNING_PROVIDER is None:
+        raise RuntimeError("manifest planning worker has no canonical provider")
+    return _expected_descriptor_plan(descriptor, _MANIFEST_PLANNING_PROVIDER)
+
+
+def _expected_descriptor_plans(
+    descriptors: Sequence[TerminalValidationDescriptor],
+    provider: CanonicalBaseProvider,
+) -> Tuple[Tuple[Tuple[str, ...], int, int], ...]:
+    """Evaluate plans in input order, optionally across allocated processes."""
+
+    workers = _manifest_planning_worker_count(len(descriptors))
+    if workers == 1:
+        return tuple(_expected_descriptor_plan(item, provider) for item in descriptors)
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        initializer=_initialize_manifest_planning_worker,
+        initargs=(provider,),
+    ) as executor:
+        return tuple(
+            executor.map(_expected_descriptor_plan_worker, descriptors, chunksize=1)
+        )
+
+
 def _task_hash(task: Mapping[str, Any]) -> str:
     return logical_hash(_without_hash(task, "assignment_hash"))
 
@@ -599,11 +651,10 @@ def create_execution_manifest(
         max_descriptors_per_subshard=max_descriptors_per_subshard,
     )
     refs: Dict[str, DescriptorRef] = {}
-    for descriptor in selected:
+    plans = _expected_descriptor_plans(selected, provider)
+    for descriptor, plan in zip(selected, plans):
         key = _descriptor_key(descriptor)
-        methods, tie_count, symmetry_count = _expected_descriptor_plan(
-            descriptor, provider
-        )
+        methods, tie_count, symmetry_count = plan
         if not methods or any(method not in TERMINAL_METHOD_ORDER for method in methods):
             raise RuntimeError(f"invalid frozen method plan for {key}")
         refs[key] = DescriptorRef(
@@ -734,6 +785,8 @@ def validate_execution_manifest(
     suites: Mapping[str, TerminalValidationSuite],
     provider: CanonicalBaseProvider,
     acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]] = None,
+    *,
+    reconstruct_expected: bool = True,
 ) -> None:
     if manifest.get("schema") != EXECUTION_MANIFEST_SCHEMA:
         raise RuntimeError("execution manifest schema mismatch")
@@ -887,19 +940,20 @@ def validate_execution_manifest(
             raise RuntimeError("case-owner descriptor count mismatch")
         if raw_owner["descriptor_hash"] != logical_hash(tuple(owner_descriptor_hashes[owner])):
             raise RuntimeError("case-owner descriptor hash mismatch")
-    expected = create_execution_manifest(
-        stage=str(manifest["stage"]),
-        suites=suites,
-        provider=provider,
-        acceptance_validator=acceptance_validator,
-        source_identity=source_identity,
-        max_descriptors_per_subshard=int(manifest["max_descriptors_per_subshard"]),
-        resources=resources,
-        compute_ceiling_report_hash=str(manifest["compute_ceiling_report_hash"]),
-        _validate_result=False,
-    )
-    if canonical_bytes(manifest) != canonical_bytes(expected):
-        raise RuntimeError("manifest differs from source-reconstructed frozen workload")
+    if reconstruct_expected:
+        expected = create_execution_manifest(
+            stage=str(manifest["stage"]),
+            suites=suites,
+            provider=provider,
+            acceptance_validator=acceptance_validator,
+            source_identity=source_identity,
+            max_descriptors_per_subshard=int(manifest["max_descriptors_per_subshard"]),
+            resources=resources,
+            compute_ceiling_report_hash=str(manifest["compute_ceiling_report_hash"]),
+            _validate_result=False,
+        )
+        if canonical_bytes(manifest) != canonical_bytes(expected):
+            raise RuntimeError("manifest differs from source-reconstructed frozen workload")
 
 
 def _row_to_payload(row: TerminalEvidenceRow) -> Mapping[str, Any]:
@@ -933,7 +987,17 @@ def execute_task(
     task_id: int,
     scheduler_environment: Optional[Mapping[str, str]] = None,
 ) -> Path:
-    validate_execution_manifest(manifest, suites, provider, acceptance_validator)
+    # The manifest was fully source-reconstructed before submission. Repeating that global
+    # numerical plan in every one-slot task would serialize the entire validation array.
+    # Each task still validates all structural bindings below and recomputes its assigned
+    # descriptor plans before accepting any output.
+    validate_execution_manifest(
+        manifest,
+        suites,
+        provider,
+        acceptance_validator,
+        reconstruct_expected=False,
+    )
     environment = dict(scheduler_environment or os.environ)
     if environment.get("NSLOTS") != "1":
         raise RuntimeError("terminal validation tasks require exactly one scheduler slot")

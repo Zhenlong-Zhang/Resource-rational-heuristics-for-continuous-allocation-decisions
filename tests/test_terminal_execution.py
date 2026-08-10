@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -204,6 +205,71 @@ class TerminalExecutionTests(unittest.TestCase):
             tuple(item["descriptor_hash"] for item in refs)
         )
         manifest["case_owners"] = tuple(owners)
+
+    def test_manifest_planning_workers_are_scheduler_bounded(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(execution._manifest_planning_worker_count(16), 1)
+        with patch.dict(
+            os.environ,
+            {"TERMINAL_MANIFEST_WORKERS": "8", "NSLOTS": "8"},
+            clear=True,
+        ):
+            self.assertEqual(execution._manifest_planning_worker_count(3), 3)
+        with patch.dict(
+            os.environ,
+            {"TERMINAL_MANIFEST_WORKERS": "9", "NSLOTS": "8"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "scheduler allocation"):
+                execution._manifest_planning_worker_count(16)
+        with patch.dict(
+            os.environ,
+            {"TERMINAL_MANIFEST_WORKERS": "invalid"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "positive integer"):
+                execution._manifest_planning_worker_count(16)
+
+    def test_parallel_manifest_planning_preserves_descriptor_order(self):
+        descriptors = tuple(descriptor("base", index, index) for index in range(3))
+        expected = tuple(((str(item.descriptor_index),), 0, 0) for item in descriptors)
+
+        class InlinePool:
+            def __init__(self, max_workers, initializer, initargs):
+                self.max_workers = max_workers
+                self.initializer = initializer
+                self.initargs = initargs
+
+            def __enter__(self):
+                self.initializer(*self.initargs)
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def map(self, function, descriptors, chunksize):
+                self.chunksize = chunksize
+                return tuple(function(item) for item in descriptors)
+
+        with patch.dict(
+            os.environ,
+            {"TERMINAL_MANIFEST_WORKERS": "3", "NSLOTS": "3"},
+            clear=True,
+        ):
+            with patch.object(execution, "ProcessPoolExecutor", InlinePool):
+                with patch.object(
+                    execution,
+                    "_expected_descriptor_plan",
+                    side_effect=lambda item, _provider: (
+                        (str(item.descriptor_index),),
+                        0,
+                        0,
+                    ),
+                ):
+                    observed = execution._expected_descriptor_plans(
+                        descriptors, self.provider
+                    )
+        self.assertEqual(observed, expected)
 
     def test_manifest_rejects_all_self_rehashed_coverage_attacks(self):
         manifest, suites = self.make_manifest("smoke")
@@ -594,13 +660,14 @@ class TerminalExecutionTests(unittest.TestCase):
         scheduler = {"NSLOTS": "1", "JOB_ID": "1234"}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            with patch.object(execution, "validate_execution_manifest"):
+            with patch.object(execution, "validate_execution_manifest") as validate:
                 with patch.object(execution, "reconstruct_terminal_evidence_source", return_value=(mdp, belief)):
                     target = execution.execute_task(
                         manifest=manifest, suites=suites, provider=self.provider,
                         acceptance_validator=self.accepted, output_root=root, task_id=1,
                         scheduler_environment=scheduler,
                     )
+                    self.assertFalse(validate.call_args.kwargs["reconstruct_expected"])
                     self.assertTrue((target / "task.json").is_file())
                     with self.assertRaises(FileExistsError):
                         execution.execute_task(
