@@ -274,6 +274,16 @@ def _validate_outputs(
         "throttle": 4,
     }:
         raise RuntimeError("smoke manifest resources differ from the fail-fast P3 shape")
+    if (
+        manifest.get("schema") != execution.EXECUTION_MANIFEST_SCHEMA
+        or int(manifest.get("task_count", -1)) != 16
+        or int(manifest.get("task_descriptor_limit", -1)) != 1
+        or manifest.get("array_required") is not True
+        or any(len(task.get("descriptors", ())) != 1 for task in manifest.get("tasks", ()))
+        or tuple(int(item["logical_case_owner"]) for item in manifest.get("case_owners", ()))
+        != execution.SMOKE_CASE_IDS
+    ):
+        raise RuntimeError("smoke manifest does not bind the exact 16-by-1 array shape")
     profile_hashes.append(_validate_profile(
         root / "profiles_merge" / "merge.json",
         command="merge-plan-fragments",

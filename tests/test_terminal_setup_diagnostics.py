@@ -83,8 +83,23 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
             )
             source = {"identity_hash": HASH}
             manifest = {
+                "schema": execution.EXECUTION_MANIFEST_SCHEMA,
                 "manifest_hash": HASH,
                 "max_descriptors_per_subshard": 450,
+                "task_count": 16,
+                "task_descriptor_limit": 1,
+                "array_required": True,
+                "tasks": tuple(
+                    {
+                        "logical_case_owner": execution.SMOKE_CASE_IDS[(index - 1) // 4],
+                        "descriptors": ({"descriptor_index": index},),
+                    }
+                    for index in range(1, 17)
+                ),
+                "case_owners": tuple(
+                    {"logical_case_owner": owner}
+                    for owner in execution.SMOKE_CASE_IDS
+                ),
                 "resources": {
                     "queue": "campus2.q",
                     "h_rt_seconds": 7200,

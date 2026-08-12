@@ -104,6 +104,10 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--manifest", type=Path, required=True)
     record.add_argument("--submissions", type=Path, required=True)
     record.add_argument("--evidence-root", type=Path, required=True)
+    record.add_argument("--execution-project-root", type=Path, required=True)
+    record.add_argument("--approved-python-bin", type=Path, required=True)
+    record.add_argument("--scheduler-user", required=True)
+    record.add_argument("--run-tag", required=True)
     record.add_argument("--output", type=Path, required=True)
 
     audit = commands.add_parser("audit-qacct")
@@ -134,6 +138,31 @@ def build_parser() -> argparse.ArgumentParser:
     readback.add_argument("--post-job", type=Path, required=True)
     readback.add_argument("--output", type=Path, required=True)
 
+    marker = commands.add_parser("finalize-and-capture-formal-smoke")
+    marker.add_argument("--manifest", type=Path, required=True)
+    marker.add_argument("--task-output-root", type=Path, required=True)
+    marker.add_argument("--provisional", type=Path, required=True)
+    marker.add_argument("--scheduler-evidence", type=Path, required=True)
+    marker.add_argument("--qacct-audit", type=Path, required=True)
+    marker.add_argument("--compute-ceiling", type=Path, required=True)
+    marker.add_argument("--scheduler-evidence-root", type=Path, required=True)
+    marker.add_argument("--post-job-output", type=Path, required=True)
+    marker.add_argument("--capture-output-dir", type=Path, required=True)
+
+    formal_audit = commands.add_parser("audit-formal-smoke")
+    formal_audit.add_argument("--manifest", type=Path, required=True)
+    formal_audit.add_argument("--task-output-root", type=Path, required=True)
+    formal_audit.add_argument("--provisional", type=Path, required=True)
+    formal_audit.add_argument("--scheduler-evidence", type=Path, required=True)
+    formal_audit.add_argument("--qacct-audit", type=Path, required=True)
+    formal_audit.add_argument("--compute-ceiling", type=Path, required=True)
+    formal_audit.add_argument("--scheduler-evidence-root", type=Path, required=True)
+    formal_audit.add_argument("--post-job", type=Path, required=True)
+    formal_audit.add_argument("--readback", type=Path, required=True)
+    formal_audit.add_argument("--finalization-capture-dir", type=Path, required=True)
+    formal_audit.add_argument("--logs-dir", type=Path, required=True)
+    formal_audit.add_argument("--output", type=Path, required=True)
+
     validate = commands.add_parser("validate-manifest")
     validate.add_argument("--manifest", type=Path, required=True)
     validate.add_argument("--structural-only", action="store_true")
@@ -142,6 +171,9 @@ def build_parser() -> argparse.ArgumentParser:
     authorize.add_argument("--manifest", type=Path, required=True)
     authorize.add_argument("--authorization", type=Path, required=True)
     authorize.add_argument("--approved-authorization-hash", required=True)
+    authorize.add_argument("--approved-python-bin", type=Path, required=True)
+    authorize.add_argument("--authorized-manifest-path", type=Path, required=True)
+    authorize.add_argument("--approved-scheduler-user", required=True)
 
     ceiling = commands.add_parser("validate-compute-ceiling")
     ceiling.add_argument("--manifest", type=Path, required=True)
@@ -151,7 +183,51 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    if args.command == "diagnose-plan":
+    if args.command == "finalize-and-capture-formal-smoke":
+        provider, accepted = load_provider(args)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
+        execution.finalize_and_capture_formal_smoke(
+            manifest=load(args.manifest),
+            suites=suites,
+            provider=provider,
+            acceptance_validator=accepted,
+            task_output_root=args.task_output_root,
+            provisional_path=args.provisional,
+            scheduler_evidence_path=args.scheduler_evidence,
+            qacct_audit_path=args.qacct_audit,
+            compute_ceiling_path=args.compute_ceiling,
+            scheduler_evidence_root=args.scheduler_evidence_root,
+            post_job_path=args.post_job_output,
+            finalization_capture_dir=args.capture_output_dir,
+            qstat_bin="qstat",
+            project_root=PROJECT_ROOT,
+        )
+    elif args.command == "audit-formal-smoke":
+        provider, accepted = load_provider(args)
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
+        execution.audit_formal_smoke(
+            manifest=load(args.manifest),
+            suites=suites,
+            provider=provider,
+            acceptance_validator=accepted,
+            task_output_root=args.task_output_root,
+            provisional_path=args.provisional,
+            scheduler_evidence_path=args.scheduler_evidence,
+            qacct_audit_path=args.qacct_audit,
+            compute_ceiling_path=args.compute_ceiling,
+            scheduler_evidence_root=args.scheduler_evidence_root,
+            post_job_path=args.post_job,
+            readback_path=args.readback,
+            finalization_capture_dir=args.finalization_capture_dir,
+            logs_dir=args.logs_dir,
+            output_path=args.output,
+            project_root=PROJECT_ROOT,
+        )
+    elif args.command == "diagnose-plan":
         phases = {}
         total_started = time.perf_counter()
         started = time.perf_counter()
@@ -352,7 +428,14 @@ def main() -> None:
         manifest = load(args.manifest)
         raw = json.loads(args.submissions.read_text(encoding="utf-8"))
         scheduler = execution.create_scheduler_evidence(
-            manifest, raw["submissions"], evidence_root=args.evidence_root
+            manifest,
+            raw["submissions"],
+            evidence_root=args.evidence_root,
+            execution_project_root=args.execution_project_root,
+            approved_python_bin=args.approved_python_bin,
+            authorized_manifest_path=args.manifest,
+            scheduler_user=args.scheduler_user,
+            run_tag=args.run_tag,
         )
         execution.write_new_json(args.output, scheduler)
     elif args.command == "audit-qacct":
@@ -377,6 +460,9 @@ def main() -> None:
             approved_file_hash=args.approved_authorization_hash,
             manifest=load(args.manifest),
             project_root=PROJECT_ROOT,
+            approved_python_bin=args.approved_python_bin,
+            authorized_manifest_path=args.authorized_manifest_path,
+            approved_scheduler_user=args.approved_scheduler_user,
         )
     elif args.command == "validate-compute-ceiling":
         execution.validate_compute_ceiling_binding(

@@ -454,6 +454,28 @@ class TerminalPlanOnlyTests(unittest.TestCase):
                 RuntimeError, "authoritatively"
             ):
                 validate_qstat_absence_text(text, "101", status)
+        malformed_structures = (
+            "<not_qstat/>",
+            "<job_info><queue_info/></job_info>",
+            (
+                "<job_info><queue_info><job_list><JB_job_number>abc</JB_job_number>"
+                "</job_list></queue_info><job_info/></job_info>"
+            ),
+        )
+        for text in malformed_structures:
+            with self.subTest(structure=text), self.assertRaisesRegex(
+                RuntimeError, "authoritatively|malformed"
+            ):
+                execution.validate_qstat_snapshot_text(text, 0)
+        tagged = (
+            "<job_info><queue_info><job_list><JB_job_number>202</JB_job_number>"
+            "<JB_name>tvsmoke_0123456789abcdef</JB_name></job_list></queue_info>"
+            "<job_info/></job_info>"
+        )
+        with self.assertRaisesRegex(RuntimeError, "tagged-job"):
+            execution.validate_qstat_snapshot_text(
+                tagged, 0, absent_run_tag="0123456789abcdef"
+            )
 
     def test_real_submitters_wire_immutable_profiles_and_p1_evidence(self):
         project_root = Path(__file__).resolve().parents[1]

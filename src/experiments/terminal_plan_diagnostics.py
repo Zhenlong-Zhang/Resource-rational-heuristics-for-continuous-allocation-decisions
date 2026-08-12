@@ -7,7 +7,6 @@ import math
 from pathlib import Path
 import re
 from typing import Any, Dict, Mapping, Tuple
-from xml.etree import ElementTree
 
 from . import terminal_execution as execution
 
@@ -59,26 +58,9 @@ def _metadata(run_root: Path) -> Dict[str, Any]:
 
 def validate_qstat_absence_text(text: str, job_id: str, exit_status: int) -> None:
     """Require a valid successful XML queue snapshot in which ``job_id`` is absent."""
-
-    if exit_status != 0:
-        raise RuntimeError("qstat does not authoritatively prove job absence")
-    try:
-        root = ElementTree.fromstring(text)
-    except ElementTree.ParseError as error:
-        raise RuntimeError("qstat does not authoritatively prove job absence") from error
-    local_name = lambda tag: str(tag).rsplit("}", 1)[-1]
-    if local_name(root.tag) != "job_info":
-        raise RuntimeError("qstat does not authoritatively prove job absence")
-    child_names = {local_name(child.tag) for child in root}
-    if not {"queue_info", "job_info"}.issubset(child_names):
-        raise RuntimeError("qstat does not authoritatively prove job absence")
-    observed_job_ids = {
-        (element.text or "").strip()
-        for element in root.iter()
-        if local_name(element.tag) == "JB_job_number"
-    }
-    if str(job_id) in observed_job_ids:
-        raise RuntimeError("qstat does not authoritatively prove job absence")
+    execution.validate_qstat_snapshot_text(
+        text, exit_status, absent_job_ids=(str(job_id),)
+    )
 
 
 def _expected_source_context(project_root: Path) -> Dict[str, Any]:

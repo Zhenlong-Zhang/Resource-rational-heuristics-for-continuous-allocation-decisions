@@ -23,6 +23,8 @@ import subprocess
 import tempfile
 import time
 from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
+from xml.etree import ElementTree
+from zoneinfo import ZoneInfo
 
 from .terminal_evidence_rows import (
     TERMINAL_METHOD_ORDER,
@@ -56,7 +58,7 @@ from .terminal_validation_suite import (
 )
 
 
-EXECUTION_MANIFEST_SCHEMA = "terminal_validation_execution_manifest_v1"
+EXECUTION_MANIFEST_SCHEMA = "terminal_validation_execution_manifest_v2"
 TASK_ARTIFACT_SCHEMA = "terminal_validation_task_artifact_v1"
 PROVISIONAL_SCHEMA = "terminal_validation_provisional_v1"
 SCHEDULER_EVIDENCE_SCHEMA = "terminal_validation_scheduler_evidence_v1"
@@ -65,10 +67,12 @@ POST_JOB_SCHEMA = "terminal_validation_post_job_candidate_v1"
 READBACK_SCHEMA = "terminal_validation_independent_readback_v1"
 COMPUTE_CEILING_SCHEMA = "hoffman2_compute_ceiling_report_v2"
 SOURCE_IDENTITY_SCHEMA = "terminal_validation_source_identity_v1"
-EXECUTION_AUTHORIZATION_SCHEMA = "terminal_validation_execution_authorization_v1"
+EXECUTION_AUTHORIZATION_SCHEMA = "terminal_validation_execution_authorization_v2"
 MANIFEST_PLAN_FRAGMENT_SCHEMA = "terminal_validation_manifest_plan_fragment_v1"
 MANIFEST_PLAN_ASSEMBLY_SCHEMA = "terminal_validation_manifest_plan_assembly_v1"
 PLAN_DIAGNOSTIC_SCHEMA = "terminal_validation_plan_diagnostic_v1"
+FORMAL_SMOKE_FINALIZATION_SCHEMA = "terminal_formal_smoke_finalization_v2"
+FORMAL_SMOKE_AUDIT_SCHEMA = "terminal_formal_smoke_audit_v1"
 
 TERMINAL_SOURCE_PATHS = (
     "configs/terminal_base_beliefs_7376c5d_v1.json",
@@ -96,6 +100,7 @@ TERMINAL_SOURCE_PATHS = (
 )
 
 SMOKE_CASE_IDS = (1, 20, 72, 85)
+SMOKE_DESCRIPTORS_PER_TASK = 1
 SUITE_ORDER = ("base", "one_step", "reachable_core")
 TERMINAL_NUMERICAL_RESOURCE_CAPS = {
     "max_h_rt_seconds": 86_400,
@@ -118,7 +123,8 @@ _MANIFEST_FIELDS = {
     "expected_positive_reference_a_count", "expected_positive_reference_b_count",
     "expected_tie_path_row_count", "expected_symmetry_path_row_count",
     "expected_negative_control_count", "numerical_resource_caps",
-    "max_descriptors_per_subshard", "one_slot_required", "array_allowed",
+    "max_descriptors_per_subshard", "task_descriptor_limit",
+    "one_slot_required", "array_required",
     "no_overwrite", "manifest_hash",
 }
 _TASK_FIELDS = {
@@ -151,9 +157,11 @@ _METRIC_FIELDS = {
 _SCHEDULER_FIELDS = {"schema", "manifest_hash", "submissions", "logical_record_hash"}
 _SUBMISSION_FIELDS = {
     "job_id", "job_name", "queue", "array_job", "manifest_task_ids",
-    "qsub_raw_path", "qsub_raw_sha256", "job_script_path", "job_script_sha256",
+    "qsub_raw_path", "qsub_raw_sha256", "qsub_status_path", "qsub_status_sha256",
+    "job_script_path", "job_script_sha256",
     "slots", "h_rt_seconds", "memory_bytes", "throttle", "task_id_mode",
-    "parallel_environment", "job_script_semantics_hash",
+    "parallel_environment", "execution_project_root", "python_bin",
+    "authorized_manifest_path", "scheduler_user", "run_tag", "job_script_semantics_hash",
 }
 _QACCT_FIELDS = {
     "schema", "manifest_hash", "scheduler_evidence_hash", "raw_qacct_hashes",
@@ -211,7 +219,8 @@ _AUTHORIZATION_FIELDS = {
     "source_identity_hash", "source_commit", "source_tree", "provider_hash",
     "provider_source_identity_hash", "scientific_spec_hash",
     "numerical_method_config_hash", "compute_ceiling_report_hash",
-    "resources_hash", "execution_script_hashes",
+    "resources_hash", "execution_script_hashes", "approved_python_bin",
+    "authorized_manifest_path", "approved_scheduler_user",
 }
 _PLAN_FRAGMENT_FIELDS = {
     "schema", "stage", "shard_index", "shard_count", "descriptor_count",
@@ -224,6 +233,22 @@ _PLAN_ASSEMBLY_FIELDS = {
     "replicate_a_fragment_hashes", "replicate_b_fragment_hashes",
     "pairwise_agreement", "expected_descriptor_count", "manifest_hash",
     "source_identity_hash", "provider_hash", "assembly_hash",
+}
+_FORMAL_SMOKE_FINALIZATION_FIELDS = {
+    "schema", "manifest_hash", "source_identity_hash", "scheduler_evidence_hash",
+    "qacct_audit_hash", "post_job_hash", "run_tag", "server_host",
+    "scheduler_user", "completed_at_utc", "qstat_command", "qstat_xml_sha256",
+    "qstat_status_sha256", "qstat_stderr_sha256",
+    "capture_mode", "command_sequence", "marker_hash",
+}
+_FORMAL_SMOKE_AUDIT_FIELDS = {
+    "schema", "manifest_hash", "scheduler_evidence_hash", "qacct_audit_hash",
+    "post_job_hash", "readback_hash", "finalization_marker_hash",
+    "final_qstat_xml_hash", "final_qstat_status_hash", "task_artifact_hashes",
+    "final_qstat_stderr_hash",
+    "log_hashes", "task_count", "logical_owner_counts", "max_task_wall_seconds",
+    "max_task_memory_bytes", "first_task_start_utc", "finalization_completed_at_utc",
+    "queue_excluded_chain_seconds", "audit_pass", "logical_record_hash",
 }
 
 
@@ -426,6 +451,9 @@ def validate_execution_authorization(
     approved_file_hash: str,
     manifest: Mapping[str, Any],
     project_root: Path,
+    approved_python_bin: Path,
+    authorized_manifest_path: Path,
+    approved_scheduler_user: str,
 ) -> Mapping[str, Any]:
     """Validate a reviewer approval bound to one exact stage and source tree."""
 
@@ -458,6 +486,9 @@ def validate_execution_authorization(
         "compute_ceiling_report_hash": manifest["compute_ceiling_report_hash"],
         "resources_hash": logical_hash(manifest["resources"]),
         "execution_script_hashes": execution_script_hashes(project_root, source),
+        "approved_python_bin": str(approved_python_bin),
+        "authorized_manifest_path": str(authorized_manifest_path),
+        "approved_scheduler_user": approved_scheduler_user,
     }
     if authorization != expected:
         raise RuntimeError("execution authorization does not bind the exact manifest/source")
@@ -1103,6 +1134,11 @@ def create_execution_manifest(
         all_descriptors,
         max_descriptors_per_subshard=max_descriptors_per_subshard,
     )
+    task_descriptor_limit = (
+        SMOKE_DESCRIPTORS_PER_TASK
+        if stage == "smoke"
+        else max_descriptors_per_subshard
+    )
     refs: Dict[str, DescriptorRef] = {}
     if _precomputed_plans is None:
         plans = _expected_descriptor_plans(selected, provider)
@@ -1144,8 +1180,8 @@ def create_execution_manifest(
         if not ordered:
             raise RuntimeError(f"logical owner {owner} has no descriptors")
         chunks = [
-            tuple(ordered[index:index + max_descriptors_per_subshard])
-            for index in range(0, len(ordered), max_descriptors_per_subshard)
+            tuple(ordered[index:index + task_descriptor_limit])
+            for index in range(0, len(ordered), task_descriptor_limit)
         ]
         owner_task_ids = []
         for subshard_index, chunk in enumerate(chunks):
@@ -1216,8 +1252,9 @@ def create_execution_manifest(
         "planned_full_task_count": len(planned_full_tasks),
         "planned_full_task_strata": planned_full_tasks,
         "max_descriptors_per_subshard": max_descriptors_per_subshard,
+        "task_descriptor_limit": task_descriptor_limit,
         "one_slot_required": True,
-        "array_allowed": stage == "full",
+        "array_required": True,
         "no_overwrite": True,
         "manifest_hash": "",
     }
@@ -1249,8 +1286,7 @@ def validate_execution_manifest(
     if not all((
         manifest.get("one_slot_required") is True,
         manifest.get("no_overwrite") is True,
-        type(manifest.get("array_allowed")) is bool
-        and manifest.get("array_allowed") == (manifest.get("stage") == "full"),
+        manifest.get("array_required") is True,
         _is_hash(manifest.get("compute_ceiling_report_hash")),
     )):
         raise RuntimeError("manifest execution invariants mismatch")
@@ -1273,6 +1309,13 @@ def validate_execution_manifest(
     ):
         raise RuntimeError("manifest request exceeds frozen numerical resource caps")
     stage = manifest.get("stage")
+    expected_task_descriptor_limit = (
+        SMOKE_DESCRIPTORS_PER_TASK
+        if stage == "smoke"
+        else int(manifest.get("max_descriptors_per_subshard", -1))
+    )
+    if int(manifest.get("task_descriptor_limit", -1)) != expected_task_descriptor_limit:
+        raise RuntimeError("manifest task descriptor limit differs from the frozen stage shape")
     expected_owners = SMOKE_CASE_IDS if stage == "smoke" else tuple(range(90)) if stage == "full" else ()
     owners = tuple(int(item["logical_case_owner"]) for item in manifest.get("case_owners", ()))
     if any(set(item) != _OWNER_FIELDS for item in manifest.get("case_owners", ())):
@@ -1328,7 +1371,7 @@ def validate_execution_manifest(
         owner_task_ids[owner].append(task_id)
         owner_subshards[owner].append((int(task["subshard_index"]), int(task["subshard_count"])))
         refs = tuple(task.get("descriptors", ()))
-        if not refs or len(refs) > int(manifest["max_descriptors_per_subshard"]):
+        if not refs or len(refs) > int(manifest["task_descriptor_limit"]):
             raise RuntimeError("task descriptor count violates subshard bound")
         for raw_ref in refs:
             ref = dict(raw_ref)
@@ -1453,7 +1496,7 @@ def execute_task(
         raise RuntimeError("terminal validation tasks require exactly one scheduler slot")
     if not environment.get("JOB_ID", "").isdigit():
         raise RuntimeError("terminal validation task lacks a scheduler job ID")
-    if manifest["stage"] == "full" and int(environment.get("SGE_TASK_ID", "-1")) != task_id:
+    if manifest.get("array_required") is True and int(environment.get("SGE_TASK_ID", "-1")) != task_id:
         raise RuntimeError("array task ID differs from immutable manifest task")
     if environment.get("PE_HOSTFILE"):
         raise RuntimeError("shared-memory parallel environments are forbidden")
@@ -1909,6 +1952,61 @@ def _memory_bytes(value: str) -> int:
     return result
 
 
+def _qacct_timestamp(value: str) -> datetime:
+    for fmt in ("%m/%d/%Y %H:%M:%S.%f", "%m/%d/%Y %H:%M:%S"):
+        try:
+            return datetime.strptime(value.strip(), fmt).replace(
+                tzinfo=ZoneInfo("America/Los_Angeles")
+            )
+        except ValueError:
+            continue
+    raise RuntimeError(f"invalid qacct timestamp: {value}")
+
+
+def validate_qstat_snapshot_text(
+    text: str,
+    exit_status: int,
+    *,
+    absent_job_ids: Sequence[str] = (),
+    absent_run_tag: Optional[str] = None,
+) -> None:
+    """Require authoritative qstat XML and prove selected jobs/tags are absent."""
+
+    if exit_status != 0:
+        raise RuntimeError("qstat does not authoritatively prove job absence")
+    try:
+        root = ElementTree.fromstring(text)
+    except ElementTree.ParseError as error:
+        raise RuntimeError("qstat does not authoritatively prove job absence") from error
+    local_name = lambda tag: str(tag).rsplit("}", 1)[-1]
+    if local_name(root.tag) != "job_info":
+        raise RuntimeError("qstat does not authoritatively prove job absence")
+    child_names = {local_name(child.tag) for child in root}
+    if not {"queue_info", "job_info"}.issubset(child_names):
+        raise RuntimeError("qstat does not authoritatively prove job absence")
+    observed_ids = []
+    observed_names = []
+    for job in root.iter():
+        if local_name(job.tag) != "job_list":
+            continue
+        values = {
+            local_name(child.tag): (child.text or "").strip()
+            for child in job
+        }
+        job_id = values.get("JB_job_number", "")
+        if not job_id.isdigit():
+            raise RuntimeError("qstat contains a malformed job identity")
+        observed_ids.append(job_id)
+        observed_names.append(values.get("JB_name", ""))
+    if set(map(str, absent_job_ids)).intersection(observed_ids):
+        raise RuntimeError("qstat does not authoritatively prove submitted-job absence")
+    if absent_run_tag is not None:
+        if re.fullmatch(r"[0-9a-f]{16}", absent_run_tag) is None:
+            raise RuntimeError("qstat absence run tag is malformed")
+        if any(name.endswith("_" + absent_run_tag) for name in observed_names):
+            raise RuntimeError("qstat does not authoritatively prove tagged-job absence")
+
+
 def _queue_matches(requested: str, observed: str) -> bool:
     queue = observed.split("@", 1)[0]
     return queue in (requested, f"{requested}.q")
@@ -1928,6 +2026,9 @@ def _job_script_semantics(
     job_name: str,
     task_ids: Tuple[int, ...],
     array_job: bool,
+    execution_project_root: Path,
+    approved_python_bin: Path,
+    authorized_manifest_path: Path,
 ) -> Dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     if re.search(r"(?m)^#\$\s+-pe\b", text) or "PE_HOSTFILE" in text:
@@ -2006,23 +2107,44 @@ def _job_script_semantics(
         raise RuntimeError("job script terminal command target mismatch")
     if tuple(tokens[3::2]) != required_flags or any(not value for value in tokens[4::2]):
         raise RuntimeError("job script terminal command arguments mismatch")
-    if array_job:
-        expected_range = [("1", str(manifest["task_count"]))]
-        if array_ranges != expected_range or throttles != [str(resources["throttle"])]:
-            raise RuntimeError("full array range/throttle differs from manifest")
-        if task_ids != tuple(range(1, int(manifest["task_count"]) + 1)):
-            raise RuntimeError("full array task mapping differs from manifest")
-        if not re.search(r"(?m)^task_id=\$\{SGE_TASK_ID\}\s*$", text):
-            raise RuntimeError("full array task ID is not sourced from SGE_TASK_ID")
-        task_id_mode = "sge_array_exact"
-        throttle = resources["throttle"]
-    else:
-        if array_ranges or throttles or len(task_ids) != 1:
-            raise RuntimeError("smoke task must be one non-array submission")
-        if not re.search(rf"(?m)^task_id={task_ids[0]}\s*$", text):
-            raise RuntimeError("smoke task literal ID differs from manifest")
-        task_id_mode = "literal_non_array"
-        throttle = 1
+    if not array_job or manifest.get("array_required") is not True:
+        raise RuntimeError("terminal validation requires one exact array submission")
+    expected_range = [("1", str(manifest["task_count"]))]
+    if array_ranges != expected_range or throttles != [str(resources["throttle"])]:
+        raise RuntimeError("array range/throttle differs from manifest")
+    if task_ids != tuple(range(1, int(manifest["task_count"]) + 1)):
+        raise RuntimeError("array task mapping differs from manifest")
+    if not re.search(r"(?m)^task_id=\$\{SGE_TASK_ID\}\s*$", text):
+        raise RuntimeError("array task ID is not sourced from SGE_TASK_ID")
+    task_id_mode = "sge_array_exact"
+    throttle = resources["throttle"]
+
+    h_rt_seconds = int(resources["h_rt_seconds"])
+    h_rt_text = f"{h_rt_seconds // 3600:02d}:{(h_rt_seconds % 3600) // 60:02d}:{h_rt_seconds % 60:02d}"
+    output_root = path.resolve().parents[2]
+    expected_text = (
+        "#!/usr/bin/env bash\n"
+        "#$ -cwd\n"
+        f"#$ -N {job_name}\n"
+        f"#$ -q {resources['queue']}\n"
+        "#$ -j y\n"
+        f"#$ -o {output_root}/logs/{job_name}.$JOB_ID.$TASK_ID.log\n"
+        f"#$ -l h_rt={h_rt_text}\n"
+        f"#$ -l h_data={resources['memory_bytes']}\n"
+        f"#$ -t 1-{manifest['task_count']}\n"
+        f"#$ -tc {resources['throttle']}\n"
+        "set -euo pipefail\n"
+        "export LANG=C\n"
+        "export LC_ALL=C\n"
+        f'cd "{execution_project_root}"\n'
+        "task_id=${SGE_TASK_ID}\n"
+        f'"{approved_python_bin}" scripts/terminal_validation_array.py run-task \\\n'
+        f'  --manifest "{authorized_manifest_path}" \\\n'
+        f'  --output-root "{output_root}" \\\n'
+        '  --task-id "${task_id}"\n'
+    )
+    if text != expected_text:
+        raise RuntimeError("submitted terminal job script differs from the canonical byte template")
     semantics = {
         "queue": queue,
         "job_name": name,
@@ -2034,6 +2156,9 @@ def _job_script_semantics(
         "throttle": throttle,
         "task_id_mode": task_id_mode,
         "parallel_environment": None,
+        "execution_project_root": str(execution_project_root),
+        "python_bin": str(approved_python_bin),
+        "authorized_manifest_path": str(authorized_manifest_path),
         "command": "terminal_validation_array.py run-task",
     }
     return semantics
@@ -2044,18 +2169,28 @@ def create_scheduler_evidence(
     submissions: Sequence[Mapping[str, Any]],
     *,
     evidence_root: Path,
+    execution_project_root: Optional[Path] = None,
+    approved_python_bin: Optional[Path] = None,
+    authorized_manifest_path: Optional[Path] = None,
+    scheduler_user: Optional[str] = None,
+    run_tag: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Bind raw terse qsub output to the exact manifest task partition."""
 
     expected = {int(task["task_id"]) for task in manifest["tasks"]}
-    if manifest["stage"] == "smoke":
-        if len(submissions) != int(manifest["task_count"]):
-            raise RuntimeError("smoke requires one non-array submission per manifest task")
-    elif manifest["stage"] == "full":
-        if len(submissions) != 1:
-            raise RuntimeError("full stage requires exactly one manifest array submission")
-    else:
+    if manifest["stage"] not in ("smoke", "full"):
         raise RuntimeError("scheduler stage is unknown")
+    if len(submissions) != 1:
+        raise RuntimeError("terminal validation requires exactly one array submission")
+    execution_project_root = Path(
+        execution_project_root or Path(__file__).resolve().parents[2]
+    )
+    approved_python_bin = Path(approved_python_bin or "python")
+    authorized_manifest_path = Path(authorized_manifest_path or "m")
+    if type(scheduler_user) is not str or re.fullmatch(r"[A-Za-z0-9._-]+", scheduler_user) is None:
+        raise RuntimeError("scheduler user is malformed")
+    if type(run_tag) is not str or re.fullmatch(r"[0-9a-f]{16}", run_tag) is None:
+        raise RuntimeError("scheduler run tag is malformed")
     observed = set()
     normalized = []
     for raw in submissions:
@@ -2065,21 +2200,23 @@ def create_scheduler_evidence(
         array_job = bool(raw["array_job"])
         task_ids = tuple(int(item) for item in raw["manifest_task_ids"])
         qsub_path = Path(str(raw["qsub_raw_path"])).resolve()
+        qsub_status_path = Path(str(raw["qsub_status_path"])).resolve()
         job_script_path = Path(str(raw["job_script_path"])).resolve()
         root = evidence_root.resolve()
         try:
             qsub_relative = qsub_path.relative_to(root).as_posix()
+            qsub_status_relative = qsub_status_path.relative_to(root).as_posix()
             job_relative = job_script_path.relative_to(root).as_posix()
         except ValueError as error:
             raise RuntimeError("scheduler raw evidence must stay inside evidence_root") from error
         if not job_id.isdigit() or not job_name or not queue or not task_ids:
             raise RuntimeError("scheduler submission identity is malformed")
+        if not job_name.endswith("_" + run_tag):
+            raise RuntimeError("scheduler job name is not bound to the unique run tag")
         if queue != manifest["resources"]["queue"]:
             raise RuntimeError("scheduler queue differs from manifest")
-        if manifest["stage"] == "smoke" and array_job:
-            raise RuntimeError("smoke submissions must be non-array")
-        if manifest["stage"] == "full" and not array_job:
-            raise RuntimeError("full submission must be an array")
+        if not array_job:
+            raise RuntimeError("terminal validation submission must be an array")
         if observed.intersection(task_ids):
             raise RuntimeError("scheduler submissions overlap manifest tasks")
         if not set(task_ids).issubset(expected):
@@ -2088,6 +2225,11 @@ def create_scheduler_evidence(
             raise RuntimeError("non-array submissions must own exactly one task")
         if not qsub_path.is_file():
             raise RuntimeError("raw qsub evidence is missing")
+        if (
+            not qsub_status_path.is_file()
+            or qsub_status_path.read_text(encoding="utf-8").strip() != "0"
+        ):
+            raise RuntimeError("qsub status does not prove successful submission")
         if not job_script_path.is_file():
             raise RuntimeError("submitted job script evidence is missing")
         raw_text = qsub_path.read_text(encoding="utf-8").strip()
@@ -2100,6 +2242,9 @@ def create_scheduler_evidence(
             job_name=job_name,
             task_ids=task_ids,
             array_job=array_job,
+            execution_project_root=execution_project_root,
+            approved_python_bin=approved_python_bin,
+            authorized_manifest_path=authorized_manifest_path,
         )
         observed.update(task_ids)
         normalized.append({
@@ -2110,6 +2255,8 @@ def create_scheduler_evidence(
             "manifest_task_ids": task_ids,
             "qsub_raw_path": qsub_relative,
             "qsub_raw_sha256": sha256_file(qsub_path),
+            "qsub_status_path": qsub_status_relative,
+            "qsub_status_sha256": sha256_file(qsub_status_path),
             "job_script_path": job_relative,
             "job_script_sha256": sha256_file(job_script_path),
             "slots": semantics["slots"],
@@ -2118,18 +2265,19 @@ def create_scheduler_evidence(
             "throttle": semantics["throttle"],
             "task_id_mode": semantics["task_id_mode"],
             "parallel_environment": semantics["parallel_environment"],
+            "execution_project_root": str(execution_project_root),
+            "python_bin": str(approved_python_bin),
+            "authorized_manifest_path": str(authorized_manifest_path),
+            "scheduler_user": scheduler_user,
+            "run_tag": run_tag,
             "job_script_semantics_hash": logical_hash(semantics),
         })
     if observed != expected:
         raise RuntimeError("scheduler submissions do not exactly cover manifest tasks")
-    if manifest["stage"] == "smoke" and tuple(
-        int(item["manifest_task_ids"][0]) for item in normalized
-    ) != tuple(range(1, int(manifest["task_count"]) + 1)):
-        raise RuntimeError("smoke submissions do not preserve manifest task order")
-    if manifest["stage"] == "full" and tuple(normalized[0]["manifest_task_ids"]) != tuple(
+    if tuple(normalized[0]["manifest_task_ids"]) != tuple(
         range(1, int(manifest["task_count"]) + 1)
     ):
-        raise RuntimeError("full array does not preserve exact manifest task order")
+        raise RuntimeError("array does not preserve exact manifest task order")
     payload: Dict[str, Any] = {
         "schema": SCHEDULER_EVIDENCE_SCHEMA,
         "manifest_hash": manifest["manifest_hash"],
@@ -2165,9 +2313,15 @@ def audit_qacct(
             "array_job": item["array_job"],
             "manifest_task_ids": item["manifest_task_ids"],
             "qsub_raw_path": evidence_root / str(item["qsub_raw_path"]),
+            "qsub_status_path": evidence_root / str(item["qsub_status_path"]),
             "job_script_path": evidence_root / str(item["job_script_path"]),
         } for item in scheduler_evidence["submissions"]),
         evidence_root=evidence_root,
+        execution_project_root=Path(str(scheduler_evidence["submissions"][0]["execution_project_root"])),
+        approved_python_bin=Path(str(scheduler_evidence["submissions"][0]["python_bin"])),
+        authorized_manifest_path=Path(str(scheduler_evidence["submissions"][0]["authorized_manifest_path"])),
+        scheduler_user=str(scheduler_evidence["submissions"][0]["scheduler_user"]),
+        run_tag=str(scheduler_evidence["submissions"][0]["run_tag"]),
     )
     if reconstructed_scheduler != scheduler_evidence:
         raise RuntimeError("scheduler evidence differs from raw source reconstruction")
@@ -2190,6 +2344,7 @@ def audit_qacct(
             raise RuntimeError("scheduler resources differ from manifest")
         for path_field, hash_field in (
             ("qsub_raw_path", "qsub_raw_sha256"),
+            ("qsub_status_path", "qsub_status_sha256"),
             ("job_script_path", "job_script_sha256"),
         ):
             source_path = root / str(submission[path_field])
@@ -2201,6 +2356,9 @@ def audit_qacct(
             job_name=str(submission["job_name"]),
             task_ids=tuple(int(item) for item in submission["manifest_task_ids"]),
             array_job=bool(submission["array_job"]),
+            execution_project_root=Path(str(submission["execution_project_root"])),
+            approved_python_bin=Path(str(submission["python_bin"])),
+            authorized_manifest_path=Path(str(submission["authorized_manifest_path"])),
         )
         if logical_hash(semantics) != submission["job_script_semantics_hash"]:
             raise RuntimeError("scheduler job-script semantics changed")
@@ -2220,7 +2378,7 @@ def audit_qacct(
         for record in records:
             required = {
                 "jobnumber", "jobname", "qname", "hostname", "slots", "failed",
-                "exit_status", "cpu", "ru_wallclock", "maxvmem",
+                "exit_status", "cpu", "ru_wallclock", "maxvmem", "start_time", "end_time",
             }
             if not required.issubset(record):
                 raise RuntimeError("qacct record lacks required fields")
@@ -2247,6 +2405,16 @@ def audit_qacct(
             cpu_seconds = _duration_seconds(record["cpu"])
             wall_seconds = _duration_seconds(record["ru_wallclock"])
             memory_bytes = _memory_bytes(record["maxvmem"])
+            start_time = _qacct_timestamp(record["start_time"])
+            end_time = _qacct_timestamp(record["end_time"])
+            if end_time < start_time:
+                raise RuntimeError("qacct end time precedes start time")
+            if manifest["stage"] == "smoke" and (
+                wall_seconds > 7200.0
+                or memory_bytes > 6 * 1024**3
+                or memory_bytes > 0.75 * int(manifest["resources"]["memory_bytes"])
+            ):
+                raise RuntimeError("formal smoke task exceeds the P3 wall or memory gate")
             task_usage.append((
                 task_id,
                 cpu_seconds,
@@ -2261,11 +2429,15 @@ def audit_qacct(
                 "cpu_seconds": cpu_seconds,
                 "wall_seconds": wall_seconds,
                 "max_memory_bytes": memory_bytes,
+                "start_time": record["start_time"],
+                "end_time": record["end_time"],
             })
         if tuple(sorted(actual_job_tasks)) != tuple(sorted(expected_job_tasks)):
             raise RuntimeError("qacct task coverage differs from submission evidence")
     if observed_tasks != expected_tasks or len(parsed_records) != len(expected_tasks):
         raise RuntimeError("qacct coverage is not exactly the manifest task set")
+    if manifest["stage"] == "smoke" and len(parsed_records) != 16:
+        raise RuntimeError("formal smoke qacct must contain exactly 16 task records")
     payload: Dict[str, Any] = {
         "schema": QACCT_AUDIT_SCHEMA,
         "manifest_hash": manifest["manifest_hash"],
@@ -2291,6 +2463,7 @@ def _revalidate_raw_scheduler_evidence(
     for submission in scheduler.get("submissions", ()):
         for path_field, hash_field in (
             ("qsub_raw_path", "qsub_raw_sha256"),
+            ("qsub_status_path", "qsub_status_sha256"),
             ("job_script_path", "job_script_sha256"),
         ):
             path = root / str(submission[path_field])
@@ -2334,7 +2507,7 @@ def validate_task_scheduler_bindings(
         )
         submission = submission_by_task[task_id]
         binding = binding_by_task[task_id]
-        expected_sge = task_id if manifest["stage"] == "full" else None
+        expected_sge = task_id
         observed_sge = artifact["sge_task_id"]
         if observed_sge in ("undefined", "NONE", ""):
             observed_sge = None
@@ -2403,6 +2576,7 @@ def _fixed_feasibility_paths(
     root = scheduler_evidence_root.resolve()
     for submission in scheduler["submissions"]:
         paths.add((root / str(submission["qsub_raw_path"])).resolve())
+        paths.add((root / str(submission["qsub_status_path"])).resolve())
         paths.add((root / str(submission["job_script_path"])).resolve())
     for _, relative_path, _ in qacct["raw_qacct_hashes"]:
         paths.add((root / str(relative_path)).resolve())
@@ -2861,11 +3035,437 @@ def independent_readback(
     return payload
 
 
+def _capture_formal_smoke_finalization(
+    *,
+    manifest: Mapping[str, Any],
+    scheduler_evidence_path: Path,
+    qacct_audit_path: Path,
+    post_job_path: Path,
+    output_dir: Path,
+    qstat_bin: str,
+) -> Mapping[str, Any]:
+    """Capture qstat immediately after the atomic finalize-and-capture wrapper."""
+
+    if output_dir.exists():
+        raise FileExistsError("formal smoke finalization capture already exists")
+    scheduler = _decode(dict(_load_json(scheduler_evidence_path)))
+    qacct = _decode(dict(_load_json(qacct_audit_path)))
+    post_job = _decode(dict(_load_json(post_job_path)))
+    for value, field, context in (
+        (scheduler, "logical_record_hash", "scheduler evidence"),
+        (qacct, "logical_record_hash", "qacct audit"),
+        (post_job, "logical_record_hash", "post-job candidate"),
+    ):
+        _validate_self_hash(value, field, context)
+    if (
+        scheduler.get("manifest_hash") != manifest.get("manifest_hash")
+        or qacct.get("manifest_hash") != manifest.get("manifest_hash")
+        or post_job.get("manifest_hash") != manifest.get("manifest_hash")
+        or post_job.get("schema") != POST_JOB_SCHEMA
+        or set(post_job) != _POST_JOB_FIELDS
+        or post_job.get("final_gate_pass") is not True
+    ):
+        raise RuntimeError("formal smoke finalization inputs are incomplete or mismatched")
+    submissions = tuple(scheduler.get("submissions", ()))
+    if len(submissions) != 1:
+        raise RuntimeError("formal smoke finalization requires one scheduler submission")
+    run_tag = str(submissions[0].get("run_tag", ""))
+    scheduler_user = str(submissions[0].get("scheduler_user", ""))
+    if re.fullmatch(r"[A-Za-z0-9._-]+", scheduler_user) is None:
+        raise RuntimeError("formal smoke scheduler user is not bound")
+    job_ids = tuple(str(item["job_id"]) for item in submissions)
+    qstat_command = (qstat_bin, "-xml", "-u", scheduler_user)
+    completed = subprocess.run(
+        qstat_command, text=True, capture_output=True, check=False
+    )
+    if completed.stderr:
+        raise RuntimeError("qstat emitted stderr and cannot prove authoritative absence")
+    validate_qstat_snapshot_text(
+        completed.stdout,
+        completed.returncode,
+        absent_job_ids=job_ids,
+        absent_run_tag=run_tag,
+    )
+
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    reservation = output_dir.parent / f".{output_dir.name}.exclusive"
+    reservation_fd = os.open(reservation, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
+    os.close(reservation_fd)
+    temporary = output_dir.parent / f".{output_dir.name}.tmp.{os.getpid()}.{time.time_ns()}"
+    temporary.mkdir(parents=True)
+    try:
+        qstat_xml = temporary / "qstat.xml"
+        qstat_status = temporary / "qstat.status"
+        qstat_stderr = temporary / "qstat.stderr"
+        qstat_xml.write_text(completed.stdout, encoding="utf-8")
+        qstat_status.write_text(f"{completed.returncode}\n", encoding="utf-8")
+        qstat_stderr.write_text(completed.stderr, encoding="utf-8")
+        payload: Dict[str, Any] = {
+            "schema": FORMAL_SMOKE_FINALIZATION_SCHEMA,
+            "manifest_hash": manifest["manifest_hash"],
+            "source_identity_hash": manifest["source_identity"]["identity_hash"],
+            "scheduler_evidence_hash": scheduler["logical_record_hash"],
+            "qacct_audit_hash": qacct["logical_record_hash"],
+            "post_job_hash": sha256_file(post_job_path),
+            "run_tag": run_tag,
+            "server_host": platform.node().split(".", 1)[0].lower(),
+            "scheduler_user": scheduler_user,
+            "completed_at_utc": datetime.now(timezone.utc).isoformat(),
+            "qstat_command": qstat_command,
+            "qstat_xml_sha256": sha256_file(qstat_xml),
+            "qstat_status_sha256": sha256_file(qstat_status),
+            "qstat_stderr_sha256": sha256_file(qstat_stderr),
+            "capture_mode": "atomic_finalize_then_capture",
+            "command_sequence": (
+                "finalize_manifest_bound_post_job",
+                "validate_manifest_bound_post_job",
+                "capture_qstat_xml_and_status",
+                "validate_exact_run_absence",
+                "write_no_overwrite_finalization_capture",
+            ),
+            "marker_hash": "",
+        }
+        payload["marker_hash"] = logical_hash(_without_hash(payload, "marker_hash"))
+        write_new_json(temporary / "capture.json", payload)
+        if output_dir.exists():
+            raise FileExistsError("formal smoke finalization capture appeared after reservation")
+        os.rename(temporary, output_dir)
+    except Exception:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise
+    finally:
+        reservation.unlink(missing_ok=True)
+    return payload
+
+
+def finalize_and_capture_formal_smoke(
+    *,
+    manifest: Mapping[str, Any],
+    suites: Mapping[str, TerminalValidationSuite],
+    provider: CanonicalBaseProvider,
+    acceptance_validator: Callable[[CanonicalBaseProvider], bool],
+    task_output_root: Path,
+    provisional_path: Path,
+    scheduler_evidence_path: Path,
+    qacct_audit_path: Path,
+    compute_ceiling_path: Path,
+    scheduler_evidence_root: Path,
+    post_job_path: Path,
+    finalization_capture_dir: Path,
+    qstat_bin: str,
+    project_root: Path,
+) -> Tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """Finalize P3 and capture authoritative qstat in one no-overwrite operation."""
+
+    if post_job_path.exists() or finalization_capture_dir.exists():
+        raise FileExistsError("formal smoke finalization outputs already exist")
+    post_job = finalize_post_job(
+        manifest=manifest,
+        suites=suites,
+        provider=provider,
+        acceptance_validator=acceptance_validator,
+        task_output_root=task_output_root,
+        provisional_path=provisional_path,
+        scheduler_evidence_path=scheduler_evidence_path,
+        qacct_audit_path=qacct_audit_path,
+        compute_ceiling_path=compute_ceiling_path,
+        scheduler_evidence_root=scheduler_evidence_root,
+        output_path=post_job_path,
+        project_root=project_root,
+    )
+    try:
+        capture = _capture_formal_smoke_finalization(
+            manifest=manifest,
+            scheduler_evidence_path=scheduler_evidence_path,
+            qacct_audit_path=qacct_audit_path,
+            post_job_path=post_job_path,
+            output_dir=finalization_capture_dir,
+            qstat_bin=qstat_bin,
+        )
+    except Exception:
+        post_job_path.unlink(missing_ok=True)
+        raise
+    return post_job, capture
+
+
+def audit_formal_smoke(
+    *,
+    manifest: Mapping[str, Any],
+    suites: Mapping[str, TerminalValidationSuite],
+    provider: CanonicalBaseProvider,
+    acceptance_validator: Callable[[CanonicalBaseProvider], bool],
+    task_output_root: Path,
+    provisional_path: Path,
+    scheduler_evidence_path: Path,
+    qacct_audit_path: Path,
+    compute_ceiling_path: Path,
+    scheduler_evidence_root: Path,
+    post_job_path: Path,
+    readback_path: Path,
+    finalization_capture_dir: Path,
+    logs_dir: Path,
+    output_path: Path,
+    project_root: Path,
+) -> Mapping[str, Any]:
+    """Fail closed unless the complete 16-by-1 P3 evidence chain passes."""
+
+    if output_path.exists():
+        raise FileExistsError("formal smoke audit already exists")
+    validate_clean_source_identity(project_root, manifest["source_identity"])
+    validate_execution_manifest(
+        manifest, suites, provider, acceptance_validator, reconstruct_expected=True
+    )
+    if (
+        manifest.get("stage") != "smoke"
+        or int(manifest.get("task_count", -1)) != 16
+        or int(manifest.get("task_descriptor_limit", -1)) != 1
+        or any(len(task.get("descriptors", ())) != 1 for task in manifest.get("tasks", ()))
+    ):
+        raise RuntimeError("formal smoke manifest is not the exact 16-by-1 shape")
+
+    scheduler = _decode(dict(_load_json(scheduler_evidence_path)))
+    qacct = _decode(dict(_load_json(qacct_audit_path)))
+    provisional = _decode(dict(_load_json(provisional_path)))
+    ceiling = _decode(dict(_load_json(compute_ceiling_path)))
+    post_job = _decode(dict(_load_json(post_job_path)))
+    readback = _decode(dict(_load_json(readback_path)))
+    marker_path = finalization_capture_dir / "capture.json"
+    final_qstat_xml_path = finalization_capture_dir / "qstat.xml"
+    final_qstat_status_path = finalization_capture_dir / "qstat.status"
+    final_qstat_stderr_path = finalization_capture_dir / "qstat.stderr"
+    marker = _decode(dict(_load_json(marker_path)))
+    for value, field, context in (
+        (scheduler, "logical_record_hash", "scheduler evidence"),
+        (qacct, "logical_record_hash", "qacct audit"),
+        (post_job, "logical_record_hash", "post-job candidate"),
+        (readback, "logical_record_hash", "independent read-back"),
+        (marker, "marker_hash", "formal smoke finalization marker"),
+    ):
+        _validate_self_hash(value, field, context)
+    if set(marker) != _FORMAL_SMOKE_FINALIZATION_FIELDS or marker.get("schema") != FORMAL_SMOKE_FINALIZATION_SCHEMA:
+        raise RuntimeError("formal smoke finalization marker schema mismatch")
+    _validate_provisional_schema(provisional, manifest)
+    validate_compute_ceiling_binding(manifest, ceiling)
+    _revalidate_raw_scheduler_evidence(scheduler, qacct, scheduler_evidence_root)
+    _recompute_qacct_audit(manifest, scheduler, qacct, scheduler_evidence_root)
+    recomputed_provisional = recompute_provisional(
+        manifest=manifest,
+        suites=suites,
+        provider=provider,
+        acceptance_validator=acceptance_validator,
+        output_root=task_output_root,
+    )
+    if recomputed_provisional != provisional:
+        raise RuntimeError("formal smoke provisional rows or sidecars changed after collection")
+    if (
+        scheduler.get("manifest_hash") != manifest["manifest_hash"]
+        or qacct.get("manifest_hash") != manifest["manifest_hash"]
+        or provisional.get("manifest_hash") != manifest["manifest_hash"]
+        or post_job.get("manifest_hash") != manifest["manifest_hash"]
+        or readback.get("manifest_hash") != manifest["manifest_hash"]
+        or post_job.get("schema") != POST_JOB_SCHEMA
+        or set(post_job) != _POST_JOB_FIELDS
+        or readback.get("schema") != READBACK_SCHEMA
+        or set(readback) != _READBACK_FIELDS
+        or qacct.get("qacct_audit_pass") is not True
+        or post_job.get("final_gate_pass") is not True
+        or readback.get("stage_complete") is not True
+        or readback.get("final_gate_pass") is not True
+    ):
+        raise RuntimeError("formal smoke evidence chain has an incomplete or mismatched gate")
+    expected_bound_hashes = {
+        "manifest": logical_hash(manifest),
+        "provisional": sha256_file(provisional_path),
+        "scheduler": sha256_file(scheduler_evidence_path),
+        "qacct": sha256_file(qacct_audit_path),
+        "compute_ceiling": sha256_file(compute_ceiling_path),
+    }
+    if dict(post_job.get("bound_file_hashes", ())) != expected_bound_hashes:
+        raise RuntimeError("formal smoke post-job bound-file hashes differ from supplied evidence")
+    fixed_paths = _fixed_feasibility_paths(
+        provisional_path=provisional_path,
+        scheduler_evidence_path=scheduler_evidence_path,
+        qacct_audit_path=qacct_audit_path,
+        compute_ceiling_path=compute_ceiling_path,
+        scheduler=scheduler,
+        qacct=qacct,
+        scheduler_evidence_root=scheduler_evidence_root,
+    )
+    recomputed_feasibility = compute_feasibility(
+        manifest,
+        provisional,
+        ceiling,
+        qacct_audit=qacct,
+        fixed_artifact_paths=fixed_paths,
+        finalization_overhead_seconds=float(post_job["finalization_overhead_seconds"]),
+        finalization_artifact_bytes=post_job_path.stat().st_size,
+    )
+    if (
+        post_job.get("feasibility") != recomputed_feasibility
+        or readback.get("feasibility") != recomputed_feasibility
+        or any(
+            readback.get(field) != provisional.get(field)
+            for field in (
+                "source_hash_match", "scientific_spec_hash_match",
+                "numerical_method_config_hash_match", "manifest_hash_match",
+                "observed_task_count", "observed_row_count", "observed_sidecar_count",
+                "positive_reference_a_count", "positive_reference_b_count",
+                "coverage_match", "reference_a_complete", "reference_b_complete",
+                "tie_path_exercised", "tie_path_pass", "symmetry_path_exercised",
+                "symmetry_path_pass", "scalar_batch_parity_pass",
+                "fail_closed_path_exercised", "negative_control_rejection_pass",
+                "unexpected_reference_unresolved_count", "unexpected_validation_failure_count",
+                "missing_duplicate_malformed_nonfinite_stale_invalid_count",
+                "provisional_gate_pass",
+            )
+        )
+    ):
+        raise RuntimeError("formal smoke post/readback fields differ from recomputation")
+    if (
+        readback.get("post_job_hash") != sha256_file(post_job_path)
+        or marker.get("manifest_hash") != manifest["manifest_hash"]
+        or marker.get("source_identity_hash") != manifest["source_identity"]["identity_hash"]
+        or marker.get("scheduler_evidence_hash") != scheduler["logical_record_hash"]
+        or marker.get("qacct_audit_hash") != qacct["logical_record_hash"]
+        or marker.get("post_job_hash") != sha256_file(post_job_path)
+        or marker.get("run_tag") != scheduler["submissions"][0].get("run_tag")
+        or marker.get("scheduler_user") != scheduler["submissions"][0].get("scheduler_user")
+        or tuple(marker.get("qstat_command", ())) != (
+            "qstat", "-xml", "-u", scheduler["submissions"][0].get("scheduler_user")
+        )
+        or marker.get("qstat_xml_sha256") != sha256_file(final_qstat_xml_path)
+        or marker.get("qstat_status_sha256") != sha256_file(final_qstat_status_path)
+        or marker.get("qstat_stderr_sha256") != sha256_file(final_qstat_stderr_path)
+        or marker.get("capture_mode") != "atomic_finalize_then_capture"
+        or tuple(marker.get("command_sequence", ())) != (
+            "finalize_manifest_bound_post_job",
+            "validate_manifest_bound_post_job",
+            "capture_qstat_xml_and_status",
+            "validate_exact_run_absence",
+            "write_no_overwrite_finalization_capture",
+        )
+        or not str(marker.get("server_host", ""))
+        or marker.get("server_host") == readback.get("readback_host")
+    ):
+        raise RuntimeError("formal smoke finalization/readback bindings differ from the executed run")
+    if (
+        len(scheduler.get("submissions", ())) != 1
+        or scheduler["submissions"][0].get("array_job") is not True
+        or int(scheduler["submissions"][0].get("throttle", -1)) != 4
+    ):
+        raise RuntimeError("formal smoke scheduler shape is not the exact throttle-four array")
+    validate_task_scheduler_bindings(
+        manifest,
+        task_output_root=task_output_root,
+        scheduler=scheduler,
+        qacct=qacct,
+    )
+
+    bindings = tuple(qacct.get("task_bindings", ()))
+    if len(bindings) != 16 or tuple(int(item["task_id"]) for item in bindings) != tuple(range(1, 17)):
+        raise RuntimeError("formal smoke qacct binding coverage is not exact")
+    max_wall = max(float(item["wall_seconds"]) for item in bindings)
+    max_memory = max(int(item["max_memory_bytes"]) for item in bindings)
+    if (
+        max_wall > 7200.0
+        or max_memory > 6 * 1024**3
+        or max_memory > 0.75 * int(manifest["resources"]["memory_bytes"])
+    ):
+        raise RuntimeError("formal smoke qacct performance gate failed")
+
+    if (
+        not final_qstat_status_path.is_file()
+        or final_qstat_status_path.read_text(encoding="utf-8").strip() != "0"
+        or not final_qstat_xml_path.is_file()
+        or not final_qstat_stderr_path.is_file()
+        or final_qstat_stderr_path.read_text(encoding="utf-8") != ""
+    ):
+        raise RuntimeError("formal smoke final qstat status is not authoritative")
+    validate_qstat_snapshot_text(
+        final_qstat_xml_path.read_text(encoding="utf-8"),
+        int(final_qstat_status_path.read_text(encoding="utf-8").strip()),
+        absent_job_ids=tuple(str(item["job_id"]) for item in scheduler["submissions"]),
+        absent_run_tag=str(marker["run_tag"]),
+    )
+
+    first_start = min(_qacct_timestamp(str(item["start_time"])) for item in bindings)
+    completed = datetime.fromisoformat(str(marker["completed_at_utc"]).replace("Z", "+00:00"))
+    if completed.tzinfo is None:
+        raise RuntimeError("formal smoke finalization marker lacks timezone")
+    chain_seconds = (completed.astimezone(timezone.utc) - first_start.astimezone(timezone.utc)).total_seconds()
+    if not math.isfinite(chain_seconds) or not 0.0 <= chain_seconds <= 9000.0:
+        raise RuntimeError("formal smoke complete queue-excluded chain exceeds 9000 seconds")
+
+    task_hashes = []
+    for task_id in range(1, 17):
+        path = task_output_root / "tasks" / f"task_{task_id:05d}" / "task.json"
+        if not path.is_file():
+            raise RuntimeError("formal smoke task artifact is missing")
+        task_hashes.append((task_id, sha256_file(path)))
+    submission = scheduler["submissions"][0]
+    pattern = f"{submission['job_name']}.{submission['job_id']}.*.log"
+    logs = sorted(logs_dir.glob(pattern))
+    expected_log_tasks = set(range(1, 17))
+    observed_log_tasks = set()
+    log_hashes = []
+    for path in logs:
+        match = re.fullmatch(
+            rf"{re.escape(str(submission['job_name']))}\.{re.escape(str(submission['job_id']))}\.(\d+)\.log",
+            path.name,
+        )
+        if match is None or int(match.group(1)) in observed_log_tasks:
+            raise RuntimeError("formal smoke log identity is malformed or duplicated")
+        task_id = int(match.group(1))
+        observed_log_tasks.add(task_id)
+        if path.read_bytes():
+            raise RuntimeError("formal smoke task log is not empty")
+        log_hashes.append((task_id, sha256_file(path)))
+    if observed_log_tasks != expected_log_tasks:
+        raise RuntimeError("formal smoke log coverage is not exact")
+
+    owner_counts = tuple(sorted(
+        (int(owner), sum(int(task["logical_case_owner"]) == int(owner) for task in manifest["tasks"]))
+        for owner in SMOKE_CASE_IDS
+    ))
+    payload: Dict[str, Any] = {
+        "schema": FORMAL_SMOKE_AUDIT_SCHEMA,
+        "manifest_hash": manifest["manifest_hash"],
+        "scheduler_evidence_hash": scheduler["logical_record_hash"],
+        "qacct_audit_hash": qacct["logical_record_hash"],
+        "post_job_hash": sha256_file(post_job_path),
+        "readback_hash": sha256_file(readback_path),
+        "finalization_marker_hash": marker["marker_hash"],
+        "final_qstat_xml_hash": sha256_file(final_qstat_xml_path),
+        "final_qstat_status_hash": sha256_file(final_qstat_status_path),
+        "final_qstat_stderr_hash": sha256_file(final_qstat_stderr_path),
+        "task_artifact_hashes": tuple(task_hashes),
+        "log_hashes": tuple(sorted(log_hashes)),
+        "task_count": 16,
+        "logical_owner_counts": owner_counts,
+        "max_task_wall_seconds": max_wall,
+        "max_task_memory_bytes": max_memory,
+        "first_task_start_utc": first_start.astimezone(timezone.utc).isoformat(),
+        "finalization_completed_at_utc": completed.astimezone(timezone.utc).isoformat(),
+        "queue_excluded_chain_seconds": chain_seconds,
+        "audit_pass": True,
+        "logical_record_hash": "",
+    }
+    if owner_counts != tuple((owner, 4) for owner in SMOKE_CASE_IDS):
+        raise RuntimeError("formal smoke logical-owner coverage is not four-by-four")
+    payload["logical_record_hash"] = logical_hash(_without_hash(payload, "logical_record_hash"))
+    if set(payload) != _FORMAL_SMOKE_AUDIT_FIELDS:
+        raise RuntimeError("formal smoke audit fields differ from the exact schema")
+    write_new_json(output_path, payload)
+    return payload
+
+
 __all__ = [
     "COMPUTE_CEILING_SCHEMA",
     "DescriptorRef",
     "EXECUTION_AUTHORIZATION_SCHEMA",
     "EXECUTION_MANIFEST_SCHEMA",
+    "FORMAL_SMOKE_AUDIT_SCHEMA",
+    "FORMAL_SMOKE_FINALIZATION_SCHEMA",
     "MANIFEST_PLAN_ASSEMBLY_SCHEMA",
     "MANIFEST_PLAN_FRAGMENT_SCHEMA",
     "PLAN_DIAGNOSTIC_SCHEMA",
@@ -2874,14 +3474,17 @@ __all__ = [
     "READBACK_SCHEMA",
     "SCHEDULER_EVIDENCE_SCHEMA",
     "SMOKE_CASE_IDS",
+    "SMOKE_DESCRIPTORS_PER_TASK",
     "TaskSpec",
     "audit_qacct",
+    "audit_formal_smoke",
     "build_terminal_suites",
     "capture_clean_source_identity",
     "collect_provisional",
     "compute_feasibility",
     "create_scheduler_evidence",
     "create_execution_manifest",
+    "finalize_and_capture_formal_smoke",
     "create_manifest_plan_fragment",
     "create_terminal_plan_diagnostic",
     "execute_task",

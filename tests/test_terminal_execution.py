@@ -9,6 +9,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import src.experiments.terminal_execution as execution
 from src.experiments.terminal_validation_suite import (
@@ -23,6 +24,7 @@ from tests.test_terminal_optimizer import one_atom_mdp
 
 
 HASH = "1" * 64
+RUN_TAG = "0123456789abcdef"
 
 
 def source_identity():
@@ -153,6 +155,9 @@ class TerminalExecutionTests(unittest.TestCase):
 
     def make_manifest(self, stage="smoke", max_size=50):
         suites = self.smoke_suites() if stage == "smoke" else self.full_suites()
+        stage_resources = resources()
+        if stage == "smoke":
+            stage_resources["throttle"] = 4
         identities = SimpleNamespace(
             scientific_spec_hash="a" * 64,
             numerical_method_config_hash="b" * 64,
@@ -167,12 +172,12 @@ class TerminalExecutionTests(unittest.TestCase):
                         acceptance_validator=self.accepted,
                         source_identity=source_identity(),
                         max_descriptors_per_subshard=max_size,
-                        resources=resources(),
+                        resources=stage_resources,
                         compute_ceiling_report_hash="1" * 64,
                     )
         return manifest, suites
 
-    def assert_manifest_rejected(self, manifest, suites, pattern="source-reconstructed|mismatch|invalid|subshard|multiple"):
+    def assert_manifest_rejected(self, manifest, suites, pattern="source-reconstructed|mismatch|invalid|subshard|multiple|task IDs"):
         identities = SimpleNamespace(
             scientific_spec_hash="a" * 64,
             numerical_method_config_hash="b" * 64,
@@ -397,10 +402,8 @@ class TerminalExecutionTests(unittest.TestCase):
 
         reordered = dict(manifest)
         tasks = [dict(item) for item in reordered["tasks"]]
-        tasks[0]["descriptors"] = tuple(reversed(tasks[0]["descriptors"]))
-        tasks[0]["assignment_hash"] = execution._task_hash(tasks[0])
+        tasks[0], tasks[1] = tasks[1], tasks[0]
         reordered["tasks"] = tuple(tasks)
-        self.refresh_owner(reordered, int(tasks[0]["logical_case_owner"]))
         self.rehash_manifest(reordered)
         self.assert_manifest_rejected(reordered, suites)
 
@@ -473,7 +476,124 @@ class TerminalExecutionTests(unittest.TestCase):
         manifest, _ = self.make_manifest("smoke")
         self.assertEqual(tuple(item["logical_case_owner"] for item in manifest["case_owners"]), execution.SMOKE_CASE_IDS)
         self.assertEqual(manifest["expected_descriptor_count"], 16)
-        self.assertEqual(manifest["task_count"], 4)
+        self.assertEqual(manifest["task_count"], 16)
+        self.assertEqual(manifest["task_descriptor_limit"], 1)
+        self.assertTrue(manifest["array_required"])
+        self.assertTrue(all(len(task["descriptors"]) == 1 for task in manifest["tasks"]))
+        self.assertTrue(all(item["subshard_count"] == 4 for item in manifest["tasks"]))
+
+    def test_smoke_rejects_owner_and_subshard_substitution(self):
+        manifest, suites = self.make_manifest("smoke")
+        for field, value in (
+            ("logical_case_owner", execution.SMOKE_CASE_IDS[1]),
+            ("subshard_index", 3),
+        ):
+            forged = dict(manifest)
+            tasks = [dict(item) for item in manifest["tasks"]]
+            tasks[0][field] = value
+            tasks[0]["assignment_hash"] = execution._task_hash(tasks[0])
+            forged["tasks"] = tuple(tasks)
+            self.rehash_manifest(forged)
+            with self.subTest(field=field):
+                self.assert_manifest_rejected(forged, suites, "owner|subshard|source-reconstructed")
+
+    def test_descriptor_rows_and_sidecars_do_not_depend_on_task_grouping(self):
+        mdp = one_atom_mdp(FiniteSupportAtom(80.0, 0.5, -1))
+        belief = mdp.initial_belief()
+        template = descriptor_for(mdp, belief)
+        template_bundle = execution.evaluate_terminal_evidence_descriptor(template, mdp, belief)
+        template_sidecars = dict(template_bundle.sidecars)
+        descriptors = []
+        bundles = {}
+        references = []
+        for index in range(4):
+            descriptor_hash = execution.logical_hash(("shape", index, template.descriptor_hash))
+            item = replace(template, descriptor_index=index, descriptor_hash=descriptor_hash)
+            rows = []
+            sidecars = {}
+            for row in template_bundle.rows:
+                logical_path = f"shape_{index}/{row.sidecar.relative_path}"
+                sidecar = replace(row.sidecar, relative_path=logical_path)
+                changed = replace(
+                    row,
+                    descriptor_index=index,
+                    descriptor_hash=descriptor_hash,
+                    sidecar=sidecar,
+                    logical_record_hash="",
+                )
+                changed = replace(
+                    changed,
+                    logical_record_hash=execution.terminal_evidence_row_hash(changed),
+                )
+                rows.append(changed)
+                sidecars[logical_path] = template_sidecars[row.sidecar.relative_path]
+            descriptors.append(item)
+            bundles[descriptor_hash] = SimpleNamespace(rows=tuple(rows), sidecars=sidecars)
+            references.append({
+                "suite_class": item.suite_class,
+                "descriptor_index": item.descriptor_index,
+                "descriptor_hash": item.descriptor_hash,
+                "expected_methods": tuple(row.method for row in rows),
+                "expected_tie_row_count": sum(row.tie_status not in (None, "unique") for row in rows),
+                "expected_symmetry_row_count": sum(row.symmetry_required for row in rows),
+            })
+
+        def task(refs):
+            value = {
+                "task_id": 1,
+                "logical_case_owner": 1,
+                "subshard_index": 0,
+                "subshard_count": 1,
+                "descriptors": tuple(refs),
+                "assignment_hash": "",
+            }
+            value["assignment_hash"] = execution._task_hash(value)
+            return value
+
+        def manifest(refs):
+            return {
+                "stage": "smoke",
+                "array_required": True,
+                "manifest_hash": HASH,
+                "task_count": 1,
+                "tasks": (task(refs),),
+                "source_identity": {"identity_hash": "2" * 64},
+                "provider_hash": self.provider.provider_hash,
+                "scientific_spec_hash": "a" * 64,
+                "numerical_method_config_hash": "b" * 64,
+            }
+
+        suites = {template.suite_class: SimpleNamespace(descriptors=tuple(descriptors))}
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            execution, "validate_execution_manifest"
+        ), patch.object(
+            execution, "reconstruct_terminal_evidence_source", return_value=(mdp, belief)
+        ), patch.object(
+            execution,
+            "evaluate_terminal_evidence_descriptor",
+            side_effect=lambda item, _mdp, _belief: bundles[item.descriptor_hash],
+        ), patch.object(
+            execution, "require_terminal_evidence_plan_parity"
+        ), patch.object(
+            execution, "validate_terminal_evidence_bundle_source", return_value=()
+        ):
+            root = Path(directory)
+            grouped = execution.execute_task(
+                manifest=manifest(references), suites=suites, provider=self.provider,
+                acceptance_validator=self.accepted, output_root=root / "grouped", task_id=1,
+                scheduler_environment={"NSLOTS": "1", "JOB_ID": "100", "SGE_TASK_ID": "1"},
+            )
+            isolated = execution.execute_task(
+                manifest=manifest(references[:1]), suites=suites, provider=self.provider,
+                acceptance_validator=self.accepted, output_root=root / "isolated", task_id=1,
+                scheduler_environment={"NSLOTS": "1", "JOB_ID": "101", "SGE_TASK_ID": "1"},
+            )
+            grouped_rows = json.loads((grouped / "rows.json").read_text(encoding="utf-8"))
+            isolated_rows = json.loads((isolated / "rows.json").read_text(encoding="utf-8"))
+            self.assertEqual(grouped_rows[:len(isolated_rows)], isolated_rows)
+            for relative_path, expected in bundles[descriptors[0].descriptor_hash].sidecars.items():
+                self.assertEqual((grouped / "sidecars" / relative_path).read_bytes(), expected)
+                self.assertEqual((isolated / "sidecars" / relative_path).read_bytes(), expected)
 
     def test_manifest_refuses_unaccepted_provider_and_self_rehashed_extra_field(self):
         suites = self.full_suites()
@@ -495,39 +615,73 @@ class TerminalExecutionTests(unittest.TestCase):
                     execution.validate_execution_manifest(forged, suites, self.provider, self.accepted)
 
     def scheduler_fixture(self, root, manifest):
-        submissions = []
-        qacct = {}
-        for task in manifest["tasks"]:
-            task_id = int(task["task_id"])
-            job_id = str(1000 + task_id)
-            raw = root / f"qsub_{job_id}.txt"
-            raw.write_text(job_id + "\n", encoding="utf-8")
-            job = root / f"job_{job_id}.sh"
-            job.write_text(
-                "#!/bin/sh\n"
-                "#$ -cwd\n"
-                f"#$ -N smoke_{task_id}\n#$ -q campus\n#$ -j y\n#$ -o /tmp/test.log\n"
-                "#$ -l h_rt=01:00:00\n#$ -l h_data=2000000000\n"
-                "set -euo pipefail\nexport LANG=C\nexport LC_ALL=C\ncd /tmp\n"
-                f"task_id={task_id}\n"
-                "python scripts/terminal_validation_array.py run-task "
-                "--manifest m --output-root o --task-id ${task_id}\n",
-                encoding="utf-8",
-            )
-            submissions.append({
-                "job_id": job_id, "job_name": f"smoke_{task_id}", "queue": "campus",
-                "array_job": False, "manifest_task_ids": (task_id,),
-                "qsub_raw_path": str(raw), "job_script_path": str(job),
-            })
-            account = root / f"qacct_{job_id}.txt"
-            account.write_text(
-                f"jobnumber {job_id}\njobname smoke_{task_id}\nqname campus\n"
+        root = root.resolve()
+        scheduler = root / "scheduler"
+        jobs = scheduler / "jobs"
+        raw_dir = scheduler / "qsub_raw"
+        jobs.mkdir(parents=True)
+        raw_dir.mkdir(parents=True)
+        job_id = "1000"
+        job_name = f"terminal_{RUN_TAG}"
+        raw = raw_dir / f"{job_name}.txt"
+        raw.write_text(f"{job_id}.1-{manifest['task_count']}:1\n", encoding="utf-8")
+        status = raw_dir / f"{job_name}.status"
+        status.write_text("0\n", encoding="utf-8")
+        job = jobs / f"{job_name}.job"
+        project = Path(execution.__file__).resolve().parents[2]
+        h_rt = int(manifest["resources"]["h_rt_seconds"])
+        job.write_text(
+            "#!/usr/bin/env bash\n"
+            "#$ -cwd\n"
+            f"#$ -N {job_name}\n#$ -q campus\n#$ -j y\n"
+            f"#$ -o {root}/logs/{job_name}.$JOB_ID.$TASK_ID.log\n"
+            f"#$ -l h_rt={h_rt // 3600:02d}:{(h_rt % 3600) // 60:02d}:{h_rt % 60:02d}\n"
+            "#$ -l h_data=2000000000\n"
+            f"#$ -t 1-{manifest['task_count']}\n#$ -tc {manifest['resources']['throttle']}\n"
+            "set -euo pipefail\nexport LANG=C\nexport LC_ALL=C\n"
+            f'cd "{project}"\n'
+            "task_id=${SGE_TASK_ID}\n"
+            f'"python" scripts/terminal_validation_array.py run-task \\\n'
+            '  --manifest "m" \\\n'
+            f'  --output-root "{root}" \\\n'
+            '  --task-id "${task_id}"\n',
+            encoding="utf-8",
+        )
+        submissions = ({
+            "job_id": job_id, "job_name": job_name, "queue": "campus",
+            "array_job": True,
+            "manifest_task_ids": tuple(range(1, int(manifest["task_count"]) + 1)),
+            "qsub_raw_path": str(raw), "qsub_status_path": str(status),
+            "job_script_path": str(job),
+        },)
+        account = root / f"qacct_{job_id}.txt"
+        records = []
+        ended = datetime.now(ZoneInfo("America/Los_Angeles"))
+        started = ended - timedelta(seconds=2)
+        start_text = started.strftime("%m/%d/%Y %H:%M:%S.%f")[:-3]
+        end_text = ended.strftime("%m/%d/%Y %H:%M:%S.%f")[:-3]
+        for task_id in range(1, int(manifest["task_count"]) + 1):
+            records.append(
+                f"jobnumber {job_id}\njobname {job_name}\ntaskid {task_id}\nqname campus\n"
                 "hostname n1234\nslots 1\nfailed 0\nexit_status 0\n"
-                "cpu 00:00:01\nru_wallclock 2\nmaxvmem 100M\n",
-                encoding="utf-8",
+                f"start_time {start_text}\n"
+                f"end_time {end_text}\n"
+                "cpu 00:00:01\nru_wallclock 2\nmaxvmem 100M\n"
             )
-            qacct[job_id] = account
-        return submissions, qacct
+        account.write_text("==============================================================\n".join(records), encoding="utf-8")
+        return submissions, {job_id: account}
+
+    def create_scheduler(self, manifest, submissions, root):
+        return execution.create_scheduler_evidence(
+            manifest,
+            submissions,
+            evidence_root=root,
+            execution_project_root=Path(execution.__file__).resolve().parents[2],
+            approved_python_bin=Path("python"),
+            authorized_manifest_path=Path("m"),
+            scheduler_user="zzl",
+            run_tag=RUN_TAG,
+        )
 
     def write_binding_task_artifacts(self, root, manifest, scheduler, qacct):
         submission_by_task = {
@@ -552,7 +706,7 @@ class TerminalExecutionTests(unittest.TestCase):
                 "subshard_index": task["subshard_index"],
                 "subshard_count": task["subshard_count"],
                 "job_id": submission_by_task[task_id]["job_id"],
-                "sge_task_id": task_id if manifest["stage"] == "full" else None,
+                "sge_task_id": task_id,
                 "slots": 1,
                 "hostname": binding["hostname"],
                 "source_identity_hash": manifest["source_identity"]["identity_hash"],
@@ -576,69 +730,76 @@ class TerminalExecutionTests(unittest.TestCase):
     def test_scheduler_rejects_wrong_stage_queue_shape_task_and_duplicates(self):
         manifest, _ = self.make_manifest("smoke")
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             submissions, _ = self.scheduler_fixture(root, manifest)
             wrong_queue = [dict(item) for item in submissions]
             wrong_queue[0]["queue"] = "unauthorized"
             with self.assertRaisesRegex(RuntimeError, "queue"):
-                execution.create_scheduler_evidence(manifest, wrong_queue, evidence_root=root)
+                self.create_scheduler(manifest, wrong_queue, root)
             wrong_shape = [dict(item) for item in submissions]
-            wrong_shape[0]["array_job"] = True
-            with self.assertRaisesRegex(RuntimeError, "non-array"):
-                execution.create_scheduler_evidence(manifest, wrong_shape, evidence_root=root)
+            wrong_shape[0]["array_job"] = False
+            with self.assertRaisesRegex(RuntimeError, "must be an array"):
+                self.create_scheduler(manifest, wrong_shape, root)
             wrong_task = [dict(item) for item in submissions]
-            wrong_task[0]["manifest_task_ids"] = (999,)
+            wrong_task[0]["manifest_task_ids"] = tuple(range(1, manifest["task_count"])) + (999,)
             with self.assertRaisesRegex(RuntimeError, "unknown"):
-                execution.create_scheduler_evidence(manifest, wrong_task, evidence_root=root)
-            duplicate = [dict(item) for item in submissions]
-            duplicate[1]["manifest_task_ids"] = duplicate[0]["manifest_task_ids"]
-            with self.assertRaisesRegex(RuntimeError, "overlap"):
-                execution.create_scheduler_evidence(manifest, duplicate, evidence_root=root)
-            reordered = list(submissions)
-            reordered[0], reordered[1] = reordered[1], reordered[0]
-            with self.assertRaisesRegex(RuntimeError, "task order"):
-                execution.create_scheduler_evidence(manifest, reordered, evidence_root=root)
+                self.create_scheduler(manifest, wrong_task, root)
+            reordered = [dict(submissions[0])]
+            reordered[0]["manifest_task_ids"] = tuple(reversed(reordered[0]["manifest_task_ids"]))
+            with self.assertRaisesRegex(RuntimeError, "mapping|order"):
+                self.create_scheduler(manifest, reordered, root)
             job_path = Path(submissions[0]["job_script_path"])
             original = job_path.read_text(encoding="utf-8")
             job_path.write_text(original.replace("#$ -q campus", "#$ -q unauthorized"), encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "queue/name"):
-                execution.create_scheduler_evidence(manifest, submissions, evidence_root=root)
+                self.create_scheduler(manifest, submissions, root)
             job_path.write_text(original + "#$ -pe shared 2\n", encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "parallel-environment"):
-                execution.create_scheduler_evidence(manifest, submissions, evidence_root=root)
+                self.create_scheduler(manifest, submissions, root)
 
     def test_full_scheduler_requires_one_exact_one_slot_array(self):
         manifest, _ = self.make_manifest("full")
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            raw = root / "qsub.txt"
+            root = Path(directory).resolve()
+            scheduler_root = root / "scheduler"
+            jobs = scheduler_root / "jobs"
+            raws = scheduler_root / "qsub_raw"
+            jobs.mkdir(parents=True)
+            raws.mkdir(parents=True)
+            full_job_name = f"full_{RUN_TAG}"
+            raw = raws / f"{full_job_name}.txt"
             raw.write_text("9001.1-90:1\n", encoding="utf-8")
-            job = root / "full.job"
+            status = raws / f"{full_job_name}.status"
+            status.write_text("0\n", encoding="utf-8")
+            job = jobs / f"{full_job_name}.job"
+            project = Path(execution.__file__).resolve().parents[2]
             job.write_text(
-                "#!/bin/sh\n#$ -cwd\n#$ -N full_job\n#$ -q campus\n"
-                "#$ -j y\n#$ -o /tmp/test.log\n"
+                f"#!/usr/bin/env bash\n#$ -cwd\n#$ -N {full_job_name}\n#$ -q campus\n"
+                f"#$ -j y\n#$ -o {root}/logs/{full_job_name}.$JOB_ID.$TASK_ID.log\n"
                 "#$ -l h_rt=01:00:00\n#$ -l h_data=2000000000\n"
                 f"#$ -t 1-{manifest['task_count']}\n#$ -tc 32\n"
-                "set -euo pipefail\nexport LANG=C\nexport LC_ALL=C\ncd /tmp\n"
+                "set -euo pipefail\nexport LANG=C\nexport LC_ALL=C\n"
+                f'cd "{project}"\n'
                 "task_id=${SGE_TASK_ID}\n"
-                "python scripts/terminal_validation_array.py run-task "
-                "--manifest m --output-root o --task-id ${task_id}\n",
+                '"python" scripts/terminal_validation_array.py run-task \\\n'
+                '  --manifest "m" \\\n'
+                f'  --output-root "{root}" \\\n'
+                '  --task-id "${task_id}"\n',
                 encoding="utf-8",
             )
             submission = {
-                "job_id": "9001", "job_name": "full_job", "queue": "campus",
+                "job_id": "9001", "job_name": full_job_name, "queue": "campus",
                 "array_job": True,
                 "manifest_task_ids": tuple(range(1, manifest["task_count"] + 1)),
-                "qsub_raw_path": raw, "job_script_path": job,
+                "qsub_raw_path": raw, "qsub_status_path": status,
+                "job_script_path": job,
             }
-            scheduler = execution.create_scheduler_evidence(
-                manifest, (submission,), evidence_root=root
-            )
+            scheduler = self.create_scheduler(manifest, (submission,), root)
             self.assertEqual(len(scheduler["submissions"]), 1)
             forged = dict(submission)
             forged["array_job"] = False
             with self.assertRaisesRegex(RuntimeError, "must be an array"):
-                execution.create_scheduler_evidence(manifest, (forged,), evidence_root=root)
+                self.create_scheduler(manifest, (forged,), root)
 
     def test_task_artifacts_are_strictly_bound_to_scheduler_qacct_and_source(self):
         manifest, _ = self.make_manifest("smoke")
@@ -650,14 +811,14 @@ class TerminalExecutionTests(unittest.TestCase):
             "numerical_method_config_hash": "f" * 64,
             "logical_case_owner": 999,
             "subshard_index": 99,
-            "sge_task_id": 1,
+            "sge_task_id": 999,
             "slots": 2,
         }
         for field, value in fields.items():
             with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 submissions, qacct_paths = self.scheduler_fixture(root, manifest)
-                scheduler = execution.create_scheduler_evidence(manifest, submissions, evidence_root=root)
+                scheduler = self.create_scheduler(manifest, submissions, root)
                 qacct = execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
                 self.write_binding_task_artifacts(root, manifest, scheduler, qacct)
                 task_path = root / "tasks" / "task_00001" / "task.json"
@@ -675,7 +836,7 @@ class TerminalExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             submissions, qacct_paths = self.scheduler_fixture(root, manifest)
-            scheduler = execution.create_scheduler_evidence(manifest, submissions, evidence_root=root)
+            scheduler = self.create_scheduler(manifest, submissions, root)
             qacct = execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
             self.write_binding_task_artifacts(root, manifest, scheduler, qacct)
             forged = dict(qacct)
@@ -695,7 +856,7 @@ class TerminalExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             submissions, qacct_paths = self.scheduler_fixture(root, manifest)
-            scheduler = execution.create_scheduler_evidence(manifest, submissions, evidence_root=root)
+            scheduler = self.create_scheduler(manifest, submissions, root)
             first = next(iter(qacct_paths.values()))
             first.write_text(first.read_text(encoding="utf-8") + "\n" + first.read_text(encoding="utf-8"), encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "coverage|differs"):
@@ -706,9 +867,7 @@ class TerminalExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             submissions, qacct = self.scheduler_fixture(root, manifest)
-            scheduler = execution.create_scheduler_evidence(
-                manifest, submissions, evidence_root=root
-            )
+            scheduler = self.create_scheduler(manifest, submissions, root)
             audit = execution.audit_qacct(
                 manifest, scheduler, qacct, evidence_root=root
             )
@@ -724,8 +883,239 @@ class TerminalExecutionTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "one-slot"):
                 execution.audit_qacct(manifest, scheduler, qacct, evidence_root=root)
             missing = submissions[:-1]
-            with self.assertRaisesRegex(RuntimeError, "non-array submission|exactly cover"):
-                execution.create_scheduler_evidence(manifest, missing, evidence_root=root)
+            with self.assertRaisesRegex(RuntimeError, "exactly one array submission"):
+                self.create_scheduler(manifest, missing, root)
+
+    def test_formal_smoke_qacct_enforces_wall_memory_and_qsub_status(self):
+        manifest, _ = self.make_manifest("smoke")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            submissions, qacct_paths = self.scheduler_fixture(root, manifest)
+            status = Path(submissions[0]["qsub_status_path"])
+            status.write_text("1\n", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "qsub status"):
+                self.create_scheduler(manifest, submissions, root)
+            status.write_text("0\n", encoding="utf-8")
+            scheduler = self.create_scheduler(manifest, submissions, root)
+            qacct_path = next(iter(qacct_paths.values()))
+            original = qacct_path.read_text(encoding="utf-8")
+            qacct_path.write_text(original.replace("ru_wallclock 2", "ru_wallclock 7200.1", 1), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "P3 wall or memory"):
+                execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
+            qacct_path.write_text(original.replace("maxvmem 100M", "maxvmem 7G", 1), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "P3 wall or memory"):
+                execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
+
+    def test_formal_smoke_audit_requires_exact_chain_logs_and_sixteen_tasks(self):
+        manifest, suites = self.make_manifest("smoke")
+        ceiling = self.make_ceiling()
+        manifest = dict(manifest)
+        manifest["compute_ceiling_report_hash"] = ceiling["report_hash"]
+        self.rehash_manifest(manifest)
+        provisional = self.make_provisional(manifest)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            submissions, qacct_paths = self.scheduler_fixture(root, manifest)
+            scheduler = self.create_scheduler(manifest, submissions, root)
+            qacct = execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
+            self.write_binding_task_artifacts(root, manifest, scheduler, qacct)
+
+            scheduler_path = root / "scheduler.json"
+            qacct_path = root / "qacct.json"
+            provisional_path = root / "provisional.json"
+            ceiling_path = root / "ceiling.json"
+            execution.write_new_json(scheduler_path, scheduler)
+            execution.write_new_json(qacct_path, qacct)
+            execution.write_new_json(provisional_path, provisional)
+            execution.write_new_json(ceiling_path, ceiling)
+            post_path = root / "post.json"
+            readback_path = root / "readback.json"
+            empty_qstat = (
+                "<?xml version='1.0'?><job_info><queue_info></queue_info>"
+                "<job_info></job_info></job_info>\n"
+            )
+            finalization_dir = root / "finalization"
+            completed_qstat = SimpleNamespace(stdout=empty_qstat, stderr="", returncode=0)
+            with patch.object(execution, "validate_clean_source_identity"), patch.object(
+                execution, "validate_execution_manifest"
+            ), patch.object(execution, "validate_task_scheduler_bindings"), patch.object(
+                execution, "recompute_provisional", return_value=provisional
+            ), patch.object(execution.platform, "node", return_value="n9999"), patch.object(
+                execution.subprocess, "run", return_value=completed_qstat
+            ) as run_qstat:
+                execution.finalize_and_capture_formal_smoke(
+                    manifest=manifest, suites=suites, provider=self.provider,
+                    acceptance_validator=self.accepted, task_output_root=root,
+                    provisional_path=provisional_path,
+                    scheduler_evidence_path=scheduler_path,
+                    qacct_audit_path=qacct_path,
+                    compute_ceiling_path=ceiling_path,
+                    scheduler_evidence_root=root,
+                    post_job_path=post_path,
+                    finalization_capture_dir=finalization_dir,
+                    qstat_bin="qstat",
+                    project_root=root,
+                )
+            run_qstat.assert_called_once_with(
+                ("qstat", "-xml", "-u", "zzl"),
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            with patch.object(execution.platform, "system", return_value="Darwin"), patch.object(
+                execution, "validate_clean_source_identity"
+            ), patch.object(execution, "validate_execution_manifest"), patch.object(
+                execution, "validate_task_scheduler_bindings"
+            ), patch.object(execution, "recompute_provisional", return_value=provisional), patch.object(
+                execution.platform, "node", return_value="local-mac"
+            ):
+                execution.independent_readback(
+                    manifest=manifest, suites=suites, provider=self.provider,
+                    acceptance_validator=self.accepted, task_output_root=root,
+                    provisional_path=provisional_path,
+                    scheduler_evidence_path=scheduler_path,
+                    qacct_audit_path=qacct_path,
+                    compute_ceiling_path=ceiling_path,
+                    scheduler_evidence_root=root,
+                    post_job_path=post_path,
+                    final_output_path=readback_path,
+                    project_root=root,
+                )
+
+            logs = root / "logs"
+            logs.mkdir(exist_ok=True)
+            submission = scheduler["submissions"][0]
+            for task_id in range(1, 17):
+                (logs / f"{submission['job_name']}.{submission['job_id']}.{task_id}.log").touch()
+
+            def audit_again(name, recomputed=provisional):
+                with patch.object(execution, "validate_clean_source_identity"), patch.object(
+                    execution, "validate_execution_manifest"
+                ), patch.object(execution, "recompute_provisional", return_value=recomputed):
+                    return execution.audit_formal_smoke(
+                        manifest=manifest,
+                        suites=suites,
+                        provider=self.provider,
+                        acceptance_validator=self.accepted,
+                        task_output_root=root,
+                        provisional_path=provisional_path,
+                        scheduler_evidence_path=scheduler_path,
+                        qacct_audit_path=qacct_path,
+                        compute_ceiling_path=ceiling_path,
+                        scheduler_evidence_root=root,
+                        post_job_path=post_path,
+                        readback_path=readback_path,
+                        finalization_capture_dir=finalization_dir,
+                        logs_dir=logs,
+                        output_path=root / name,
+                        project_root=root,
+                    )
+
+            audit = audit_again("formal_audit.json")
+            self.assertTrue(audit["audit_pass"])
+            self.assertEqual(audit["task_count"], 16)
+            self.assertEqual(audit["logical_owner_counts"], tuple((owner, 4) for owner in execution.SMOKE_CASE_IDS))
+            self.assertLess(audit["queue_excluded_chain_seconds"], 60.0)
+
+            # A self-rehashed artifact from another run cannot be substituted into the chain.
+            original_post = post_path.read_bytes()
+            forged_post = execution._decode(dict(execution._load_json(post_path)))
+            forged_post["bound_file_hashes"] = tuple(
+                (name, "f" * 64 if name == "scheduler" else value)
+                for name, value in forged_post["bound_file_hashes"]
+            )
+            forged_post["logical_record_hash"] = execution.logical_hash(
+                execution._without_hash(forged_post, "logical_record_hash")
+            )
+            post_path.unlink()
+            execution.write_new_json(post_path, forged_post)
+            with self.assertRaisesRegex(RuntimeError, "bound-file hashes"):
+                audit_again("cross_run_post_audit.json")
+            post_path.write_bytes(original_post)
+
+            original_readback = readback_path.read_bytes()
+            forged_readback = execution._decode(dict(execution._load_json(readback_path)))
+            forged_readback["post_job_hash"] = "f" * 64
+            forged_readback["logical_record_hash"] = execution.logical_hash(
+                execution._without_hash(forged_readback, "logical_record_hash")
+            )
+            readback_path.unlink()
+            execution.write_new_json(readback_path, forged_readback)
+            with self.assertRaisesRegex(RuntimeError, "finalization/readback"):
+                audit_again("cross_run_readback_audit.json")
+            readback_path.write_bytes(original_readback)
+
+            malformed = execution._decode(dict(execution._load_json(readback_path)))
+            malformed.pop("observed_row_count")
+            malformed["logical_record_hash"] = execution.logical_hash(
+                execution._without_hash(malformed, "logical_record_hash")
+            )
+            readback_path.unlink()
+            execution.write_new_json(readback_path, malformed)
+            with self.assertRaisesRegex(RuntimeError, "incomplete or mismatched"):
+                audit_again("malformed_readback_audit.json")
+            readback_path.write_bytes(original_readback)
+
+            # Raw scheduler/qacct and recomputed task evidence remain authoritative.
+            raw_qacct_path = next(iter(qacct_paths.values()))
+            original_raw_qacct = raw_qacct_path.read_bytes()
+            raw_qacct_path.write_bytes(original_raw_qacct.replace(b"maxvmem 100M", b"maxvmem 101M", 1))
+            with self.assertRaisesRegex(RuntimeError, "raw|qacct"):
+                audit_again("raw_qacct_tamper_audit.json")
+            raw_qacct_path.write_bytes(original_raw_qacct)
+
+            for name, relative in (
+                ("row", Path("tasks/task_00001/rows.json")),
+                ("metric", Path("tasks/task_00001/metrics.json")),
+            ):
+                path = root / relative
+                original = path.read_bytes()
+                path.write_bytes(original + b" ")
+                changed = dict(provisional, logical_record_hash="f" * 64)
+                with self.subTest(tamper=name), self.assertRaisesRegex(
+                    RuntimeError, "rows or sidecars changed"
+                ):
+                    audit_again(f"{name}_tamper_audit.json", recomputed=changed)
+                path.write_bytes(original)
+
+            sidecar_path = root / "tasks/task_00001/sidecars/tamper.bin"
+            sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+            sidecar_path.write_bytes(b"original")
+            sidecar_path.write_bytes(b"tampered")
+            changed = dict(provisional, logical_record_hash="e" * 64)
+            with self.assertRaisesRegex(RuntimeError, "rows or sidecars changed"):
+                audit_again("sidecar_tamper_audit.json", recomputed=changed)
+            with self.assertRaisesRegex(FileExistsError, "already exist"):
+                execution.finalize_and_capture_formal_smoke(
+                    manifest=manifest, suites=suites, provider=self.provider,
+                    acceptance_validator=self.accepted, task_output_root=root,
+                    provisional_path=provisional_path,
+                    scheduler_evidence_path=scheduler_path,
+                    qacct_audit_path=qacct_path,
+                    compute_ceiling_path=ceiling_path,
+                    scheduler_evidence_root=root,
+                    post_job_path=post_path,
+                    finalization_capture_dir=finalization_dir,
+                    qstat_bin="qstat",
+                    project_root=root,
+                )
+            warning = SimpleNamespace(
+                stdout=empty_qstat,
+                stderr="permission warning\n",
+                returncode=0,
+            )
+            warning_capture = root / "warning_finalization"
+            with patch.object(execution.subprocess, "run", return_value=warning):
+                with self.assertRaisesRegex(RuntimeError, "emitted stderr"):
+                    execution._capture_formal_smoke_finalization(
+                        manifest=manifest,
+                        scheduler_evidence_path=scheduler_path,
+                        qacct_audit_path=qacct_path,
+                        post_job_path=post_path,
+                        output_dir=warning_capture,
+                        qstat_bin="qstat",
+                    )
+            self.assertFalse(warning_capture.exists())
 
     def test_one_slot_task_and_provisional_collection_use_row_sidecar_source_validation(self):
         mdp = one_atom_mdp(FiniteSupportAtom(80.0, 0.5, -1))
@@ -749,6 +1139,7 @@ class TerminalExecutionTests(unittest.TestCase):
         task["assignment_hash"] = execution._task_hash(task)
         manifest = {
             "stage": "smoke", "artifact_type": "terminal_smoke",
+            "array_required": True,
             "manifest_hash": "1" * 64, "task_count": 1, "tasks": (task,),
             "expected_row_count": len(methods), "expected_sidecar_count": len(methods),
             "expected_positive_reference_a_count": int("reference_a" in methods),
@@ -760,11 +1151,17 @@ class TerminalExecutionTests(unittest.TestCase):
             "source_identity": {"identity_hash": "2" * 64},
         }
         suites = {"base": SimpleNamespace(descriptors=(item,))}
-        scheduler = {"NSLOTS": "1", "JOB_ID": "1234"}
+        scheduler = {"NSLOTS": "1", "JOB_ID": "1234", "SGE_TASK_ID": "1"}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             with patch.object(execution, "validate_execution_manifest") as validate:
                 with patch.object(execution, "reconstruct_terminal_evidence_source", return_value=(mdp, belief)):
+                    with self.assertRaisesRegex(RuntimeError, "array task ID"):
+                        execution.execute_task(
+                            manifest=manifest, suites=suites, provider=self.provider,
+                            acceptance_validator=self.accepted, output_root=root, task_id=1,
+                            scheduler_environment=dict(scheduler, SGE_TASK_ID="2"),
+                        )
                     target = execution.execute_task(
                         manifest=manifest, suites=suites, provider=self.provider,
                         acceptance_validator=self.accepted, output_root=root, task_id=1,
@@ -899,7 +1296,7 @@ class TerminalExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             submissions, qacct_paths = self.scheduler_fixture(root, manifest)
-            scheduler = execution.create_scheduler_evidence(manifest, submissions, evidence_root=root)
+            scheduler = self.create_scheduler(manifest, submissions, root)
             qacct = execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
             fixed = root / "fixed.bin"
             fixed.write_bytes(b"x" * 4096)
@@ -944,9 +1341,7 @@ class TerminalExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             submissions, qacct_paths = self.scheduler_fixture(root, manifest)
-            scheduler = execution.create_scheduler_evidence(
-                manifest, submissions, evidence_root=root
-            )
+            scheduler = self.create_scheduler(manifest, submissions, root)
             qacct = execution.audit_qacct(
                 manifest, scheduler, qacct_paths, evidence_root=root
             )
@@ -1094,6 +1489,8 @@ class TerminalExecutionTests(unittest.TestCase):
         manifest = dict(manifest)
         manifest["source_identity"] = source
         self.rehash_manifest(manifest)
+        approved_python = Path("/approved/python3.11")
+        authorized_manifest = Path("/approved/terminal_smoke_manifest.json")
         authorization = {
             "schema": execution.EXECUTION_AUTHORIZATION_SCHEMA,
             "authorization_status": "reviewer_approved_for_exact_terminal_stage",
@@ -1109,6 +1506,9 @@ class TerminalExecutionTests(unittest.TestCase):
             "compute_ceiling_report_hash": manifest["compute_ceiling_report_hash"],
             "resources_hash": execution.logical_hash(manifest["resources"]),
             "execution_script_hashes": records,
+            "approved_python_bin": str(approved_python),
+            "authorized_manifest_path": str(authorized_manifest),
+            "approved_scheduler_user": "zzl",
         }
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "authorization.json"
@@ -1118,6 +1518,9 @@ class TerminalExecutionTests(unittest.TestCase):
                 execution.validate_execution_authorization(
                     authorization_path=path, approved_file_hash=approved,
                     manifest=manifest, project_root=project_root,
+                    approved_python_bin=approved_python,
+                    authorized_manifest_path=authorized_manifest,
+                    approved_scheduler_user="zzl",
                 )
                 for field in ("manifest_hash", "compute_ceiling_report_hash", "provider_hash"):
                     with self.subTest(cross_reuse=field):
@@ -1127,6 +1530,9 @@ class TerminalExecutionTests(unittest.TestCase):
                             execution.validate_execution_authorization(
                                 authorization_path=path, approved_file_hash=approved,
                                 manifest=other, project_root=project_root,
+                                approved_python_bin=approved_python,
+                                authorized_manifest_path=authorized_manifest,
+                                approved_scheduler_user="zzl",
                             )
                 other = dict(manifest)
                 other["resources"] = dict(manifest["resources"], throttle=31)
@@ -1134,6 +1540,9 @@ class TerminalExecutionTests(unittest.TestCase):
                     execution.validate_execution_authorization(
                         authorization_path=path, approved_file_hash=approved,
                         manifest=other, project_root=project_root,
+                        approved_python_bin=approved_python,
+                        authorized_manifest_path=authorized_manifest,
+                        approved_scheduler_user="zzl",
                     )
                 other = dict(manifest)
                 other_source = dict(source, identity_hash="f" * 64)
@@ -1142,11 +1551,41 @@ class TerminalExecutionTests(unittest.TestCase):
                     execution.validate_execution_authorization(
                         authorization_path=path, approved_file_hash=approved,
                         manifest=other, project_root=project_root,
+                        approved_python_bin=approved_python,
+                        authorized_manifest_path=authorized_manifest,
+                        approved_scheduler_user="zzl",
                     )
                 with self.assertRaisesRegex(RuntimeError, "externally approved"):
                     execution.validate_execution_authorization(
                         authorization_path=path, approved_file_hash="f" * 64,
                         manifest=manifest, project_root=project_root,
+                        approved_python_bin=approved_python,
+                        authorized_manifest_path=authorized_manifest,
+                        approved_scheduler_user="zzl",
+                    )
+                for changed_python, changed_manifest in (
+                    (Path("/wrong/python"), authorized_manifest),
+                    (approved_python, Path("/wrong/manifest.json")),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "exact manifest/source"):
+                        execution.validate_execution_authorization(
+                            authorization_path=path,
+                            approved_file_hash=approved,
+                            manifest=manifest,
+                            project_root=project_root,
+                            approved_python_bin=changed_python,
+                            authorized_manifest_path=changed_manifest,
+                            approved_scheduler_user="zzl",
+                        )
+                with self.assertRaisesRegex(RuntimeError, "exact manifest/source"):
+                    execution.validate_execution_authorization(
+                        authorization_path=path,
+                        approved_file_hash=approved,
+                        manifest=manifest,
+                        project_root=project_root,
+                        approved_python_bin=approved_python,
+                        authorized_manifest_path=authorized_manifest,
+                        approved_scheduler_user="wrong-user",
                     )
 
     def test_submitter_requires_exact_authorization_before_creating_or_submitting(self):
@@ -1159,11 +1598,14 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertIn('COMPUTE_CEILING:?', script)
         authorization = script.index("validate-authorization")
         ceiling = script.index("validate-compute-ceiling")
-        create_output = script.index('mkdir -p "${OUTPUT_ROOT}/scheduler/qsub_raw"')
+        create_output = script.index("mkdir -p \\")
         qsub = script.index('"${QSUB_BIN}" -terse')
         self.assertLess(authorization, create_output)
         self.assertLess(ceiling, create_output)
         self.assertLess(create_output, qsub)
+        self.assertIn('array_directive="$(printf \'#$ -t 1-%s\\n#$ -tc %s\'', script)
+        self.assertIn('qsub_status_path', script)
+        self.assertIn('rollback left a validation-tagged job', script)
 
     def test_manifest_setup_submitter_uses_dual_segmented_replicates(self):
         script = (
