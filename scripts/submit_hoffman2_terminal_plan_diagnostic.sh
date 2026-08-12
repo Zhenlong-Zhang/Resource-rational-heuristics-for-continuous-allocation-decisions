@@ -26,7 +26,7 @@ submit_run() {
     echo "Refusing to overwrite plan diagnostic run: ${RUN_ROOT}" >&2
     exit 1
   fi
-  if [[ -n "$(git -C "${PROJECT_ROOT}" status --porcelain --untracked-files=all)" ]]; then
+  if [[ -n "$(cd "${PROJECT_ROOT}" && git status --porcelain --untracked-files=all)" ]]; then
     echo "Plan diagnostics require a clean committed worktree." >&2
     exit 1
   fi

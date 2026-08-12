@@ -71,7 +71,7 @@ fi
   --manifest "${MANIFEST}" \
   --compute-ceiling "${COMPUTE_CEILING}"
 
-if [[ -n "$(git -C "${PROJECT_ROOT}" status --porcelain --untracked-files=all)" ]]; then
+if [[ -n "$(cd "${PROJECT_ROOT}" && git status --porcelain --untracked-files=all)" ]]; then
   echo "Terminal validation submission requires a clean committed worktree." >&2
   exit 1
 fi

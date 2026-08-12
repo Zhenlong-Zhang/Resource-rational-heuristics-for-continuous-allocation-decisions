@@ -471,6 +471,7 @@ class TerminalPlanOnlyTests(unittest.TestCase):
         self.assertIn("profiles_b", setup)
         self.assertEqual(setup.count("--profile-output"), 2)
         self.assertIn(".conda/envs/rr-allocation/bin/python", setup)
+        self.assertNotIn("git -C", setup)
 
         p1 = (project_root / "scripts/submit_hoffman2_terminal_plan_diagnostic.sh").read_text(
             encoding="utf-8"
@@ -485,10 +486,12 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             "audit_terminal_plan_diagnostics.py",
         ):
             self.assertIn(token, p1)
+        self.assertNotIn("git -C", p1)
         formal = (project_root / "scripts/submit_hoffman2_terminal_validation.sh").read_text(
             encoding="utf-8"
         )
         self.assertIn(".conda/envs/rr-allocation/bin/python", formal)
+        self.assertNotIn("git -C", formal)
 
 
 if __name__ == "__main__":

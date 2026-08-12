@@ -22,7 +22,7 @@ if [[ -e "${SETUP_ROOT}" ]]; then
   echo "Refusing to overwrite terminal manifest setup: ${SETUP_ROOT}" >&2
   exit 1
 fi
-if [[ -n "$(git -C "${PROJECT_ROOT}" status --porcelain --untracked-files=all)" ]]; then
+if [[ -n "$(cd "${PROJECT_ROOT}" && git status --porcelain --untracked-files=all)" ]]; then
   echo "Terminal manifest setup requires a clean committed worktree." >&2
   exit 1
 fi
