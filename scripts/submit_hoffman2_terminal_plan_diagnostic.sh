@@ -145,15 +145,16 @@ audit_run() {
   fi
   mkdir "${RUN_ROOT}/qacct"
   mkdir "${RUN_ROOT}/final_qstat"
+  scheduler_user="$(id -un)"
   while read -r replicate job_id; do
     qstat_raw="${RUN_ROOT}/final_qstat/plan_${replicate}.raw"
     set +e
-    "${QSTAT_BIN}" -j "${job_id}" > "${qstat_raw}" 2>&1
+    "${QSTAT_BIN}" -xml -u "${scheduler_user}" > "${qstat_raw}" 2>&1
     qstat_status=$?
     set -e
     printf '%s\n' "${qstat_status}" > "${RUN_ROOT}/final_qstat/plan_${replicate}.status"
-    if [[ "${qstat_status}" -eq 0 ]]; then
-      echo "Job ${job_id} is still visible in qstat; audit is not allowed." >&2
+    if [[ "${qstat_status}" -ne 0 ]]; then
+      echo "qstat user-queue snapshot failed; audit is not allowed." >&2
       exit 2
     fi
     if ! "${PYTHON_BIN}" - "${qstat_raw}" "${job_id}" "${qstat_status}" <<'PY'

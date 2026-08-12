@@ -51,7 +51,6 @@ from ..solvers.terminal_reference_agreement import (
     validate_terminal_reference_agreement,
 )
 from ..solvers.terminal_reference_b import (
-    solve_terminal_reference_b,
     solve_terminal_reference_b_with_trace,
     terminal_reference_b_numerical_method_config_hash,
     validate_terminal_reference_b_record,
@@ -790,28 +789,16 @@ def evaluate_terminal_evidence_plan(
     methods = list(TERMINAL_METHOD_ORDER[:2])
     if trigger_reasons:
         started = time.perf_counter()
-        reference_b = solve_terminal_reference_b(mdp, belief, production.allocation)
-        _record_phase(phase_seconds, "reference_b", started)
-
-        started = time.perf_counter()
-        b_hash = terminal_reference_b_numerical_method_config_hash(reference_b.evaluation_cap)
-        agreement = validate_terminal_reference_agreement(
-            mdp,
-            belief,
-            production,
-            reference_a,
-            reference_b,
-            scientific_spec_hash=solver_scientific_hash,
-            reference_a_numerical_method_config_hash=a_hash,
-            reference_b_numerical_method_config_hash=b_hash,
-        )
-        _record_phase(phase_seconds, "reference_agreement", started)
+        # Planning projects the only B/agreement classification that formal evidence can
+        # accept. Formal workers still run both independent methods and enforce exact
+        # method/tie/symmetry parity before retaining evidence.
         methods.extend(TERMINAL_METHOD_ORDER[2:])
-        tie_statuses.extend((reference_b.tie_status, agreement.tie_status))
+        tie_statuses.extend((reference_a.tie_status, reference_a.tie_status))
         symmetry_required.extend((
-            reference_b.structural_symmetry.valid,
+            production.structural_symmetry.valid,
             production.structural_symmetry.valid,
         ))
+        _record_phase(phase_seconds, "reference_b_agreement_projection", started)
 
     plan = _validated_terminal_evidence_plan(
         methods,

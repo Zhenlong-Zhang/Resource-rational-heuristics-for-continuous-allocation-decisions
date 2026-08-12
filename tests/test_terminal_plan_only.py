@@ -68,10 +68,12 @@ class TerminalPlanOnlyTests(unittest.TestCase):
                 f"{job_id}.1-16:1\n", encoding="utf-8"
             )
             (root / "final_qstat" / f"plan_{replicate}.raw").write_text(
-                f"Following jobs do not exist: {job_id}\n", encoding="utf-8"
+                "<?xml version='1.0'?><job_info><queue_info></queue_info>"
+                "<job_info></job_info></job_info>\n",
+                encoding="utf-8",
             )
             (root / "final_qstat" / f"plan_{replicate}.status").write_text(
-                "1\n", encoding="utf-8"
+                "0\n", encoding="utf-8"
             )
             qacct = []
             for task_id in range(1, 17):
@@ -194,12 +196,6 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             tie_status="unique",
             structural_symmetry=symmetry,
         )
-        reference_b = SimpleNamespace(
-            evaluation_cap=10,
-            tie_status="certified_value_tie",
-            structural_symmetry=symmetry,
-        )
-        agreement = SimpleNamespace(tie_status="unique")
         descriptor = SimpleNamespace(suite_class="base")
         mdp = object()
         belief = SimpleNamespace(weights=(1.0,), deliberation_time=0.0)
@@ -235,16 +231,10 @@ class TerminalPlanOnlyTests(unittest.TestCase):
                 "terminal_reference_b_trigger_reasons",
                 return_value=("all_base_beliefs",),
             ),
-            patch.object(evidence, "solve_terminal_reference_b", return_value=reference_b),
-            patch.object(
-                evidence,
-                "terminal_reference_b_numerical_method_config_hash",
-                return_value=HASH,
-            ),
             patch.object(
                 evidence,
                 "validate_terminal_reference_agreement",
-                return_value=agreement,
+                side_effect=forbidden,
             ),
             patch.object(evidence, "evaluate_terminal_evidence_descriptor", side_effect=forbidden),
             patch.object(evidence, "TerminalEvidenceBundle", side_effect=forbidden),
@@ -267,7 +257,7 @@ class TerminalPlanOnlyTests(unittest.TestCase):
 
         self.assertEqual(
             observed,
-            evidence.TerminalEvidencePlan(evidence.TERMINAL_METHOD_ORDER, 2, 4),
+            evidence.TerminalEvidencePlan(evidence.TERMINAL_METHOD_ORDER, 1, 4),
         )
         self.assertIn("plan_computation_total", plan_phases)
         self.assertNotIn("formal_evidence_generation", plan_phases)
@@ -280,6 +270,7 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             "optimize_terminal_allocation_with_trace",
             "solve_terminal_reference_a_with_trace",
             "solve_terminal_reference_b_with_trace",
+            "validate_terminal_reference_agreement",
         }
         for function in (
             execution._expected_descriptor_plan,
@@ -450,11 +441,21 @@ class TerminalPlanOnlyTests(unittest.TestCase):
                         root, expected_context=dict(context, **{field: value})
                     )
 
-        validate_qstat_absence_text("Following jobs do not exist: 101\n", "101", 1)
+        empty_snapshot = (
+            "<?xml version='1.0'?><job_info><queue_info></queue_info>"
+            "<job_info></job_info></job_info>\n"
+        )
+        validate_qstat_absence_text(empty_snapshot, "101", 0)
         invalid_qstat = (
-            ("Following jobs do not exist: 101\n", 2),
+            (empty_snapshot, 1),
             ("unable to contact qmaster\n", 1),
-            ("Following jobs do not exist: 999\n", 1),
+            (
+                "<?xml version='1.0'?><job_info><queue_info><job_list>"
+                "<JB_job_number>101</JB_job_number></job_list></queue_info>"
+                "<job_info></job_info></job_info>\n",
+                0,
+            ),
+            ("Following jobs do not exist or permissions are not sufficient:\n101\n", 1),
         )
         for text, status in invalid_qstat:
             with self.subTest(text=text, status=status), self.assertRaisesRegex(
@@ -483,6 +484,7 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             "--mode plan-only",
             "qsub_raw",
             "QACCT_BIN",
+            '-xml -u "${scheduler_user}"',
             "audit_terminal_plan_diagnostics.py",
         ):
             self.assertIn(token, p1)
