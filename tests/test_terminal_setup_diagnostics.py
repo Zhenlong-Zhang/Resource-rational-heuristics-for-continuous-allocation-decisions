@@ -59,6 +59,73 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "queue"):
                 setup.create_compute_ceiling_report(root, queue="campus2.q")
 
+    def test_output_audit_calls_current_fragment_validator_signature(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for replicate in ("a", "b"):
+                (root / f"plan_{replicate}").mkdir()
+                (root / f"profiles_{replicate}").mkdir()
+                for task_id in range(1, 17):
+                    (root / f"plan_{replicate}" / f"fragment_{task_id:03d}.json").touch()
+                    (root / f"profiles_{replicate}" / f"fragment_{task_id:03d}.json").touch()
+            (root / "profiles_merge").mkdir()
+            (root / "profiles_merge/merge.json").touch()
+            manifest_path = root / "terminal_smoke_manifest.json"
+            assembly_path = root / "manifest_plan_assembly.json"
+            ceiling_path = root / "ceiling.json"
+            for path in (manifest_path, assembly_path, ceiling_path):
+                path.touch()
+            (root / "setup_submissions.tsv").write_text(
+                "plan_a_001\t101\t/a.job\t/a.qsub\n"
+                "plan_b_002\t102\t/b.job\t/b.qsub\n"
+                "plan_merge\t103\t/merge.job\t/merge.qsub\n",
+                encoding="utf-8",
+            )
+            source = {"identity_hash": HASH}
+            manifest = {
+                "manifest_hash": HASH,
+                "max_descriptors_per_subshard": 450,
+                "resources": {},
+            }
+            assembly = {"assembly_hash": HASH}
+            ceiling = {"captured_at_utc": "2026-08-12T00:00:00+00:00", "report_hash": HASH}
+
+            def load(path):
+                if path == manifest_path:
+                    return manifest
+                if path == assembly_path:
+                    return assembly
+                if path == ceiling_path:
+                    return ceiling
+                task_id = int(path.stem.rsplit("_", 1)[1])
+                return {
+                    "stage": "smoke",
+                    "shard_index": task_id,
+                    "shard_count": 16,
+                    "source_identity": source,
+                    "fragment_hash": HASH,
+                }
+
+            with (
+                patch.object(setup, "_load", side_effect=load),
+                patch.object(setup, "create_compute_ceiling_report", return_value=ceiling),
+                patch.object(setup, "_validate_profile", return_value=HASH),
+                patch.object(execution, "_validate_self_hash"),
+                patch.object(execution, "load_accepted_canonical_base_provider", return_value=(object(), object())),
+                patch.object(execution, "build_terminal_suites", return_value={}),
+                patch.object(execution, "capture_clean_source_identity", return_value=source),
+                patch.object(execution, "validate_manifest_plan_fragment", autospec=True) as validate_fragment,
+                patch.object(execution, "merge_manifest_plan_replicates", return_value=(manifest, assembly)),
+                patch.object(execution, "validate_compute_ceiling_binding"),
+            ):
+                setup._validate_outputs(root, ceiling_path, root)
+            self.assertEqual(validate_fragment.call_count, 32)
+            _args, kwargs = validate_fragment.call_args
+            self.assertEqual(
+                kwargs,
+                {"reconstruct_expected": False, "validate_suite_contents": False},
+            )
+
     def test_p2_audit_aggregates_exact_scheduler_shape(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

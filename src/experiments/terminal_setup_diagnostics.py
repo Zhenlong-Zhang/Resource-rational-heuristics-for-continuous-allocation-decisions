@@ -224,14 +224,20 @@ def _validate_outputs(
             fragment = _load(fragment_path)
             execution.validate_manifest_plan_fragment(
                 fragment,
-                stage="smoke",
-                shard_index=task_id,
-                shard_count=16,
-                suites=suites,
-                provider=provider,
-                acceptance_validator=accepted,
-                source_identity=source,
+                suites,
+                provider,
+                accepted,
+                reconstruct_expected=False,
+                validate_suite_contents=False,
             )
+            if (
+                fragment.get("stage") != "smoke"
+                or int(fragment.get("shard_index", 0)) != task_id
+                or int(fragment.get("shard_count", 0)) != 16
+                or execution.canonical_bytes(fragment.get("source_identity", {}))
+                != execution.canonical_bytes(source)
+            ):
+                raise RuntimeError("setup fragment identity binding mismatch")
             fragments[replicate].append(fragment)
             profile_hashes.append(_validate_profile(
                 profile_path,
