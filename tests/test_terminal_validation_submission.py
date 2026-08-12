@@ -183,6 +183,18 @@ class TerminalValidationSubmissionTests(unittest.TestCase):
         self.assertIn("#$ -t 1-16", text)
         self.assertIn("#$ -tc 4", text)
         self.assertIn("task_id=${SGE_TASK_ID}", text)
+        command_start = text.index(
+            f'"{self.bin_dir / "python"}" scripts/terminal_validation_array.py run-task'
+        )
+        self.assertEqual(
+            text[command_start:],
+            (
+                f'"{self.bin_dir / "python"}" scripts/terminal_validation_array.py run-task \\\n'
+                f'  --manifest "{self.manifest}" \\\n'
+                f'  --output-root "{self._output_root("valid")}" \\\n'
+                '  --task-id "${task_id}"\n'
+            ),
+        )
         status = next((self._output_root("valid") / "scheduler/qsub_raw").glob("*.status"))
         self.assertEqual(status.read_text(encoding="utf-8"), "0\n")
 

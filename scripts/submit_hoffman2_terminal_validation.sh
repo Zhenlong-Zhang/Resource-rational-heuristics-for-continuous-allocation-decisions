@@ -211,9 +211,9 @@ export LANG=C
 export LC_ALL=C
 cd "${PROJECT_ROOT}"
 task_id=${task_expression}
-"${PYTHON_BIN}" scripts/terminal_validation_array.py run-task \
-  --manifest "${MANIFEST}" \
-  --output-root "${OUTPUT_ROOT}" \
+"${PYTHON_BIN}" scripts/terminal_validation_array.py run-task \\
+  --manifest "${MANIFEST}" \\
+  --output-root "${OUTPUT_ROOT}" \\
   --task-id "\${task_id}"
 EOF
   chmod 500 "${job_file}"
