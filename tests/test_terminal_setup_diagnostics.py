@@ -85,7 +85,12 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
             manifest = {
                 "manifest_hash": HASH,
                 "max_descriptors_per_subshard": 450,
-                "resources": {},
+                "resources": {
+                    "queue": "campus2.q",
+                    "h_rt_seconds": 7200,
+                    "memory_bytes": 8589934592,
+                    "throttle": 4,
+                },
             }
             assembly = {"assembly_hash": HASH}
             ceiling = {"captured_at_utc": "2026-08-12T00:00:00+00:00", "report_hash": HASH}
@@ -234,6 +239,8 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
         )
         self.assertIn('fragment_h_rt="00:10:00"', submitter)
         self.assertIn('merge_h_rt="00:05:00"', submitter)
+        self.assertIn('formal_h_rt_seconds=7200', submitter)
+        self.assertIn('formal_h_rt_seconds=86400', submitter)
         auditor = (project / "scripts/audit_hoffman2_terminal_manifest_setup.sh").read_text(
             encoding="utf-8"
         )

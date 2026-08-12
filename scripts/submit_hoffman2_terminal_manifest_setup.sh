@@ -34,12 +34,14 @@ if [[ "${STAGE}" == "smoke" ]]; then
   shard_count="${MANIFEST_PLAN_SHARDS:-16}"
   segment_size="${MANIFEST_PLAN_SEGMENT_SIZE:-16}"
   formal_throttle=4
+  formal_h_rt_seconds=7200
   fragment_h_rt="00:10:00"
   merge_h_rt="00:05:00"
 else
   shard_count="${MANIFEST_PLAN_SHARDS:-2000}"
   segment_size="${MANIFEST_PLAN_SEGMENT_SIZE:-100}"
   formal_throttle=90
+  formal_h_rt_seconds=86400
   fragment_h_rt="24:00:00"
   merge_h_rt="24:00:00"
 fi
@@ -293,7 +295,7 @@ cd "${PROJECT_ROOT}"
   --replicate-b-dir "${SETUP_ROOT}/plan_b" --shard-count "${shard_count}" \\
   --output "${manifest}" --assembly-output "${SETUP_ROOT}/manifest_plan_assembly.json" \\
   --compute-ceiling "${COMPUTE_CEILING}" --max-descriptors-per-subshard 450 \\
-  --queue "${QUEUE}" --h-rt-seconds 86400 --memory-bytes 8589934592 \\
+  --queue "${QUEUE}" --h-rt-seconds "${formal_h_rt_seconds}" --memory-bytes 8589934592 \\
   --throttle "${formal_throttle}" \\
   --profile-output "${SETUP_ROOT}/profiles_merge/merge.json"
 EOF
