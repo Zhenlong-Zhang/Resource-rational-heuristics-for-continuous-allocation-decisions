@@ -6,7 +6,7 @@ set -euo pipefail
 : "${ACTION:?Set ACTION to submit or audit}"
 : "${RUN_ROOT:?Set a new RUN_ROOT for submit, or an existing RUN_ROOT for audit}"
 
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QDEL_BIN="${QDEL_BIN:-qdel}"
 QSTAT_BIN="${QSTAT_BIN:-qstat}"

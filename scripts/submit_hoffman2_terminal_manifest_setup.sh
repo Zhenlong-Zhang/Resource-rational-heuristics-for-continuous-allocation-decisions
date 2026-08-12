@@ -7,7 +7,7 @@ set -euo pipefail
 : "${SETUP_ROOT:?Set a new immutable SETUP_ROOT}"
 : "${COMPUTE_CEILING:?Set the fresh Compute Ceiling Report path}"
 
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QUEUE="${QUEUE:-campus2.q}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

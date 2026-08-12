@@ -11,7 +11,7 @@ set -euo pipefail
 : "${APPROVED_EXECUTION_AUTHORIZATION_HASH:?Set its externally approved file hash}"
 : "${COMPUTE_CEILING:?Set the fresh Compute Ceiling Report bound by the manifest}"
 
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QDEL_BIN="${QDEL_BIN:-qdel}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

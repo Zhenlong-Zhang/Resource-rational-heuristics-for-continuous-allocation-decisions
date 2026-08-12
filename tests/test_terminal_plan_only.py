@@ -466,12 +466,14 @@ class TerminalPlanOnlyTests(unittest.TestCase):
         self.assertIn("profiles_a", setup)
         self.assertIn("profiles_b", setup)
         self.assertEqual(setup.count("--profile-output"), 2)
+        self.assertIn(".conda/envs/rr-allocation/bin/python", setup)
 
         p1 = (project_root / "scripts/submit_hoffman2_terminal_plan_diagnostic.sh").read_text(
             encoding="utf-8"
         )
         for token in (
             "Refusing to overwrite",
+            ".conda/envs/rr-allocation/bin/python",
             "#$ -t 1-16",
             "--mode plan-only",
             "qsub_raw",
@@ -479,6 +481,10 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             "audit_terminal_plan_diagnostics.py",
         ):
             self.assertIn(token, p1)
+        formal = (project_root / "scripts/submit_hoffman2_terminal_validation.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(".conda/envs/rr-allocation/bin/python", formal)
 
 
 if __name__ == "__main__":
