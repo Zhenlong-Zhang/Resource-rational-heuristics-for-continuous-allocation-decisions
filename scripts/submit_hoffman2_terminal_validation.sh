@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Submit immutable one-slot terminal smoke tasks or the 90-owner validation array.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 : "${MANIFEST:?Set MANIFEST to an accepted frozen execution manifest}"
 : "${OUTPUT_ROOT:?Set a new immutable OUTPUT_ROOT}"
@@ -105,6 +105,8 @@ fi
 RUN_TAG="${token}"
 declare -a submitted_jobs=()
 declare -a preexisting_tagged_jobs=()
+submitted_job_set=" "
+preexisting_tagged_job_set=" "
 cleanup_uncertain=0
 
 rollback() {
@@ -136,9 +138,10 @@ PY
     if [[ "${discovery_parse_status}" -eq 0 ]]; then
       while IFS= read -r discovered_id; do
         if [[ -n "${discovered_id}" \
-            && " ${submitted_jobs[*]} " != *" ${discovered_id} "* \
-            && " ${preexisting_tagged_jobs[*]} " != *" ${discovered_id} "* ]]; then
+            && "${submitted_job_set}" != *" ${discovered_id} "* \
+            && "${preexisting_tagged_job_set}" != *" ${discovered_id} "* ]]; then
           submitted_jobs+=("${discovered_id}")
+          submitted_job_set+="${discovered_id} "
         fi
       done < "${discovered_ids}"
     else
@@ -161,7 +164,8 @@ PY
   printf '%s\n' "${qdel_status}" > "${OUTPUT_ROOT}/scheduler/rollback/qdel.status"
   printf '%s\n' "${qstat_status}" > "${OUTPUT_ROOT}/scheduler/rollback/qstat.status"
   if [[ "${cleanup_uncertain}" -ne 0 || "${qstat_status}" -ne 0 ]] || ! "${PYTHON_BIN}" - \
-      "${OUTPUT_ROOT}/scheduler/rollback/qstat.xml" "${RUN_TAG}" "${submitted_jobs[@]}" <<'PY'
+      "${OUTPUT_ROOT}/scheduler/rollback/qstat.xml" "${RUN_TAG}" \
+      ${submitted_jobs[@]+"${submitted_jobs[@]}"} <<'PY'
 from pathlib import Path
 import sys
 from xml.etree import ElementTree
@@ -242,6 +246,9 @@ for job in root.iter():
         print(values["JB_job_number"])
 PY
 )
+  for preexisting_id in ${preexisting_tagged_jobs[@]+"${preexisting_tagged_jobs[@]}"}; do
+    preexisting_tagged_job_set+="${preexisting_id} "
+  done
   if [[ "${#preexisting_tagged_jobs[@]}" -gt 0 ]]; then
     cleanup_uncertain=1
     echo "Validation run tag already exists in scheduler state; refusing submission." >&2
@@ -278,6 +285,9 @@ PY
 )
     if [[ "${#recovered[@]}" -gt 0 ]]; then
       submitted_jobs+=("${recovered[@]}")
+      for recovered_id in "${recovered[@]}"; do
+        submitted_job_set+="${recovered_id} "
+      done
       printf '%s\n' "${recovered[@]}" > "${OUTPUT_ROOT}/scheduler/rollback/recovered_job_ids"
     fi
     if [[ "${qsub_status}" -eq 0 && "${#recovered[@]}" -ne 1 ]]; then
@@ -287,6 +297,7 @@ PY
     return 1
   fi
   submitted_jobs+=("${job_id}")
+  submitted_job_set+="${job_id} "
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${job_id}" "${job_name}" "${queue}" "${task_ids}" \
     "${raw_file}" "${status_file}" "${job_file}" >> "${submission_tsv}"
