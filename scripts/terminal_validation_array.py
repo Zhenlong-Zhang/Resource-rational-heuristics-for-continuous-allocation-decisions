@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import os
 from pathlib import Path
 import sys
+import time
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -15,22 +18,9 @@ if str(PROJECT_ROOT) not in sys.path:
 import src.experiments.terminal_execution as execution  # noqa: E402
 
 
-SOURCE_PATHS = (
-    "configs/terminal_base_beliefs_7376c5d_v1.json",
-    "configs/terminal_evidence_numerical_method_v2.json",
-    "scripts/terminal_validation_array.py",
-    "scripts/submit_hoffman2_terminal_validation.sh",
-    "scripts/submit_hoffman2_terminal_manifest_setup.sh",
-    "src/experiments/terminal_evidence_rows.py",
-    "src/experiments/terminal_execution.py",
-    "src/experiments/terminal_canonical_provider.py",
-    "src/experiments/terminal_validation_suite.py",
-    "src/mdp/finite_support.py",
-    "src/solvers/terminal.py",
-    "src/solvers/terminal_reference.py",
-    "src/solvers/terminal_reference_agreement.py",
-    "src/solvers/terminal_reference_b.py",
-)
+SOURCE_PATHS = execution.TERMINAL_SOURCE_PATHS
+
+PHASE_PROFILE_SCHEMA = "terminal_validation_phase_profile_v1"
 
 
 def load(path: Path):
@@ -39,6 +29,23 @@ def load(path: Path):
 
 def load_provider(_args=None):
     return execution.load_accepted_canonical_base_provider()
+
+
+def phase_profile(command: str, phases, **bindings):
+    normalized = tuple(sorted((str(name), float(value)) for name, value in phases.items()))
+    if any(not math.isfinite(value) or value < 0.0 for _, value in normalized):
+        raise ValueError("phase profile times must be finite and nonnegative")
+    payload = {
+        "schema": PHASE_PROFILE_SCHEMA,
+        "command": command,
+        "bindings": dict(bindings),
+        "phase_seconds": normalized,
+        "profile_hash": "",
+    }
+    payload["profile_hash"] = execution.logical_hash(
+        execution._without_hash(payload, "profile_hash")
+    )
+    return payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,6 +67,13 @@ def build_parser() -> argparse.ArgumentParser:
     fragment.add_argument("--shard-index", type=int, required=True)
     fragment.add_argument("--shard-count", type=int, required=True)
     fragment.add_argument("--output", type=Path, required=True)
+    fragment.add_argument("--profile-output", type=Path)
+
+    diagnostic = commands.add_parser("diagnose-plan")
+    diagnostic.add_argument("--stage", choices=("smoke", "full"), required=True)
+    diagnostic.add_argument("--descriptor-position", type=int)
+    diagnostic.add_argument("--mode", choices=("plan-only", "parity"), required=True)
+    diagnostic.add_argument("--output", type=Path, required=True)
 
     merge = commands.add_parser("merge-plan-fragments")
     merge.add_argument("--stage", choices=("smoke", "full"), required=True)
@@ -74,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     merge.add_argument("--h-rt-seconds", type=int, required=True)
     merge.add_argument("--memory-bytes", type=int, required=True)
     merge.add_argument("--throttle", type=int, required=True)
+    merge.add_argument("--profile-output", type=Path)
 
     run = commands.add_parser("run-task")
     run.add_argument("--manifest", type=Path, required=True)
@@ -136,12 +151,52 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    if args.command == "freeze-plan-fragment":
+    if args.command == "diagnose-plan":
+        phases = {}
+        total_started = time.perf_counter()
+        started = time.perf_counter()
         provider, accepted = load_provider(args)
+        phases["provider_load"] = time.perf_counter() - started
+        started = time.perf_counter()
         suites = execution.build_terminal_suites(
             provider, accepted, validate_contents=False
         )
+        phases["suite_reconstruction"] = time.perf_counter() - started
+        started = time.perf_counter()
         source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
+        phases["source_identity_capture"] = time.perf_counter() - started
+        selected = execution._selected_descriptors(args.stage, suites)
+        position = args.descriptor_position
+        if position is None:
+            raw_position = os.environ.get("SGE_TASK_ID")
+            if raw_position is None or not raw_position.isdigit():
+                raise RuntimeError("descriptor position is absent")
+            position = int(raw_position)
+        if not 1 <= position <= len(selected):
+            raise RuntimeError("descriptor position is outside the frozen selection")
+        phases["preparation_total"] = time.perf_counter() - total_started
+        diagnostic = execution.create_terminal_plan_diagnostic(
+            selected[position - 1],
+            provider,
+            source_identity_hash=source["identity_hash"],
+            include_full_evidence=args.mode == "parity",
+            preparation_phase_seconds=phases,
+        )
+        execution.write_new_json(args.output, diagnostic)
+    elif args.command == "freeze-plan-fragment":
+        phases = {}
+        total_started = time.perf_counter()
+        started = time.perf_counter()
+        provider, accepted = load_provider(args)
+        phases["provider_load"] = time.perf_counter() - started
+        started = time.perf_counter()
+        suites = execution.build_terminal_suites(
+            provider, accepted, validate_contents=False
+        )
+        phases["suite_reconstruction"] = time.perf_counter() - started
+        started = time.perf_counter()
+        source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
+        phases["source_identity_capture"] = time.perf_counter() - started
         fragment = execution.create_manifest_plan_fragment(
             stage=args.stage,
             shard_index=args.shard_index,
@@ -150,19 +205,47 @@ def main() -> None:
             provider=provider,
             acceptance_validator=accepted,
             source_identity=source,
+            phase_seconds=phases,
         )
+        started = time.perf_counter()
         execution.write_new_json(args.output, fragment)
+        phases["fragment_serialization"] = time.perf_counter() - started
+        phases["command_total"] = time.perf_counter() - total_started
+        if args.profile_output is not None:
+            execution.write_new_json(
+                args.profile_output,
+                phase_profile(
+                    args.command,
+                    phases,
+                    stage=args.stage,
+                    shard_index=args.shard_index,
+                    shard_count=args.shard_count,
+                    fragment_hash=fragment["fragment_hash"],
+                    source_identity_hash=source["identity_hash"],
+                ),
+            )
     elif args.command == "merge-plan-fragments":
+        phases = {}
+        total_started = time.perf_counter()
+        started = time.perf_counter()
         provider, accepted = load_provider(args)
+        phases["provider_load"] = time.perf_counter() - started
+        started = time.perf_counter()
         suites = execution.build_terminal_suites(
             provider, accepted, validate_contents=False
         )
+        phases["suite_reconstruction"] = time.perf_counter() - started
+        started = time.perf_counter()
         source = execution.capture_clean_source_identity(PROJECT_ROOT, SOURCE_PATHS)
+        phases["source_identity_capture"] = time.perf_counter() - started
+        started = time.perf_counter()
         ceiling = load(args.compute_ceiling)
         execution._validate_self_hash(ceiling, "report_hash", "compute ceiling report")
         names = tuple(f"fragment_{index:03d}.json" for index in range(1, args.shard_count + 1))
         replicate_a = tuple(load(args.replicate_a_dir / name) for name in names)
         replicate_b = tuple(load(args.replicate_b_dir / name) for name in names)
+        phases["fragment_loading"] = time.perf_counter() - started
+        started = time.perf_counter()
         manifest, assembly = execution.merge_manifest_plan_replicates(
             stage=args.stage,
             replicate_a=replicate_a,
@@ -181,8 +264,25 @@ def main() -> None:
             compute_ceiling_report_hash=ceiling["report_hash"],
         )
         execution.validate_compute_ceiling_binding(manifest, ceiling)
+        phases["merge_validation_and_assembly"] = time.perf_counter() - started
+        started = time.perf_counter()
         execution.write_new_json(args.output, manifest)
         execution.write_new_json(args.assembly_output, assembly)
+        phases["merge_serialization"] = time.perf_counter() - started
+        phases["command_total"] = time.perf_counter() - total_started
+        if args.profile_output is not None:
+            execution.write_new_json(
+                args.profile_output,
+                phase_profile(
+                    args.command,
+                    phases,
+                    stage=args.stage,
+                    shard_count=args.shard_count,
+                    manifest_hash=manifest["manifest_hash"],
+                    assembly_hash=assembly["assembly_hash"],
+                    source_identity_hash=source["identity_hash"],
+                ),
+            )
     elif args.command == "freeze-manifest":
         provider, accepted = load_provider(args)
         suites = execution.build_terminal_suites(

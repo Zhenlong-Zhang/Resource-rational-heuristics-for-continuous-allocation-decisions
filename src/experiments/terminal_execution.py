@@ -27,10 +27,13 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, T
 from .terminal_evidence_rows import (
     TERMINAL_METHOD_ORDER,
     TerminalEvidenceBundle,
+    TerminalEvidencePlan,
     TerminalEvidenceRow,
     TerminalSidecarReference,
     evaluate_terminal_evidence_descriptor,
+    evaluate_terminal_evidence_plan,
     reconstruct_terminal_evidence_source,
+    require_terminal_evidence_plan_parity,
     terminal_evidence_row_hash,
     validate_terminal_evidence_bundle_source,
 )
@@ -65,6 +68,27 @@ SOURCE_IDENTITY_SCHEMA = "terminal_validation_source_identity_v1"
 EXECUTION_AUTHORIZATION_SCHEMA = "terminal_validation_execution_authorization_v1"
 MANIFEST_PLAN_FRAGMENT_SCHEMA = "terminal_validation_manifest_plan_fragment_v1"
 MANIFEST_PLAN_ASSEMBLY_SCHEMA = "terminal_validation_manifest_plan_assembly_v1"
+PLAN_DIAGNOSTIC_SCHEMA = "terminal_validation_plan_diagnostic_v1"
+
+TERMINAL_SOURCE_PATHS = (
+    "configs/terminal_base_beliefs_7376c5d_v1.json",
+    "configs/terminal_evidence_numerical_method_v2.json",
+    "scripts/audit_terminal_plan_diagnostics.py",
+    "scripts/submit_hoffman2_terminal_manifest_setup.sh",
+    "scripts/submit_hoffman2_terminal_plan_diagnostic.sh",
+    "scripts/submit_hoffman2_terminal_validation.sh",
+    "scripts/terminal_validation_array.py",
+    "src/experiments/terminal_canonical_provider.py",
+    "src/experiments/terminal_evidence_rows.py",
+    "src/experiments/terminal_execution.py",
+    "src/experiments/terminal_plan_diagnostics.py",
+    "src/experiments/terminal_validation_suite.py",
+    "src/mdp/finite_support.py",
+    "src/solvers/terminal.py",
+    "src/solvers/terminal_reference.py",
+    "src/solvers/terminal_reference_agreement.py",
+    "src/solvers/terminal_reference_b.py",
+)
 
 SMOKE_CASE_IDS = (1, 20, 72, 85)
 SUITE_ORDER = ("base", "one_step", "reachable_core")
@@ -525,13 +549,74 @@ def _expected_descriptor_plan(
     provider: CanonicalBaseProvider,
 ) -> Tuple[Tuple[str, ...], int, int]:
     mdp, belief = reconstruct_terminal_evidence_source(descriptor, provider)
-    bundle = evaluate_terminal_evidence_descriptor(descriptor, mdp, belief)
-    methods = tuple(row.method for row in bundle.rows)
-    if methods != tuple(method for method in TERMINAL_METHOD_ORDER if method in methods):
-        raise RuntimeError("terminal evidence methods are not in frozen order")
-    tie_count = sum(row.tie_status not in (None, "unique") for row in bundle.rows)
-    symmetry_count = sum(row.symmetry_required for row in bundle.rows)
-    return methods, tie_count, symmetry_count
+    return evaluate_terminal_evidence_plan(descriptor, mdp, belief).as_tuple()
+
+
+def create_terminal_plan_diagnostic(
+    descriptor: TerminalValidationDescriptor,
+    provider: CanonicalBaseProvider,
+    *,
+    source_identity_hash: str,
+    include_full_evidence: bool,
+    preparation_phase_seconds: Optional[Mapping[str, float]] = None,
+) -> Dict[str, Any]:
+    """Profile one frozen descriptor without weakening formal evidence semantics."""
+
+    if not _is_hash(source_identity_hash):
+        raise ValueError("plan diagnostic source identity hash is malformed")
+    phases = {
+        str(name): float(seconds)
+        for name, seconds in (preparation_phase_seconds or {}).items()
+    }
+    if any(not math.isfinite(value) or value < 0.0 for value in phases.values()):
+        raise ValueError("plan diagnostic phase times must be finite and nonnegative")
+
+    started = time.perf_counter()
+    mdp, belief = reconstruct_terminal_evidence_source(descriptor, provider)
+    phases["source_reconstruction"] = time.perf_counter() - started
+
+    plan_phases: Dict[str, float] = {}
+    plan = evaluate_terminal_evidence_plan(
+        descriptor,
+        mdp,
+        belief,
+        phase_seconds=plan_phases,
+    )
+    phases.update((f"plan_{name}", value) for name, value in plan_phases.items())
+
+    started = time.perf_counter()
+    canonical_bytes(asdict(plan))
+    phases["plan_canonicalization_serialization"] = time.perf_counter() - started
+
+    full_projection: Optional[TerminalEvidencePlan] = None
+    parity_pass: Optional[bool] = None
+    if include_full_evidence:
+        started = time.perf_counter()
+        bundle = evaluate_terminal_evidence_descriptor(descriptor, mdp, belief)
+        phases["formal_evidence_generation"] = time.perf_counter() - started
+        started = time.perf_counter()
+        full_projection = require_terminal_evidence_plan_parity(plan, bundle.rows)
+        phases["full_projection_and_parity"] = time.perf_counter() - started
+        parity_pass = True
+
+    payload: Dict[str, Any] = {
+        "schema": PLAN_DIAGNOSTIC_SCHEMA,
+        "mode": "parity" if include_full_evidence else "plan_only",
+        "suite_class": descriptor.suite_class,
+        "descriptor_index": descriptor.descriptor_index,
+        "descriptor_hash": descriptor.descriptor_hash,
+        "source_case_id": descriptor.source_case_id,
+        "profile": descriptor.profile,
+        "source_identity_hash": source_identity_hash,
+        "provider_hash": provider.provider_hash,
+        "plan": asdict(plan),
+        "full_projection": None if full_projection is None else asdict(full_projection),
+        "parity_pass": parity_pass,
+        "phase_seconds": tuple(sorted(phases.items())),
+        "diagnostic_hash": "",
+    }
+    payload["diagnostic_hash"] = logical_hash(_without_hash(payload, "diagnostic_hash"))
+    return payload
 
 
 def _manifest_planning_worker_count(descriptor_count: int) -> int:
@@ -656,17 +741,23 @@ def create_manifest_plan_fragment(
     provider: CanonicalBaseProvider,
     acceptance_validator: Optional[Callable[[CanonicalBaseProvider], bool]],
     source_identity: Mapping[str, Any],
+    phase_seconds: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     """Compute one deterministic, independently writable manifest-plan shard."""
 
+    total_started = time.perf_counter()
     if shard_count < 1 or not 1 <= shard_index <= shard_count:
         raise ValueError("planning shard index/count is invalid")
+    started = time.perf_counter()
     _validate_manifest_planning_context(
         suites,
         provider,
         acceptance_validator,
         validate_suite_contents=False,
     )
+    if phase_seconds is not None:
+        phase_seconds["planning_context_validation"] = time.perf_counter() - started
+    started = time.perf_counter()
     selected = _selected_descriptors(stage, suites)
     assigned = tuple(
         descriptor
@@ -675,11 +766,19 @@ def create_manifest_plan_fragment(
     )
     if not assigned:
         raise RuntimeError("manifest planning shard has no descriptors")
+    if phase_seconds is not None:
+        phase_seconds["descriptor_selection"] = time.perf_counter() - started
+    started = time.perf_counter()
     plans = _expected_descriptor_plans(assigned, provider)
+    if phase_seconds is not None:
+        phase_seconds["plan_computation"] = time.perf_counter() - started
+    started = time.perf_counter()
     references = tuple(
         asdict(_descriptor_ref(descriptor, plan))
         for descriptor, plan in zip(assigned, plans)
     )
+    if phase_seconds is not None:
+        phase_seconds["descriptor_reference_materialization"] = time.perf_counter() - started
     identities = load_terminal_validation_identities()
     payload: Dict[str, Any] = {
         "schema": MANIFEST_PLAN_FRAGMENT_SCHEMA,
@@ -703,7 +802,11 @@ def create_manifest_plan_fragment(
         "source_identity": dict(source_identity),
         "fragment_hash": "",
     }
+    started = time.perf_counter()
     payload["fragment_hash"] = logical_hash(_without_hash(payload, "fragment_hash"))
+    if phase_seconds is not None:
+        phase_seconds["fragment_canonicalization"] = time.perf_counter() - started
+    started = time.perf_counter()
     validate_manifest_plan_fragment(
         payload,
         suites,
@@ -712,6 +815,9 @@ def create_manifest_plan_fragment(
         reconstruct_expected=False,
         validate_suite_contents=False,
     )
+    if phase_seconds is not None:
+        phase_seconds["fragment_validation"] = time.perf_counter() - started
+        phase_seconds["fragment_generation_total"] = time.perf_counter() - total_started
     return payload
 
 
@@ -1378,9 +1484,14 @@ def execute_task(
             descriptor = descriptor_lookup[(raw_ref["suite_class"], int(raw_ref["descriptor_index"]))]
             mdp, belief = reconstruct_terminal_evidence_source(descriptor, provider)
             bundle = evaluate_terminal_evidence_descriptor(descriptor, mdp, belief)
-            methods = tuple(row.method for row in bundle.rows)
-            if methods != tuple(raw_ref["expected_methods"]):
-                raise RuntimeError("source method plan differs from frozen manifest")
+            require_terminal_evidence_plan_parity(
+                TerminalEvidencePlan(
+                    tuple(raw_ref["expected_methods"]),
+                    int(raw_ref["expected_tie_row_count"]),
+                    int(raw_ref["expected_symmetry_row_count"]),
+                ),
+                bundle.rows,
+            )
             failures = validate_terminal_evidence_bundle_source(bundle, descriptor, mdp, belief)
             if failures:
                 raise RuntimeError("source evidence validation failed: " + ",".join(failures))
@@ -2752,6 +2863,8 @@ __all__ = [
     "EXECUTION_MANIFEST_SCHEMA",
     "MANIFEST_PLAN_ASSEMBLY_SCHEMA",
     "MANIFEST_PLAN_FRAGMENT_SCHEMA",
+    "PLAN_DIAGNOSTIC_SCHEMA",
+    "TERMINAL_SOURCE_PATHS",
     "QACCT_AUDIT_SCHEMA",
     "READBACK_SCHEMA",
     "SCHEDULER_EVIDENCE_SCHEMA",
@@ -2765,6 +2878,7 @@ __all__ = [
     "create_scheduler_evidence",
     "create_execution_manifest",
     "create_manifest_plan_fragment",
+    "create_terminal_plan_diagnostic",
     "execute_task",
     "execution_script_hashes",
     "finalize_post_job",

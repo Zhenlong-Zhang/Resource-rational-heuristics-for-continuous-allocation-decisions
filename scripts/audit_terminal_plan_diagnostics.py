@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Audit two immutable Hoffman2 plan-only diagnostic replicates."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.experiments.terminal_execution import write_new_json  # noqa: E402
+from src.experiments.terminal_plan_diagnostics import audit_plan_diagnostic_run  # noqa: E402
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run-root", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    write_new_json(args.output, audit_plan_diagnostic_run(args.run_root))
+
+
+if __name__ == "__main__":
+    main()

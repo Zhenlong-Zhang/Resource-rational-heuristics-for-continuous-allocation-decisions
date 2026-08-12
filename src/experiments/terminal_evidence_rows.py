@@ -13,6 +13,7 @@ import gzip
 import hashlib
 import json
 import math
+import time
 from pathlib import PurePosixPath
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -22,6 +23,7 @@ from ..solvers.terminal import (
     StructuralSymmetry,
     TerminalOptimizationResult,
     optimal_terminal_results_for_weight_rows,
+    optimize_terminal_allocation,
     optimize_terminal_allocation_with_trace,
     production_terminal_numerical_method_config_hash,
     validate_structural_symmetry_proof,
@@ -29,6 +31,7 @@ from ..solvers.terminal import (
 from ..solvers.terminal_reference import (
     CandidateIsolationEvidence,
     TerminalReferenceRecord,
+    solve_terminal_reference_a,
     solve_terminal_reference_a_with_trace,
     terminal_belief_identity_hash,
     terminal_reference_a_numerical_method_config_hash,
@@ -48,6 +51,7 @@ from ..solvers.terminal_reference_agreement import (
     validate_terminal_reference_agreement,
 )
 from ..solvers.terminal_reference_b import (
+    solve_terminal_reference_b,
     solve_terminal_reference_b_with_trace,
     terminal_reference_b_numerical_method_config_hash,
     validate_terminal_reference_b_record,
@@ -141,6 +145,22 @@ class TerminalEvidenceBundle:
     descriptor_hash: str
     rows: Tuple[TerminalEvidenceRow, ...]
     sidecars: Tuple[Tuple[str, bytes], ...]
+
+
+@dataclass(frozen=True)
+class TerminalEvidencePlan:
+    """Manifest metadata projected from terminal evidence rows."""
+
+    expected_methods: Tuple[str, ...]
+    expected_tie_row_count: int
+    expected_symmetry_row_count: int
+
+    def as_tuple(self) -> Tuple[Tuple[str, ...], int, int]:
+        return (
+            self.expected_methods,
+            self.expected_tie_row_count,
+            self.expected_symmetry_row_count,
+        )
 
 
 @dataclass(frozen=True)
@@ -646,6 +666,160 @@ def _reference_row_fields(reference: TerminalReferenceRecord) -> Dict[str, Any]:
         "evaluation_count": reference.objective_evaluation_count,
         "unresolved": reference.status == "reference_unresolved",
     }
+
+
+def _validated_terminal_evidence_plan(
+    methods: Sequence[str],
+    tie_count: int,
+    symmetry_count: int,
+) -> TerminalEvidencePlan:
+    ordered = tuple(methods)
+    if ordered != tuple(method for method in TERMINAL_METHOD_ORDER if method in ordered):
+        raise RuntimeError("terminal evidence methods are not in frozen order")
+    if not ordered or len(set(ordered)) != len(ordered):
+        raise RuntimeError("terminal evidence plan has absent or duplicate methods")
+    if not (0 <= tie_count <= len(ordered) and 0 <= symmetry_count <= len(ordered)):
+        raise RuntimeError("terminal evidence path counts exceed the method plan")
+    return TerminalEvidencePlan(ordered, int(tie_count), int(symmetry_count))
+
+
+def project_terminal_evidence_plan(
+    rows: Sequence[TerminalEvidenceRow],
+) -> TerminalEvidencePlan:
+    """Project the exact manifest metadata from authoritative full-evidence rows."""
+
+    return _validated_terminal_evidence_plan(
+        tuple(row.method for row in rows),
+        sum(row.tie_status not in (None, "unique") for row in rows),
+        sum(row.symmetry_required for row in rows),
+    )
+
+
+def require_terminal_evidence_plan_parity(
+    expected: TerminalEvidencePlan,
+    rows: Sequence[TerminalEvidenceRow],
+) -> TerminalEvidencePlan:
+    """Fail closed unless a full-evidence row projection equals its frozen plan."""
+
+    observed = project_terminal_evidence_plan(rows)
+    if observed != expected:
+        raise RuntimeError(
+            "source evidence plan differs from frozen manifest: "
+            f"expected={expected.as_tuple()!r}, observed={observed.as_tuple()!r}"
+        )
+    return observed
+
+
+def _record_phase(
+    phase_seconds: Optional[Dict[str, float]],
+    name: str,
+    started: float,
+) -> None:
+    if phase_seconds is not None:
+        phase_seconds[name] = time.perf_counter() - started
+
+
+def evaluate_terminal_evidence_plan(
+    descriptor: TerminalValidationDescriptor,
+    mdp: Any,
+    belief: Any,
+    *,
+    phase_seconds: Optional[Dict[str, float]] = None,
+) -> TerminalEvidencePlan:
+    """Compute manifest metadata without traces, sidecars, or full evidence rows."""
+
+    total_started = time.perf_counter()
+    started = time.perf_counter()
+    failures = terminal_descriptor_source_failures(descriptor, mdp, belief)
+    if failures:
+        raise ValueError("descriptor/source binding failed: " + ",".join(failures))
+    _record_phase(phase_seconds, "source_binding_validation", started)
+
+    started = time.perf_counter()
+    production = optimize_terminal_allocation(mdp, belief)
+    _record_phase(phase_seconds, "production_terminal", started)
+
+    started = time.perf_counter()
+    batch = optimal_terminal_results_for_weight_rows(
+        mdp, belief, (belief.weights,), float(belief.deliberation_time)
+    )[0]
+    scalar_batch_pass = production == batch
+    symmetry_pass = (
+        not production.structural_symmetry.valid
+        or validate_structural_symmetry_proof(mdp, belief, production.structural_symmetry)
+    )
+    _record_phase(phase_seconds, "production_checks", started)
+
+    started = time.perf_counter()
+    reference_a = solve_terminal_reference_a(mdp, belief, production.allocation)
+    _record_phase(phase_seconds, "reference_a", started)
+
+    started = time.perf_counter()
+    a_hash = terminal_reference_a_numerical_method_config_hash(reference_a.evaluation_cap)
+    solver_scientific_hash = terminal_scientific_spec_hash(mdp)
+    a_source_pass = validate_terminal_reference_record(
+        reference_a,
+        mdp,
+        belief,
+        scientific_spec_hash=solver_scientific_hash,
+        numerical_method_config_hash=a_hash,
+    )
+    production_a = validate_production_against_reference_a(
+        mdp,
+        belief,
+        production,
+        reference_a,
+        scientific_spec_hash=solver_scientific_hash,
+        numerical_method_config_hash=a_hash,
+    )
+    trigger_reasons = terminal_reference_b_trigger_reasons(
+        descriptor,
+        production,
+        reference_a,
+        production_reference_a_pass=production_a.status == "accepted",
+        production_checks_pass=scalar_batch_pass and symmetry_pass,
+        reference_a_source_valid=a_source_pass,
+    )
+    _record_phase(phase_seconds, "reference_a_validation_and_escalation", started)
+
+    tie_statuses = [production.tie_status, reference_a.tie_status]
+    symmetry_required = [
+        production.structural_symmetry.valid,
+        reference_a.structural_symmetry.valid,
+    ]
+    methods = list(TERMINAL_METHOD_ORDER[:2])
+    if trigger_reasons:
+        started = time.perf_counter()
+        reference_b = solve_terminal_reference_b(mdp, belief, production.allocation)
+        _record_phase(phase_seconds, "reference_b", started)
+
+        started = time.perf_counter()
+        b_hash = terminal_reference_b_numerical_method_config_hash(reference_b.evaluation_cap)
+        agreement = validate_terminal_reference_agreement(
+            mdp,
+            belief,
+            production,
+            reference_a,
+            reference_b,
+            scientific_spec_hash=solver_scientific_hash,
+            reference_a_numerical_method_config_hash=a_hash,
+            reference_b_numerical_method_config_hash=b_hash,
+        )
+        _record_phase(phase_seconds, "reference_agreement", started)
+        methods.extend(TERMINAL_METHOD_ORDER[2:])
+        tie_statuses.extend((reference_b.tie_status, agreement.tie_status))
+        symmetry_required.extend((
+            reference_b.structural_symmetry.valid,
+            production.structural_symmetry.valid,
+        ))
+
+    plan = _validated_terminal_evidence_plan(
+        methods,
+        sum(status not in (None, "unique") for status in tie_statuses),
+        sum(symmetry_required),
+    )
+    _record_phase(phase_seconds, "plan_computation_total", total_started)
+    return plan
 
 
 def _make_row(
@@ -1359,10 +1533,12 @@ __all__ = [
     "DecodedTerminalSidecar", "REFERENCE_B_NEAR_TIE_SEPARATION",
     "TERMINAL_COLLECTION_SCHEMA", "TERMINAL_EVIDENCE_ROW_SCHEMA",
     "TERMINAL_METHOD_ORDER", "TERMINAL_SIDECAR_SCHEMA",
-    "TERMINAL_SIDECAR_SCHEMA_VERSION", "TerminalEvidenceBundle",
+    "TERMINAL_SIDECAR_SCHEMA_VERSION", "TerminalEvidenceBundle", "TerminalEvidencePlan",
     "TerminalEvidenceCollectionSummary", "TerminalEvidenceRow",
     "TerminalSidecarReference", "build_terminal_certificate_sidecar",
     "decode_terminal_certificate_sidecar", "evaluate_terminal_evidence_descriptor",
+    "evaluate_terminal_evidence_plan", "project_terminal_evidence_plan",
+    "require_terminal_evidence_plan_parity",
     "recompute_terminal_evidence_summary", "reconstruct_terminal_evidence_source",
     "terminal_descriptor_source_failures", "terminal_evidence_row_hash",
     "terminal_evidence_row_key", "terminal_reference_b_trigger_reasons",

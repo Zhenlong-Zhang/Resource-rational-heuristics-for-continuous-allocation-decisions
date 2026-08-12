@@ -50,7 +50,10 @@ mkdir -p \
   "${SETUP_ROOT}/logs" \
   "${SETUP_ROOT}/qsub_raw" \
   "${SETUP_ROOT}/plan_a" \
-  "${SETUP_ROOT}/plan_b"
+  "${SETUP_ROOT}/plan_b" \
+  "${SETUP_ROOT}/profiles_a" \
+  "${SETUP_ROOT}/profiles_b" \
+  "${SETUP_ROOT}/profiles_merge"
 manifest="${SETUP_ROOT}/terminal_${STAGE}_manifest.json"
 submission_file="${SETUP_ROOT}/setup_submissions.tsv"
 : > "${submission_file}"
@@ -101,7 +104,8 @@ export LANG=C LC_ALL=C OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=
 cd "${PROJECT_ROOT}"
 "${PYTHON_BIN}" scripts/terminal_validation_array.py freeze-plan-fragment \
   --stage "${STAGE}" --shard-index "\${SGE_TASK_ID}" --shard-count "${shard_count}" \
-  --output "${SETUP_ROOT}/plan_${replicate}/fragment_\$(printf '%03d' \${SGE_TASK_ID}).json"
+  --output "${SETUP_ROOT}/plan_${replicate}/fragment_\$(printf '%03d' \${SGE_TASK_ID}).json" \
+  --profile-output "${SETUP_ROOT}/profiles_${replicate}/fragment_\$(printf '%03d' \${SGE_TASK_ID}).json"
 EOF
     chmod 500 "${job_file}"
     submit "${role}" "${job_file}" >/dev/null
@@ -130,7 +134,8 @@ cd "${PROJECT_ROOT}"
   --output "${manifest}" --assembly-output "${SETUP_ROOT}/manifest_plan_assembly.json" \
   --compute-ceiling "${COMPUTE_CEILING}" --max-descriptors-per-subshard 450 \
   --queue "${QUEUE}" --h-rt-seconds 86400 --memory-bytes 8589934592 \
-  --throttle "${formal_throttle}"
+  --throttle "${formal_throttle}" \
+  --profile-output "${SETUP_ROOT}/profiles_merge/merge.json"
 EOF
 chmod 500 "${merge_job_file}"
 merge_job="$(submit plan_merge "${merge_job_file}")"
