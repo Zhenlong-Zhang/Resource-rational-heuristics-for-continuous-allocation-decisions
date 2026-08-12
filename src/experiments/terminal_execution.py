@@ -1866,7 +1866,7 @@ def parse_qacct_records(text: str) -> Tuple[Dict[str, str], ...]:
         parts = stripped.split(None, 1)
         if len(parts) == 2:
             key, value = parts
-            if key == "jobnumber" and current:
+            if key == "jobnumber" and "jobnumber" in current:
                 records.append(current)
                 current = {}
             current[key] = value.strip()

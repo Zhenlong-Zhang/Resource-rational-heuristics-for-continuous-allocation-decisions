@@ -79,10 +79,10 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             for task_id in range(1, 17):
                 qacct.append(
                     "\n".join((
-                        f"jobnumber {job_id}",
-                        f"jobname tvp1_{replicate}",
                         "qname campus2.q@n123",
                         "hostname n123.hoffman2.idre.ucla.edu",
+                        f"jobname tvp1_{replicate}",
+                        f"jobnumber {job_id}",
                         f"taskid {task_id}",
                         "slots 1",
                         "failed 0",
@@ -214,18 +214,8 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             ),
             patch.object(evidence, "validate_structural_symmetry_proof", return_value=True),
             patch.object(evidence, "solve_terminal_reference_a", return_value=reference_a),
-            patch.object(
-                evidence,
-                "terminal_reference_a_numerical_method_config_hash",
-                return_value=HASH,
-            ),
-            patch.object(evidence, "terminal_scientific_spec_hash", return_value=HASH),
-            patch.object(evidence, "validate_terminal_reference_record", return_value=True),
-            patch.object(
-                evidence,
-                "validate_production_against_reference_a",
-                return_value=SimpleNamespace(status="accepted"),
-            ),
+            patch.object(evidence, "validate_terminal_reference_record", side_effect=forbidden),
+            patch.object(evidence, "validate_production_against_reference_a", side_effect=forbidden),
             patch.object(
                 evidence,
                 "terminal_reference_b_trigger_reasons",
@@ -270,6 +260,8 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             "optimize_terminal_allocation_with_trace",
             "solve_terminal_reference_a_with_trace",
             "solve_terminal_reference_b_with_trace",
+            "validate_terminal_reference_record",
+            "validate_production_against_reference_a",
             "validate_terminal_reference_agreement",
         }
         for function in (
