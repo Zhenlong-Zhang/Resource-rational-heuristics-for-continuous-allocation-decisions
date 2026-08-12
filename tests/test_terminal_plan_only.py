@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from contextlib import ExitStack
 import inspect
 import json
 from pathlib import Path
@@ -207,7 +208,7 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             raise AssertionError("full evidence boundary was reached")
 
         plan_phases = {}
-        with (
+        patchers = (
             patch.object(evidence, "terminal_descriptor_source_failures", return_value=()),
             patch.object(evidence, "optimize_terminal_allocation", return_value=production),
             patch.object(
@@ -253,7 +254,10 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             patch.object(evidence, "solve_terminal_reference_b_with_trace", side_effect=forbidden),
             patch.object(evidence.gzip, "compress", side_effect=forbidden),
             patch.object(evidence, "_logical_hash", side_effect=forbidden),
-        ):
+        )
+        with ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
             observed = evidence.evaluate_terminal_evidence_plan(
                 descriptor,
                 mdp,
