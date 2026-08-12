@@ -63,7 +63,7 @@ SCHEDULER_EVIDENCE_SCHEMA = "terminal_validation_scheduler_evidence_v1"
 QACCT_AUDIT_SCHEMA = "terminal_validation_qacct_audit_v1"
 POST_JOB_SCHEMA = "terminal_validation_post_job_candidate_v1"
 READBACK_SCHEMA = "terminal_validation_independent_readback_v1"
-COMPUTE_CEILING_SCHEMA = "hoffman2_compute_ceiling_report_v1"
+COMPUTE_CEILING_SCHEMA = "hoffman2_compute_ceiling_report_v2"
 SOURCE_IDENTITY_SCHEMA = "terminal_validation_source_identity_v1"
 EXECUTION_AUTHORIZATION_SCHEMA = "terminal_validation_execution_authorization_v1"
 MANIFEST_PLAN_FRAGMENT_SCHEMA = "terminal_validation_manifest_plan_fragment_v1"
@@ -74,6 +74,10 @@ TERMINAL_SOURCE_PATHS = (
     "configs/terminal_base_beliefs_7376c5d_v1.json",
     "configs/terminal_evidence_numerical_method_v2.json",
     "scripts/audit_terminal_plan_diagnostics.py",
+    "scripts/audit_hoffman2_terminal_manifest_setup.sh",
+    "scripts/audit_terminal_manifest_setup.py",
+    "scripts/capture_hoffman2_compute_ceiling.sh",
+    "scripts/create_hoffman2_compute_ceiling_report.py",
     "scripts/submit_hoffman2_terminal_manifest_setup.sh",
     "scripts/submit_hoffman2_terminal_plan_diagnostic.sh",
     "scripts/submit_hoffman2_terminal_validation.sh",
@@ -82,6 +86,7 @@ TERMINAL_SOURCE_PATHS = (
     "src/experiments/terminal_evidence_rows.py",
     "src/experiments/terminal_execution.py",
     "src/experiments/terminal_plan_diagnostics.py",
+    "src/experiments/terminal_setup_diagnostics.py",
     "src/experiments/terminal_validation_suite.py",
     "src/mdp/finite_support.py",
     "src/solvers/terminal.py",
@@ -159,7 +164,7 @@ _QACCT_FIELDS = {
 _CEILING_FIELDS = {
     "schema", "captured_at_utc", "max_walltime_seconds", "max_array_tasks",
     "max_throttle", "max_memory_bytes", "max_storage_bytes", "cpu_hours_quota",
-    "allowed_queues", "report_hash",
+    "allowed_queues", "raw_evidence_hashes", "report_hash",
 }
 _PROVISIONAL_FIELDS = {
     "schema", "artifact_type", "artifact_status", "stage_complete", "manifest_hash",

@@ -847,6 +847,7 @@ class TerminalExecutionTests(unittest.TestCase):
             "max_storage_bytes": 10_000_000_000,
             "cpu_hours_quota": None,
             "allowed_queues": ("campus",),
+            "raw_evidence_hashes": (("qconf.raw", HASH),),
             "report_hash": "",
         }
         value["report_hash"] = execution.logical_hash(execution._without_hash(value, "report_hash"))
@@ -1174,7 +1175,10 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertIn('MANIFEST_PLAN_SHARDS:-16', script)
         self.assertIn('MANIFEST_PLAN_SHARDS:-2000', script)
         self.assertIn('MANIFEST_PLAN_SEGMENT_SIZE:-100', script)
-        self.assertIn('submit "${role}" "${job_file}" >/dev/null', script)
+        self.assertIn(
+            'submit "${role}" "${job_file}" "${job_name}" >/dev/null',
+            script,
+        )
         self.assertIn('#$ -hold_jid ${hold_ids}', script)
         self.assertIn('merge-plan-fragments', script)
         self.assertNotIn('-pe shared', script)
