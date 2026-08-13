@@ -2438,7 +2438,7 @@ def _job_script_semantics(
         f"#$ -q {resources['queue']}", "#$ -j y",
         f"#$ -o {output_root}/logs/{job_name}.$JOB_ID.$TASK_ID.log",
         f"#$ -l h_rt={h_rt_text}", f"#$ -l h_data={resources['memory_bytes']}",
-        f"#$ -t {task_spec}", f"#$ -tc {expected_throttle}",
+        f"#$ -t {task_spec}", f"#$ -tc {throttle}",
     ]
     if slot_class == "shared_two":
         expected_lines.append("#$ -pe shared 2")
