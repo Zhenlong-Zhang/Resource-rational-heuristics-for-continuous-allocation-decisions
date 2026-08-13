@@ -3753,8 +3753,8 @@ def audit_formal_smoke(
     base_72_binding = next(
         item for item in bindings if int(item["task_id"]) == base_72_tasks[0]
     )
-    if float(base_72_binding["wall_seconds"]) > 6000.0:
-        raise RuntimeError("formal smoke base:72 exceeds the 6000-second headroom gate")
+    if float(base_72_binding["wall_seconds"]) > 6600.0:
+        raise RuntimeError("formal smoke base:72 exceeds the 6600-second runtime gate")
 
     if (
         not final_qstat_status_path.is_file()

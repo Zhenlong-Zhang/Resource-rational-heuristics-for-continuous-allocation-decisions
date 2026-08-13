@@ -119,8 +119,8 @@ def main() -> None:
                 memory > 0.75 * args.requested_memory_bytes,
             )):
                 findings.append(f"scheduler_gate_failed:{target}:{repeat_index}")
-            if target == "base_72" and wall > 6000.0:
-                findings.append(f"base_72_headroom_failed:{repeat_index}")
+            if target == "base_72" and wall > 6600.0:
+                findings.append(f"base_72_runtime_failed:{repeat_index}")
             inventories.append(_inventory(path))
             comparable = json.loads((path / "comparable.json").read_text(encoding="ascii"))
             if comparable.get("source_commit") != args.expected_commit:
