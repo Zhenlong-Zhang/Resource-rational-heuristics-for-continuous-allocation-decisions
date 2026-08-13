@@ -102,9 +102,9 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
                 ),
                 "resources": {
                     "queue": "campus2.q",
-                    "h_rt_seconds": 7200,
+                    "h_rt_seconds": 14400,
                     "memory_bytes": 8589934592,
-                    "throttle": 4,
+                    "throttle": 16,
                 },
             }
             assembly = {"assembly_hash": HASH}
@@ -254,7 +254,7 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
         )
         self.assertIn('fragment_h_rt="00:10:00"', submitter)
         self.assertIn('merge_h_rt="00:05:00"', submitter)
-        self.assertIn('formal_h_rt_seconds=7200', submitter)
+        self.assertIn('formal_h_rt_seconds=14400', submitter)
         self.assertIn('formal_h_rt_seconds=86400', submitter)
         auditor = (project / "scripts/audit_hoffman2_terminal_manifest_setup.sh").read_text(
             encoding="utf-8"

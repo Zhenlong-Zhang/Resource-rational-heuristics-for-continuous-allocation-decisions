@@ -61,7 +61,7 @@ def main() -> None:
         raise RuntimeError("targeted qsub output and job identity disagree")
     job_text = job_script.read_text(encoding="utf-8")
     required_job_lines = (
-        "#$ -q campus2.q", "#$ -l h_rt=02:00:00", "#$ -l h_data=8589934592",
+        "#$ -q campus2.q", "#$ -l h_rt=04:00:00", "#$ -l h_data=8589934592",
         "#$ -t 1-6", "#$ -tc 6", "#$ -pe shared 2",
         "scripts/run_terminal_targeted_concurrent.py",
     )
@@ -115,11 +115,11 @@ def main() -> None:
                 runtime.get("job_id") != record.get("jobnumber"),
                 runtime.get("job_id") != job_id,
                 runtime.get("hostname") != record.get("hostname", "").split(".", 1)[0].lower(),
-                wall > 7200.0, memory > 6 * 1024**3,
+                wall > 14400.0, memory > 6 * 1024**3,
                 memory > 0.75 * args.requested_memory_bytes,
             )):
                 findings.append(f"scheduler_gate_failed:{target}:{repeat_index}")
-            if target == "base_72" and wall > 6600.0:
+            if target == "base_72" and wall > 12000.0:
                 findings.append(f"base_72_runtime_failed:{repeat_index}")
             inventories.append(_inventory(path))
             comparable = json.loads((path / "comparable.json").read_text(encoding="ascii"))

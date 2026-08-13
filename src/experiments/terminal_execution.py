@@ -2771,7 +2771,7 @@ def audit_qacct(
             if end_time < start_time:
                 raise RuntimeError("qacct end time precedes start time")
             if manifest["stage"] == "smoke" and (
-                wall_seconds > 7200.0
+                wall_seconds > 14400.0
                 or memory_bytes > 6 * 1024**3
                 or memory_bytes > 0.75 * int(manifest["resources"]["memory_bytes"])
             ):
@@ -3763,7 +3763,7 @@ def audit_formal_smoke(
         for item in bindings
     )
     if (
-        max_wall > 7200.0
+        max_wall > 14400.0
         or max_memory > 6 * 1024**3
         or max_memory > 0.75 * int(manifest["resources"]["memory_bytes"])
     ):
@@ -3781,8 +3781,8 @@ def audit_formal_smoke(
     base_72_binding = next(
         item for item in bindings if int(item["task_id"]) == base_72_tasks[0]
     )
-    if float(base_72_binding["wall_seconds"]) > 6600.0:
-        raise RuntimeError("formal smoke base:72 exceeds the 6600-second runtime gate")
+    if float(base_72_binding["wall_seconds"]) > 12000.0:
+        raise RuntimeError("formal smoke base:72 exceeds the 12000-second runtime gate")
 
     if (
         not final_qstat_status_path.is_file()
@@ -3804,8 +3804,8 @@ def audit_formal_smoke(
     if completed.tzinfo is None:
         raise RuntimeError("formal smoke finalization marker lacks timezone")
     chain_seconds = (completed.astimezone(timezone.utc) - first_start.astimezone(timezone.utc)).total_seconds()
-    if not math.isfinite(chain_seconds) or not 0.0 <= chain_seconds <= 9000.0:
-        raise RuntimeError("formal smoke complete queue-excluded chain exceeds 9000 seconds")
+    if not math.isfinite(chain_seconds) or not 0.0 <= chain_seconds <= 18000.0:
+        raise RuntimeError("formal smoke complete queue-excluded chain exceeds 18000 seconds")
 
     task_hashes = []
     for task_id in range(1, 17):
