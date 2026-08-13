@@ -188,7 +188,7 @@ class TerminalValidationSubmissionTests(unittest.TestCase):
         job = next((self._output_root("valid") / "scheduler/jobs").glob("*.job"))
         text = job.read_text(encoding="utf-8")
         self.assertIn("#$ -t 1-16", text)
-        self.assertIn("#$ -tc 4", text)
+        self.assertIn("#$ -tc 16", text)
         self.assertIn("task_id=${SGE_TASK_ID}", text)
         command_start = text.index(
             f'"{self.bin_dir / "python"}" scripts/terminal_validation_array.py run-task'
