@@ -213,7 +213,7 @@ class TerminalExecutionTests(unittest.TestCase):
         suites = self.smoke_suites() if stage == "smoke" else self.full_suites()
         stage_resources = resources()
         if stage == "smoke":
-            stage_resources["h_rt_seconds"] = 14400
+            stage_resources["h_rt_seconds"] = 21600
             stage_resources["throttle"] = 16
         identities = SimpleNamespace(
             scientific_spec_hash="a" * 64,
@@ -1094,7 +1094,7 @@ class TerminalExecutionTests(unittest.TestCase):
             scheduler = self.create_scheduler(manifest, submissions, root)
             qacct_path = next(iter(qacct_paths.values()))
             original = qacct_path.read_text(encoding="utf-8")
-            qacct_path.write_text(original.replace("ru_wallclock 2", "ru_wallclock 14400.1", 1), encoding="utf-8")
+            qacct_path.write_text(original.replace("ru_wallclock 2", "ru_wallclock 21600.1", 1), encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "P3 wall or memory"):
                 execution.audit_qacct(manifest, scheduler, qacct_paths, evidence_root=root)
             qacct_path.write_text(original.replace("maxvmem 100M", "maxvmem 7G", 1), encoding="utf-8")
@@ -1445,7 +1445,7 @@ class TerminalExecutionTests(unittest.TestCase):
         value = {
             "schema": execution.COMPUTE_CEILING_SCHEMA,
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),
-            "max_walltime_seconds": 14400,
+            "max_walltime_seconds": 21600,
             "max_array_tasks": 1000,
             "max_throttle": 100,
             "max_memory_bytes": 4_000_000_000,

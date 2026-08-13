@@ -35,7 +35,7 @@ class TerminalValidationSubmissionTests(unittest.TestCase):
                 "task_count": 16,
                 "resources": {
                     "queue": "campus2.q",
-                    "h_rt_seconds": 14400,
+                    "h_rt_seconds": 21600,
                     "memory_bytes": 8589934592,
                     "throttle": 16,
                 },

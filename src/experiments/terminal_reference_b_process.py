@@ -57,8 +57,8 @@ REFERENCE_B_SOURCE_OUTPUT_SCHEMA = "terminal_reference_b_source_worker_output_v1
 REFERENCE_B_WORKER_ERROR_SCHEMA = "terminal_reference_b_worker_error_v1"
 REFERENCE_B_WORKER_ROLES = ("traced", "source_validation")
 # Concurrent base-case workers share node memory bandwidth. The timeout is
-# below the four-hour scheduler limit, leaving one hour for validation and publication.
-REFERENCE_B_WORKER_TIMEOUT_SECONDS = 10_800.0
+# below the six-hour scheduler limit, leaving two hours for validation and publication.
+REFERENCE_B_WORKER_TIMEOUT_SECONDS = 14_400.0
 REFERENCE_B_MAX_FRAME_BYTES = 2 * 1024**3
 _FRAME_HEADER = struct.Struct(">Q")
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
