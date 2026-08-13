@@ -20,7 +20,7 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
                 check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
+                universal_newlines=True,
             )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("target", completed.stdout)
