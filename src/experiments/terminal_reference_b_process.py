@@ -870,7 +870,7 @@ def solve_terminal_reference_b_concurrently(
     evaluation_cap: int = REFERENCE_B_EVALUATION_CAP,
     timeout_seconds: float = REFERENCE_B_WORKER_TIMEOUT_SECONDS,
 ) -> ConcurrentReferenceBResult:
-    """Run unchanged traced/source B solves concurrently and compare exact records."""
+    """Run unchanged traced/source B solves in isolated processes and compare records."""
 
     if not math.isfinite(timeout_seconds) or timeout_seconds <= 0.0:
         raise ValueError("Reference-B worker timeout must be finite and positive")
@@ -897,6 +897,7 @@ def solve_terminal_reference_b_concurrently(
             os.close(fd)
 
     try:
+        deadline = time.monotonic() + timeout_seconds
         for role in roles:
             input_read, input_write = os.pipe()
             output_read, output_write = os.pipe()
@@ -925,24 +926,27 @@ def solve_terminal_reference_b_concurrently(
             parent_outputs[role] = output_read
             os.close(input_read)
             os.close(output_write)
+            thread = threading.Thread(
+                target=reader, args=(role, output_read), daemon=True
+            )
+            threads.append(thread)
+            thread.start()
             try:
                 _write_frame(input_write, input_bytes)
             finally:
                 os.close(input_write)
-
-        for role in roles:
-            thread = threading.Thread(
-                target=reader, args=(role, parent_outputs[role]), daemon=True
-            )
-            threads.append(thread)
-            thread.start()
-
-        deadline = time.monotonic() + timeout_seconds
-        _wait_for_workers(processes, timeout_seconds)
-        for thread in threads:
+            remaining = max(0.0, deadline - time.monotonic())
+            if remaining == 0.0:
+                raise TimeoutError("isolated Reference-B workers exceeded the fixed timeout")
+            _wait_for_workers((process,), remaining)
             thread.join(timeout=max(0.0, deadline - time.monotonic()))
-        if any(thread.is_alive() for thread in threads):
-            raise TimeoutError("concurrent Reference-B IPC did not terminate")
+            if thread.is_alive():
+                raise TimeoutError("isolated Reference-B IPC did not terminate")
+            if role in reader_errors:
+                raise RuntimeError(f"Reference-B {role} worker IPC failed") from reader_errors[role]
+            if role not in reader_results:
+                raise RuntimeError(f"Reference-B {role} worker output is missing")
+
         if reader_errors:
             role = sorted(reader_errors)[0]
             raise RuntimeError(f"Reference-B {role} worker IPC failed") from reader_errors[role]

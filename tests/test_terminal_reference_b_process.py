@@ -83,6 +83,28 @@ class TerminalReferenceBProcessTests(unittest.TestCase):
             self.proof_matches(self.concurrent.source_validation_proof)
         )
 
+    def test_isolated_workers_do_not_overlap(self):
+        launched = []
+        original = process_module._launch_worker
+
+        def launch(command, input_fd, output_fd):
+            if launched:
+                self.assertIsNotNone(launched[-1].poll())
+            process = original(command, input_fd, output_fd)
+            launched.append(process)
+            return process
+
+        with patch.object(process_module, "_launch_worker", side_effect=launch):
+            result = solve_terminal_reference_b_concurrently(
+                self.descriptor,
+                self.mdp,
+                self.belief,
+                self.production,
+                timeout_seconds=120.0,
+            )
+        self.assertEqual(len(launched), 2)
+        self.assertEqual(result.record, self.concurrent.record)
+
     def test_concurrent_and_serial_evaluators_produce_identical_bundle_bytes(self):
         serial = evaluate_terminal_evidence_descriptor(
             self.descriptor, self.mdp, self.belief
