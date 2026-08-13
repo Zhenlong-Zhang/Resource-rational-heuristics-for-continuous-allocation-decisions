@@ -13,6 +13,7 @@ QDEL_BIN="${QDEL_BIN:-qdel}"
 QSTAT_BIN="${QSTAT_BIN:-qstat}"
 GIT_BIN="${GIT_BIN:-git}"
 QUEUE="${QUEUE:-campus2.q}"
+export LANG=C LC_ALL=C
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 SETUP_ROOT="$(cd "$(dirname "${SETUP_ROOT}")" && pwd -P)/$(basename "${SETUP_ROOT}")"
 COMPUTE_CEILING="$(cd "$(dirname "${COMPUTE_CEILING}")" && pwd -P)/$(basename "${COMPUTE_CEILING}")"
@@ -125,7 +126,8 @@ PY
   printf '%s\n' "${qdel_status}" > "${SETUP_ROOT}/rollback/qdel.status"
   printf '%s\n' "${qstat_status}" > "${SETUP_ROOT}/rollback/qstat.status"
   if [[ "${CLEANUP_UNCERTAIN}" -ne 0 || "${qstat_status}" -ne 0 ]] || ! "${PYTHON_BIN}" - \
-      "${SETUP_ROOT}/rollback/qstat.xml" "${qstat_status}" "${run_tag}" "${submitted_jobs[@]}" <<'PY'
+      "${SETUP_ROOT}/rollback/qstat.xml" "${qstat_status}" "${run_tag}" \
+      ${submitted_jobs[@]+"${submitted_jobs[@]}"} <<'PY'
 from pathlib import Path
 import sys
 from xml.etree import ElementTree

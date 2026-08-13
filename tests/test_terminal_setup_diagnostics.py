@@ -256,6 +256,8 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
         self.assertIn('merge_h_rt="00:05:00"', submitter)
         self.assertIn('formal_h_rt_seconds=14400', submitter)
         self.assertIn('formal_h_rt_seconds=86400', submitter)
+        self.assertIn('export LANG=C LC_ALL=C', submitter)
+        self.assertIn('${submitted_jobs[@]+"${submitted_jobs[@]}"}', submitter)
         auditor = (project / "scripts/audit_hoffman2_terminal_manifest_setup.sh").read_text(
             encoding="utf-8"
         )
