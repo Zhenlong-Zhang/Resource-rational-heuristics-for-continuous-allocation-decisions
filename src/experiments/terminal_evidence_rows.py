@@ -33,12 +33,12 @@ from ..solvers.terminal_reference import (
     TerminalReferenceRecord,
     solve_terminal_reference_a,
     solve_terminal_reference_a_with_trace,
+    source_validate_terminal_reference_record,
     terminal_belief_identity_hash,
     terminal_reference_a_numerical_method_config_hash,
     terminal_reference_certificate_hash,
     terminal_scientific_spec_hash,
     validate_production_against_reference_a,
-    validate_terminal_reference_record,
 )
 from ..solvers.terminal_reference_agreement import (
     TERMINAL_PRODUCTION_ALLOCATION_TOLERANCE,
@@ -52,8 +52,8 @@ from ..solvers.terminal_reference_agreement import (
 )
 from ..solvers.terminal_reference_b import (
     solve_terminal_reference_b_with_trace,
+    source_validate_terminal_reference_b_record,
     terminal_reference_b_numerical_method_config_hash,
-    validate_terminal_reference_b_record,
 )
 from .r6_prefeedback_positive_need import (
     build_development_environments,
@@ -851,15 +851,17 @@ def evaluate_terminal_evidence_descriptor(
     )
     a_hash = terminal_reference_a_numerical_method_config_hash(reference_a.evaluation_cap)
     solver_scientific_hash = terminal_scientific_spec_hash(mdp)
-    a_source_pass = validate_terminal_reference_record(
+    a_source_proof = source_validate_terminal_reference_record(
         reference_a, mdp, belief,
         scientific_spec_hash=solver_scientific_hash,
         numerical_method_config_hash=a_hash,
     )
+    a_source_pass = a_source_proof.valid
     production_a = validate_production_against_reference_a(
         mdp, belief, production, reference_a,
         scientific_spec_hash=solver_scientific_hash,
         numerical_method_config_hash=a_hash,
+        _source_validation_proof=a_source_proof,
     )
     production_a_pass = production_a.status == "accepted"
     trigger_reasons = terminal_reference_b_trigger_reasons(
@@ -945,16 +947,19 @@ def evaluate_terminal_evidence_descriptor(
             mdp, belief, production.allocation
         )
         b_hash = terminal_reference_b_numerical_method_config_hash(reference_b.evaluation_cap)
-        b_source_pass = validate_terminal_reference_b_record(
+        b_source_proof = source_validate_terminal_reference_b_record(
             reference_b, mdp, belief,
             scientific_spec_hash=solver_scientific_hash,
             numerical_method_config_hash=b_hash,
         )
+        b_source_pass = b_source_proof.valid
         agreement = validate_terminal_reference_agreement(
             mdp, belief, production, reference_a, reference_b,
             scientific_spec_hash=solver_scientific_hash,
             reference_a_numerical_method_config_hash=a_hash,
             reference_b_numerical_method_config_hash=b_hash,
+            _source_validation_proof_a=a_source_proof,
+            _source_validation_proof_b=b_source_proof,
         )
         b_checks = (("reference_b_source_valid", b_source_pass),)
         b_sidecar, payload = build_terminal_certificate_sidecar(
@@ -1201,6 +1206,47 @@ def validate_terminal_evidence_bundle_source(
     except (AttributeError, RuntimeError, TypeError, ValueError, OverflowError) as error:
         return (f"source_recomputation_failed:{type(error).__name__}",)
     return _compare_terminal_evidence_bundle_to_expected(bundle, expected, descriptor)
+
+
+def validate_terminal_evidence_bundle_structure(
+    bundle: TerminalEvidenceBundle,
+    descriptor: TerminalValidationDescriptor,
+) -> Tuple[str, ...]:
+    """Validate immutable rows and sidecars without launching numerical solvers."""
+
+    failures = []
+    if bundle.descriptor_hash != descriptor.descriptor_hash:
+        failures.append("bundle_descriptor_hash_mismatch")
+    rows_by_key = {_row_key_parts(row): row for row in bundle.rows}
+    if len(rows_by_key) != len(bundle.rows):
+        failures.append("bundle_duplicate_rows")
+    sidecars = dict(bundle.sidecars)
+    if len(sidecars) != len(bundle.sidecars):
+        failures.append("bundle_duplicate_sidecars")
+    expected_paths = set()
+    for row in bundle.rows:
+        failures.extend(
+            f"{terminal_evidence_row_key(row)}:{reason}"
+            for reason in validate_terminal_evidence_row(row, descriptor)
+        )
+        expected_paths.add(row.sidecar.relative_path)
+        payload = sidecars.get(row.sidecar.relative_path)
+        if payload is None:
+            failures.append(f"{row.sidecar.relative_path}:missing")
+            continue
+        failures.extend(
+            f"{row.sidecar.relative_path}:{reason}"
+            for reason in validate_terminal_certificate_sidecar(
+                row.sidecar,
+                payload,
+                descriptor=descriptor,
+                method=row.method,
+                method_numerical_hash=row.method_numerical_hash,
+            )
+        )
+    if set(sidecars) != expected_paths:
+        failures.append("bundle_sidecar_set_mismatch")
+    return tuple(dict.fromkeys(failures))
 
 
 def _compare_terminal_evidence_bundle_to_expected(

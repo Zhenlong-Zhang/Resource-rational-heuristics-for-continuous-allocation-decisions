@@ -13,10 +13,12 @@ from typing import Any, List, Mapping, Optional, Tuple
 from .terminal import StructuralSymmetry, validate_structural_symmetry_proof
 from .terminal_reference import (
     TerminalReferenceRecord,
+    TerminalReferenceSourceValidationProof,
     terminal_belief_identity_hash,
     terminal_mdp_identity_hash,
     terminal_reference_a_numerical_method_config_hash,
     terminal_scientific_spec_hash,
+    terminal_reference_source_proof_matches,
     validate_terminal_reference_record,
 )
 from .terminal_reference_b import (
@@ -275,6 +277,8 @@ def validate_terminal_reference_agreement(
     scientific_spec_hash: str,
     reference_a_numerical_method_config_hash: str,
     reference_b_numerical_method_config_hash: str,
+    _source_validation_proof_a: Optional[TerminalReferenceSourceValidationProof] = None,
+    _source_validation_proof_b: Optional[TerminalReferenceSourceValidationProof] = None,
 ) -> TerminalReferenceAgreementRecord:
     """Validate source identities, A/B agreement, and production acceptance.
 
@@ -340,22 +344,44 @@ def validate_terminal_reference_agreement(
     )
 
     try:
-        a_source_valid = validate_terminal_reference_record(
-            reference_a,
-            mdp,
-            belief,
-            scientific_spec_hash=scientific_spec_hash,
-            numerical_method_config_hash=reference_a_numerical_method_config_hash,
+        a_source_valid = (
+            terminal_reference_source_proof_matches(
+                _source_validation_proof_a,
+                reference_a,
+                mdp,
+                belief,
+                scientific_spec_hash=scientific_spec_hash,
+                numerical_method_config_hash=reference_a_numerical_method_config_hash,
+            )
+            if _source_validation_proof_a is not None
+            else validate_terminal_reference_record(
+                reference_a,
+                mdp,
+                belief,
+                scientific_spec_hash=scientific_spec_hash,
+                numerical_method_config_hash=reference_a_numerical_method_config_hash,
+            )
         )
     except (AttributeError, TypeError, ValueError, RuntimeError, OverflowError):
         a_source_valid = False
     try:
-        b_source_valid = validate_terminal_reference_b_record(
-            reference_b,
-            mdp,
-            belief,
-            scientific_spec_hash=scientific_spec_hash,
-            numerical_method_config_hash=reference_b_numerical_method_config_hash,
+        b_source_valid = (
+            terminal_reference_source_proof_matches(
+                _source_validation_proof_b,
+                reference_b,
+                mdp,
+                belief,
+                scientific_spec_hash=scientific_spec_hash,
+                numerical_method_config_hash=reference_b_numerical_method_config_hash,
+            )
+            if _source_validation_proof_b is not None
+            else validate_terminal_reference_b_record(
+                reference_b,
+                mdp,
+                belief,
+                scientific_spec_hash=scientific_spec_hash,
+                numerical_method_config_hash=reference_b_numerical_method_config_hash,
+            )
         )
     except (AttributeError, TypeError, ValueError, RuntimeError, OverflowError):
         b_source_valid = False

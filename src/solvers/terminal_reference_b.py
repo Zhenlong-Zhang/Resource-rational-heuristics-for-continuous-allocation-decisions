@@ -18,8 +18,10 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .terminal import StructuralSymmetry, prove_recipient_swap_symmetry
 from .terminal_reference import (
+    _SOURCE_VALIDATION_PROOF_SEAL,
     CandidateIsolationEvidence,
     TerminalReferenceRecord,
+    TerminalReferenceSourceValidationProof,
     terminal_belief_identity_hash,
     terminal_mdp_identity_hash,
     terminal_reference_certificate_hash,
@@ -1493,6 +1495,36 @@ def validate_terminal_reference_b_record(
     return recomputed.certificate_hash == record.certificate_hash
 
 
+def source_validate_terminal_reference_b_record(
+    record: TerminalReferenceRecord,
+    mdp: Any,
+    belief: Any,
+    *,
+    scientific_spec_hash: str,
+    numerical_method_config_hash: str,
+) -> TerminalReferenceSourceValidationProof:
+    """Recompute Reference B once and bind the result to exact source objects."""
+
+    valid = validate_terminal_reference_b_record(
+        record,
+        mdp,
+        belief,
+        scientific_spec_hash=scientific_spec_hash,
+        numerical_method_config_hash=numerical_method_config_hash,
+    )
+    return TerminalReferenceSourceValidationProof(
+        record=record,
+        mdp_object_id=id(mdp),
+        belief_object_id=id(belief),
+        scientific_spec_hash=scientific_spec_hash,
+        numerical_method_config_hash=numerical_method_config_hash,
+        evaluation_cap=record.evaluation_cap,
+        certificate_hash=record.certificate_hash,
+        valid=bool(valid),
+        _seal=_SOURCE_VALIDATION_PROOF_SEAL,
+    )
+
+
 __all__ = [
     "REFERENCE_B_ALLOCATION_TOLERANCE",
     "REFERENCE_B_BRANCH_RULE",
@@ -1501,4 +1533,5 @@ __all__ = [
     "solve_terminal_reference_b",
     "terminal_reference_b_numerical_method_config_hash",
     "validate_terminal_reference_b_record",
+    "source_validate_terminal_reference_b_record",
 ]

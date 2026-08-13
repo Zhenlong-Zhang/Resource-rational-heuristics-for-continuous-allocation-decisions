@@ -34,6 +34,7 @@ REFERENCE_A_ISOLATION_RULES = frozenset(
         REFERENCE_A_CONSTANT_RULE,
     }
 )
+_SOURCE_VALIDATION_PROOF_SEAL = object()
 
 TERMINAL_SCIENTIFIC_CONFIG_FIELDS = (
     "mu_need",
@@ -98,6 +99,21 @@ class TerminalReferenceRecord:
     evaluation_cap: int
     stopping_reason: str
     certificate_hash: str
+
+
+@dataclass(frozen=True)
+class TerminalReferenceSourceValidationProof:
+    """Process-local proof that one exact record was recomputed from one source."""
+
+    record: TerminalReferenceRecord
+    mdp_object_id: int
+    belief_object_id: int
+    scientific_spec_hash: str
+    numerical_method_config_hash: str
+    evaluation_cap: int
+    certificate_hash: str
+    valid: bool
+    _seal: object
 
 
 @dataclass(frozen=True)
@@ -1415,6 +1431,72 @@ def validate_terminal_reference_record(
     return recomputed.certificate_hash == record.certificate_hash
 
 
+def source_validate_terminal_reference_record(
+    record: TerminalReferenceRecord,
+    mdp: Any,
+    belief: Any,
+    *,
+    scientific_spec_hash: str,
+    numerical_method_config_hash: str,
+) -> TerminalReferenceSourceValidationProof:
+    """Recompute once and bind the result to exact process-local source objects."""
+
+    valid = validate_terminal_reference_record(
+        record,
+        mdp,
+        belief,
+        scientific_spec_hash=scientific_spec_hash,
+        numerical_method_config_hash=numerical_method_config_hash,
+    )
+    return TerminalReferenceSourceValidationProof(
+        record=record,
+        mdp_object_id=id(mdp),
+        belief_object_id=id(belief),
+        scientific_spec_hash=scientific_spec_hash,
+        numerical_method_config_hash=numerical_method_config_hash,
+        evaluation_cap=record.evaluation_cap,
+        certificate_hash=record.certificate_hash,
+        valid=bool(valid),
+        _seal=_SOURCE_VALIDATION_PROOF_SEAL,
+    )
+
+
+def terminal_reference_source_proof_matches(
+    proof: TerminalReferenceSourceValidationProof,
+    record: TerminalReferenceRecord,
+    mdp: Any,
+    belief: Any,
+    *,
+    scientific_spec_hash: str,
+    numerical_method_config_hash: str,
+) -> bool:
+    """Reject stale, copied, cross-source, or false internal validation proofs."""
+
+    try:
+        current_mdp_hash = terminal_mdp_identity_hash(mdp)
+        current_belief_hash = terminal_belief_identity_hash(belief)
+        current_scientific_hash = terminal_scientific_spec_hash(mdp)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return False
+    return (
+        type(proof) is TerminalReferenceSourceValidationProof
+        and proof._seal is _SOURCE_VALIDATION_PROOF_SEAL
+        and proof.record is record
+        and proof.mdp_object_id == id(mdp)
+        and proof.belief_object_id == id(belief)
+        and proof.scientific_spec_hash == scientific_spec_hash
+        and proof.numerical_method_config_hash == numerical_method_config_hash
+        and proof.evaluation_cap == record.evaluation_cap
+        and proof.certificate_hash == record.certificate_hash
+        and record.mdp_identity_hash == current_mdp_hash
+        and record.belief_identity_hash == current_belief_hash
+        and record.scientific_spec_hash == current_scientific_hash
+        and current_scientific_hash == scientific_spec_hash
+        and record.numerical_method_config_hash == numerical_method_config_hash
+        and proof.valid is True
+    )
+
+
 def validate_production_against_reference_a(
     mdp: Any,
     belief: Any,
@@ -1423,6 +1505,7 @@ def validate_production_against_reference_a(
     *,
     scientific_spec_hash: str,
     numerical_method_config_hash: str,
+    _source_validation_proof: Optional[TerminalReferenceSourceValidationProof] = None,
 ) -> TerminalReferenceValidationResult:
     """Validate one production terminal result against resolved Reference A evidence."""
 
@@ -1433,12 +1516,23 @@ def validate_production_against_reference_a(
 
     check(
         "reference_a_source_recomputation",
-        validate_terminal_reference_record(
-            reference_a,
-            mdp,
-            belief,
-            scientific_spec_hash=scientific_spec_hash,
-            numerical_method_config_hash=numerical_method_config_hash,
+        (
+            terminal_reference_source_proof_matches(
+                _source_validation_proof,
+                reference_a,
+                mdp,
+                belief,
+                scientific_spec_hash=scientific_spec_hash,
+                numerical_method_config_hash=numerical_method_config_hash,
+            )
+            if _source_validation_proof is not None
+            else validate_terminal_reference_record(
+                reference_a,
+                mdp,
+                belief,
+                scientific_spec_hash=scientific_spec_hash,
+                numerical_method_config_hash=numerical_method_config_hash,
+            )
         ),
     )
     check(

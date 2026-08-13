@@ -4,6 +4,7 @@ from dataclasses import replace
 from fractions import Fraction
 import math
 import unittest
+from unittest.mock import patch
 
 from src.mdp.finite_support import (
     FiniteSupportAtom,
@@ -28,6 +29,7 @@ from src.solvers.terminal_reference import (
     _tau_bounds,
     _validate_terminal_reference_record_shape,
     solve_terminal_reference_a,
+    source_validate_terminal_reference_record,
     terminal_belief_identity_hash,
     terminal_mdp_identity_hash,
     terminal_reference_a_numerical_method_config_hash,
@@ -92,6 +94,90 @@ class TerminalReferenceATests(unittest.TestCase):
             scientific_spec_hash=scientific_hash,
             numerical_method_config_hash=numerical_hash,
         )
+
+    def test_source_validation_proof_is_identity_bound_and_public_default_recomputes(self):
+        mdp = one_atom_mdp(FiniteSupportAtom(80.0, 0.5, -1))
+        belief, production, reference = self.solve(mdp)
+        scientific_hash, numerical_hash = self.identity_hashes(
+            mdp, reference.evaluation_cap
+        )
+        proof = source_validate_terminal_reference_record(
+            reference,
+            mdp,
+            belief,
+            scientific_spec_hash=scientific_hash,
+            numerical_method_config_hash=numerical_hash,
+        )
+        with patch(
+            "src.solvers.terminal_reference.validate_terminal_reference_record",
+            side_effect=AssertionError("proof path recomputed the reference"),
+        ):
+            accepted = validate_production_against_reference_a(
+                mdp,
+                belief,
+                production,
+                reference,
+                scientific_spec_hash=scientific_hash,
+                numerical_method_config_hash=numerical_hash,
+                _source_validation_proof=proof,
+            )
+            copied_record = replace(reference)
+            rejected = validate_production_against_reference_a(
+                mdp,
+                belief,
+                production,
+                copied_record,
+                scientific_spec_hash=scientific_hash,
+                numerical_method_config_hash=numerical_hash,
+                _source_validation_proof=proof,
+            )
+            forged_proof = replace(proof, _seal=object())
+            forged = validate_production_against_reference_a(
+                mdp,
+                belief,
+                production,
+                reference,
+                scientific_spec_hash=scientific_hash,
+                numerical_method_config_hash=numerical_hash,
+                _source_validation_proof=forged_proof,
+            )
+        self.assertEqual(accepted.status, "accepted")
+        self.assertEqual(rejected.status, "rejected")
+        self.assertEqual(forged.status, "rejected")
+        self.assertIn("reference_a_source_recomputation", rejected.failures)
+        self.assertIn("reference_a_source_recomputation", forged.failures)
+
+        original_time = belief.deliberation_time
+        try:
+            object.__setattr__(belief, "deliberation_time", original_time + 1.0)
+            mutated = validate_production_against_reference_a(
+                mdp,
+                belief,
+                production,
+                reference,
+                scientific_spec_hash=scientific_hash,
+                numerical_method_config_hash=numerical_hash,
+                _source_validation_proof=proof,
+            )
+        finally:
+            object.__setattr__(belief, "deliberation_time", original_time)
+        self.assertEqual(mutated.status, "rejected")
+        self.assertIn("reference_a_source_recomputation", mutated.failures)
+
+        with patch(
+            "src.solvers.terminal_reference.validate_terminal_reference_record",
+            wraps=validate_terminal_reference_record,
+        ) as recompute:
+            default = validate_production_against_reference_a(
+                mdp,
+                belief,
+                production,
+                reference,
+                scientific_spec_hash=scientific_hash,
+                numerical_method_config_hash=numerical_hash,
+            )
+        self.assertEqual(default.status, "accepted")
+        self.assertEqual(recompute.call_count, 1)
 
     def assert_resolved_and_valid(self, mdp, belief, production, reference):
         self.assertEqual(reference.status, "resolved")

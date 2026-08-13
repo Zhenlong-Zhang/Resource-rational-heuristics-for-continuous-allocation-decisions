@@ -38,6 +38,7 @@ from .terminal_evidence_rows import (
     require_terminal_evidence_plan_parity,
     terminal_evidence_row_hash,
     validate_terminal_evidence_bundle_source,
+    validate_terminal_evidence_bundle_structure,
 )
 from .terminal_canonical_provider import (
     accepted_canonical_base_provider,
@@ -1540,7 +1541,7 @@ def execute_task(
                 ),
                 bundle.rows,
             )
-            failures = validate_terminal_evidence_bundle_source(bundle, descriptor, mdp, belief)
+            failures = validate_terminal_evidence_bundle_structure(bundle, descriptor)
             if failures:
                 raise RuntimeError("source evidence validation failed: " + ",".join(failures))
             sidecars = dict(bundle.sidecars)
@@ -1765,7 +1766,7 @@ def recompute_provisional(
                     tuple(sorted((path, sidecar_map[path]) for path in bundle_paths if path in sidecar_map)),
                 )
                 mdp, belief = reconstruct_terminal_evidence_source(descriptor, provider)
-                bundle_failures = validate_terminal_evidence_bundle_source(bundle, descriptor, mdp, belief)
+                bundle_failures = validate_terminal_evidence_bundle_structure(bundle, descriptor)
                 if bundle_failures:
                     raise ValueError("descriptor evidence mismatch: " + ",".join(bundle_failures))
                 if tuple(row.method for row in descriptor_rows) != tuple(raw_ref["expected_methods"]):
@@ -1806,7 +1807,7 @@ def recompute_provisional(
         )
         fail_closed_exercised = True
         negative_control_pass = bool(
-            validate_terminal_evidence_bundle_source(forged_bundle, descriptor, mdp, belief)
+            validate_terminal_evidence_bundle_structure(forged_bundle, descriptor)
         )
 
     tie_rows = [row for row in all_rows if row.tie_status not in (None, "unique")]

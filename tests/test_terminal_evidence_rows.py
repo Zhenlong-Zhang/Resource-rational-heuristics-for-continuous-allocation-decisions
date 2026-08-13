@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import unittest
+from unittest.mock import patch
 
 import src.experiments.terminal_evidence_rows as evidence_module
 from src.experiments.terminal_evidence_rows import (
@@ -17,6 +18,7 @@ from src.experiments.terminal_evidence_rows import (
     terminal_evidence_row_hash,
     validate_terminal_certificate_sidecar,
     validate_terminal_evidence_bundle_source,
+    validate_terminal_evidence_bundle_structure,
     validate_terminal_evidence_row,
 )
 from src.experiments.terminal_validation_suite import (
@@ -193,6 +195,120 @@ class TerminalEvidenceRowTests(unittest.TestCase):
                     self.assertTrue(levels)
                     self.assertTrue(levels[-1]["created_nodes"])
                     self.assertTrue(levels[-1]["pop_events"])
+
+    def test_structural_validation_accepts_honest_bundle_without_recomputation(self):
+        with patch.object(
+            evidence_module,
+            "evaluate_terminal_evidence_descriptor",
+            side_effect=AssertionError("structural validation launched a solver"),
+        ):
+            self.assertEqual(
+                validate_terminal_evidence_bundle_structure(
+                    self.bundle, self.descriptor
+                ),
+                (),
+            )
+
+        forged_row = replace(
+            self.bundle.rows[0], status="forged", logical_record_hash=""
+        )
+        forged_row = replace(
+            forged_row,
+            logical_record_hash=terminal_evidence_row_hash(forged_row),
+        )
+        forged = _replace_bundle_row(self.bundle, forged_row)
+        self.assertTrue(
+            validate_terminal_evidence_bundle_structure(forged, self.descriptor)
+        )
+
+        sidecars = dict(self.bundle.sidecars)
+        path = self.bundle.rows[0].sidecar.relative_path
+        sidecars[path] = sidecars[path] + b"tamper"
+        tampered = TerminalEvidenceBundle(
+            self.bundle.descriptor_hash,
+            self.bundle.rows,
+            tuple(sorted(sidecars.items())),
+        )
+        self.assertTrue(
+            validate_terminal_evidence_bundle_structure(tampered, self.descriptor)
+        )
+
+    def test_evaluator_reuses_each_completed_source_validation_downstream(self):
+        import src.solvers.terminal_reference_agreement as agreement_module
+
+        with (
+            patch.object(
+                evidence_module,
+                "source_validate_terminal_reference_record",
+                wraps=evidence_module.source_validate_terminal_reference_record,
+            ) as validate_a,
+            patch.object(
+                evidence_module,
+                "source_validate_terminal_reference_b_record",
+                wraps=evidence_module.source_validate_terminal_reference_b_record,
+            ) as validate_b,
+            patch.object(
+                agreement_module,
+                "validate_terminal_reference_record",
+                side_effect=AssertionError("agreement recomputed Reference A"),
+            ),
+            patch.object(
+                agreement_module,
+                "validate_terminal_reference_b_record",
+                side_effect=AssertionError("agreement recomputed Reference B"),
+            ),
+        ):
+            bundle = evaluate_terminal_evidence_descriptor(
+                self.descriptor, self.mdp, self.belief
+            )
+        self.assertTrue(bundle.rows)
+        self.assertEqual(validate_a.call_count, 1)
+        self.assertEqual(validate_b.call_count, 1)
+
+    def test_false_source_proofs_fail_closed_without_hidden_retry(self):
+        import src.solvers.terminal_reference as reference_a_module
+        import src.solvers.terminal_reference_agreement as agreement_module
+        import src.solvers.terminal_reference_b as reference_b_module
+
+        real_a = evidence_module.source_validate_terminal_reference_record
+        real_b = evidence_module.source_validate_terminal_reference_b_record
+
+        def false_a(*args, **kwargs):
+            return replace(real_a(*args, **kwargs), valid=False)
+
+        def false_b(*args, **kwargs):
+            return replace(real_b(*args, **kwargs), valid=False)
+
+        with (
+            patch.object(
+                reference_a_module,
+                "validate_terminal_reference_record",
+                wraps=reference_a_module.validate_terminal_reference_record,
+            ) as validate_a,
+            patch.object(
+                reference_b_module,
+                "validate_terminal_reference_b_record",
+                wraps=reference_b_module.validate_terminal_reference_b_record,
+            ) as validate_b,
+            patch.object(evidence_module, "source_validate_terminal_reference_record", false_a),
+            patch.object(evidence_module, "source_validate_terminal_reference_b_record", false_b),
+            patch.object(
+                agreement_module,
+                "validate_terminal_reference_record",
+                side_effect=AssertionError("agreement retried Reference A"),
+            ),
+            patch.object(
+                agreement_module,
+                "validate_terminal_reference_b_record",
+                side_effect=AssertionError("agreement retried Reference B"),
+            ),
+        ):
+            bundle = evaluate_terminal_evidence_descriptor(
+                self.descriptor, self.mdp, self.belief
+            )
+        self.assertTrue(any(not row.pass_status for row in bundle.rows))
+        self.assertEqual(validate_a.call_count, 1)
+        self.assertEqual(validate_b.call_count, 1)
 
     def test_b1_unknown_certificate_type_fails_after_every_hash_is_recomputed(self):
         forged = _self_rehash_sidecar(

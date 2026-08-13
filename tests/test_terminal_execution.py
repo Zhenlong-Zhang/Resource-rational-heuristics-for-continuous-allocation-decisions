@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -8,6 +9,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+import inspect
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -108,6 +110,60 @@ def resources():
 
 
 class TerminalExecutionTests(unittest.TestCase):
+    @staticmethod
+    def no_numerical_sentinels():
+        stack = ExitStack()
+        for target in (
+            "src.experiments.terminal_execution.evaluate_terminal_evidence_descriptor",
+            "src.experiments.terminal_evidence_rows.optimize_terminal_allocation_with_trace",
+            "src.experiments.terminal_evidence_rows.solve_terminal_reference_a_with_trace",
+            "src.experiments.terminal_evidence_rows.source_validate_terminal_reference_record",
+            "src.experiments.terminal_evidence_rows.solve_terminal_reference_b_with_trace",
+            "src.experiments.terminal_evidence_rows.source_validate_terminal_reference_b_record",
+            "src.experiments.terminal_evidence_rows.validate_production_against_reference_a",
+            "src.experiments.terminal_evidence_rows.validate_terminal_reference_agreement",
+            "src.solvers.terminal.optimize_terminal_allocation",
+            "src.solvers.terminal.optimize_terminal_allocation_with_trace",
+            "src.solvers.terminal_reference.solve_terminal_reference_a",
+            "src.solvers.terminal_reference.solve_terminal_reference_a_with_trace",
+            "src.solvers.terminal_reference.validate_terminal_reference_record",
+            "src.solvers.terminal_reference.validate_production_against_reference_a",
+            "src.solvers.terminal_reference_b.solve_terminal_reference_b",
+            "src.solvers.terminal_reference_b.solve_terminal_reference_b_with_trace",
+            "src.solvers.terminal_reference_b.validate_terminal_reference_b_record",
+            "src.solvers.terminal_reference_agreement.validate_terminal_reference_agreement",
+            "src.solvers.terminal_reference.source_validate_terminal_reference_record",
+            "src.solvers.terminal_reference_b.source_validate_terminal_reference_b_record",
+        ):
+            stack.enter_context(
+                patch(target, side_effect=AssertionError(f"post-task called {target}"))
+            )
+        return stack
+
+    def test_post_task_acceptance_call_graph_has_no_numerical_recomputation(self):
+        execute_source = inspect.getsource(execution.execute_task)
+        self.assertEqual(
+            execute_source.count("evaluate_terminal_evidence_descriptor("), 1
+        )
+        self.assertNotIn("validate_terminal_evidence_bundle_source(", execute_source)
+
+        forbidden = (
+            "evaluate_terminal_evidence_descriptor(",
+            "validate_terminal_evidence_bundle_source(",
+            "solve_terminal_reference_a(",
+            "solve_terminal_reference_b(",
+            "optimize_terminal_allocation(",
+        )
+        for function in (
+            execution.recompute_provisional,
+            execution.finalize_post_job,
+            execution.independent_readback,
+            execution.audit_formal_smoke,
+        ):
+            source = inspect.getsource(function)
+            with self.subTest(function=function.__name__):
+                self.assertTrue(all(token not in source for token in forbidden))
+
     def setUp(self):
         self.provider = provider()
         acceptance = patch.object(
@@ -575,7 +631,7 @@ class TerminalExecutionTests(unittest.TestCase):
         ), patch.object(
             execution, "require_terminal_evidence_plan_parity"
         ), patch.object(
-            execution, "validate_terminal_evidence_bundle_source", return_value=()
+            execution, "validate_terminal_evidence_bundle_structure", return_value=()
         ):
             root = Path(directory)
             grouped = execution.execute_task(
@@ -936,7 +992,7 @@ class TerminalExecutionTests(unittest.TestCase):
             )
             finalization_dir = root / "finalization"
             completed_qstat = SimpleNamespace(stdout=empty_qstat, stderr="", returncode=0)
-            with patch.object(execution, "validate_clean_source_identity"), patch.object(
+            with self.no_numerical_sentinels(), patch.object(execution, "validate_clean_source_identity"), patch.object(
                 execution, "validate_execution_manifest"
             ), patch.object(execution, "validate_task_scheduler_bindings"), patch.object(
                 execution, "recompute_provisional", return_value=provisional
@@ -962,7 +1018,7 @@ class TerminalExecutionTests(unittest.TestCase):
                 capture_output=True,
                 check=False,
             )
-            with patch.object(execution.platform, "system", return_value="Darwin"), patch.object(
+            with self.no_numerical_sentinels(), patch.object(execution.platform, "system", return_value="Darwin"), patch.object(
                 execution, "validate_clean_source_identity"
             ), patch.object(execution, "validate_execution_manifest"), patch.object(
                 execution, "validate_task_scheduler_bindings"
@@ -989,7 +1045,7 @@ class TerminalExecutionTests(unittest.TestCase):
                 (logs / f"{submission['job_name']}.{submission['job_id']}.{task_id}.log").touch()
 
             def audit_again(name, recomputed=provisional):
-                with patch.object(execution, "validate_clean_source_identity"), patch.object(
+                with self.no_numerical_sentinels(), patch.object(execution, "validate_clean_source_identity"), patch.object(
                     execution, "validate_execution_manifest"
                 ), patch.object(execution, "recompute_provisional", return_value=recomputed):
                     return execution.audit_formal_smoke(
@@ -1175,11 +1231,12 @@ class TerminalExecutionTests(unittest.TestCase):
                             acceptance_validator=self.accepted, output_root=root, task_id=1,
                             scheduler_environment=scheduler,
                         )
-                    provisional = execution.collect_provisional(
-                        manifest=manifest, suites=suites, provider=self.provider,
-                        acceptance_validator=self.accepted, output_root=root,
-                        provisional_path=root / "provisional.json",
-                    )
+                    with self.no_numerical_sentinels():
+                        provisional = execution.collect_provisional(
+                            manifest=manifest, suites=suites, provider=self.provider,
+                            acceptance_validator=self.accepted, output_root=root,
+                            provisional_path=root / "provisional.json",
+                        )
             self.assertEqual(provisional["observed_task_count"], 1)
             self.assertEqual(provisional["observed_row_count"], len(methods))
             self.assertTrue(provisional["negative_control_rejection_pass"])
