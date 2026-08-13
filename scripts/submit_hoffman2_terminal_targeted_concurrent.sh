@@ -15,11 +15,11 @@ if [[ -e "${OUTPUT_ROOT}" ]]; then
   echo "Refusing to overwrite targeted validation run: ${OUTPUT_ROOT}" >&2
   exit 1
 fi
-if [[ "$(git -C "${PROJECT_ROOT}" rev-parse HEAD)" != "${EXPECTED_COMMIT}" ]]; then
+if [[ "$(cd "${PROJECT_ROOT}" && git rev-parse HEAD)" != "${EXPECTED_COMMIT}" ]]; then
   echo "Targeted validation source commit mismatch." >&2
   exit 1
 fi
-if [[ -n "$(git -C "${PROJECT_ROOT}" status --porcelain --untracked-files=all)" ]]; then
+if [[ -n "$(cd "${PROJECT_ROOT}" && git status --porcelain --untracked-files=all)" ]]; then
   echo "Targeted validation requires a clean committed worktree." >&2
   exit 1
 fi
