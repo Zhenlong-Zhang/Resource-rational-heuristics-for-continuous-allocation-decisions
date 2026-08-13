@@ -383,28 +383,69 @@ PY
     "${raw_file}" "${status_file}" "${job_file}" >> "${submission_tsv}"
 }
 
-submit_partition() {
-  local label="$1" task_ids="$2" task_throttle="$3" slot_class="$4"
-  local part=0 task_spec group_ids job_name job_file
+declare -a group_labels=() group_specs=() group_ids_list=() group_classes=()
+declare -a group_caps=() group_throttles=()
+append_partition_groups() {
+  local label="$1" task_ids="$2" slot_class="$3"
+  local task_spec group_ids cap
   while IFS=$'\t' read -r task_spec group_ids; do
-    part=$((part + 1))
-    job_name="tv${stage}${label}p${part}_${token}"
-    job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
-    write_job "${job_file}" "${job_name}" "${task_spec}" "${task_throttle}" "${slot_class}"
-    submit_array "${job_file}" "${job_name}" "${group_ids}"
+    cap=$(awk -F, '{print NF}' <<<"${group_ids}")
+    group_labels+=("${label}")
+    group_specs+=("${task_spec}")
+    group_ids_list+=("${group_ids}")
+    group_classes+=("${slot_class}")
+    group_caps+=("${cap}")
+    group_throttles+=(1)
   done < <(task_groups "${task_ids}")
-  if [[ "${part}" -eq 0 ]]; then
+  if [[ "${#group_specs[@]}" -eq 0 ]]; then
     echo "Terminal task partition unexpectedly produced no scheduler ranges." >&2
     return 1
   fi
 }
 
 if [[ "${one_slot_ids}" != "-" ]]; then
-  submit_partition "1" "${one_slot_ids}" "${one_slot_throttle}" "one_slot"
+  append_partition_groups "1" "${one_slot_ids}" "one_slot"
 fi
 if [[ "${shared_two_ids}" != "-" ]]; then
-  submit_partition "2" "${shared_two_ids}" "${shared_two_throttle}" "shared_two"
+  append_partition_groups "2" "${shared_two_ids}" "shared_two"
 fi
+
+aggregate_throttle="${throttle}"
+if [[ "${aggregate_throttle}" -gt "${task_count}" ]]; then
+  aggregate_throttle="${task_count}"
+fi
+if [[ "${#group_specs[@]}" -gt "${aggregate_throttle}" ]]; then
+  echo "Manifest throttle cannot schedule every required SGE task group." >&2
+  exit 1
+fi
+remaining=$((aggregate_throttle - ${#group_specs[@]}))
+while [[ "${remaining}" -gt 0 ]]; do
+  progress=0
+  for index in "${!group_specs[@]}"; do
+    if [[ "${group_throttles[index]}" -lt "${group_caps[index]}" ]]; then
+      group_throttles[index]=$((group_throttles[index] + 1))
+      remaining=$((remaining - 1))
+      progress=1
+      [[ "${remaining}" -eq 0 ]] && break
+    fi
+  done
+  if [[ "${progress}" -ne 1 ]]; then
+    echo "Unable to allocate the exact aggregate terminal throttle." >&2
+    exit 1
+  fi
+done
+
+declare -A partition_parts=()
+for index in "${!group_specs[@]}"; do
+  label="${group_labels[index]}"
+  partition_parts[${label}]=$((${partition_parts[${label}]:-0} + 1))
+  part="${partition_parts[${label}]}"
+  job_name="tv${stage}${label}p${part}_${token}"
+  job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
+  write_job "${job_file}" "${job_name}" "${group_specs[index]}" \
+    "${group_throttles[index]}" "${group_classes[index]}"
+  submit_array "${job_file}" "${job_name}" "${group_ids_list[index]}"
+done
 
 "${PYTHON_BIN}" - "${submission_tsv}" "${OUTPUT_ROOT}/scheduler/submissions_input.json" <<'PY'
 import json, sys

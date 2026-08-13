@@ -773,9 +773,25 @@ class TerminalExecutionTests(unittest.TestCase):
                     (tuple(group), throttle, slot_class, str(job_number))
                 )
                 job_number += 1
-        for task_ids, throttle, slot_class, job_id in expanded_partitions:
+        allocated = [1] * len(expanded_partitions)
+        remaining = min(
+            int(manifest["resources"]["throttle"]), int(manifest["task_count"])
+        ) - len(allocated)
+        while remaining:
+            for index, (task_ids, _throttle, _slot_class, _job_id) in enumerate(
+                expanded_partitions
+            ):
+                if allocated[index] < len(task_ids):
+                    allocated[index] += 1
+                    remaining -= 1
+                    if remaining == 0:
+                        break
+        for allocation, (task_ids, _throttle, slot_class, job_id) in zip(
+            allocated, expanded_partitions
+        ):
             if not task_ids:
                 continue
+            throttle = allocation
             job_name = f"terminal{slot_class[0]}{job_id}_{RUN_TAG}"
             task_spec = execution._scheduler_task_spec(task_ids)
             raw = raw_dir / f"{job_name}.txt"
@@ -1795,7 +1811,8 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertLess(ceiling, create_output)
         self.assertLess(create_output, qsub)
         self.assertIn('describe-task-partitions', script)
-        self.assertIn('submit_partition "2" "${shared_two_ids}" "${shared_two_throttle}" "shared_two"', script)
+        self.assertIn('append_partition_groups "2" "${shared_two_ids}" "shared_two"', script)
+        self.assertIn('aggregate_throttle="${throttle}"', script)
         self.assertIn("#$ -pe shared 2", script)
         self.assertIn('qsub_status_path', script)
         self.assertIn('rollback left a validation-tagged job', script)

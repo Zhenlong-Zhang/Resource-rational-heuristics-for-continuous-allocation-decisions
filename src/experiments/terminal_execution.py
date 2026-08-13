@@ -2418,12 +2418,11 @@ def _job_script_semantics(
         raise RuntimeError("job script terminal command arguments mismatch")
     if not array_job or manifest.get("array_required") is not True:
         raise RuntimeError("terminal validation requires exact array submissions")
-    one_throttle, shared_throttle = _partition_throttles(
-        manifest, one_slot_ids, shared_two_ids
-    )
-    expected_throttle = one_throttle if slot_class == "one_slot" else shared_throttle
     task_spec = _scheduler_task_spec(task_ids)
-    if array_specs != [task_spec] or throttles != [str(expected_throttle)]:
+    if len(throttles) != 1 or not throttles[0].isdigit():
+        raise RuntimeError("array throttle is malformed")
+    throttle = int(throttles[0])
+    if array_specs != [task_spec] or not 1 <= throttle <= len(task_ids):
         raise RuntimeError("array range/throttle differs from manifest")
     expected_pe = [] if slot_class == "one_slot" else [("shared", "2")]
     if pe_values != expected_pe:
@@ -2431,8 +2430,6 @@ def _job_script_semantics(
     if not re.search(r"(?m)^task_id=\$\{SGE_TASK_ID\}\s*$", text):
         raise RuntimeError("array task ID is not sourced from SGE_TASK_ID")
     task_id_mode = "sge_array_exact"
-    throttle = expected_throttle
-
     h_rt_seconds = int(resources["h_rt_seconds"])
     h_rt_text = f"{h_rt_seconds // 3600:02d}:{(h_rt_seconds % 3600) // 60:02d}:{h_rt_seconds % 60:02d}"
     output_root = path.resolve().parents[2]
@@ -2608,6 +2605,11 @@ def create_scheduler_evidence(
         ))
     if tuple(observed_partitions) != expected_partitions:
         raise RuntimeError("arrays do not preserve the exact canonical slot partitions")
+    expected_aggregate_throttle = min(
+        int(manifest["resources"]["throttle"]), len(expected)
+    )
+    if sum(int(item["throttle"]) for item in normalized) != expected_aggregate_throttle:
+        raise RuntimeError("segmented arrays do not preserve aggregate manifest throttle")
     if len({item["run_tag"] for item in normalized}) != 1 or len(
         {item["scheduler_user"] for item in normalized}
     ) != 1:
