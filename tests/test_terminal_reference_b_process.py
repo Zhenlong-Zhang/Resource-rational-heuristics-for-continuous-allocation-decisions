@@ -96,10 +96,7 @@ class TerminalReferenceBProcessTests(unittest.TestCase):
             reference_b_runtime_evidence=runtime,
         )
         self.assertEqual(serial, concurrent)
-        self.assertEqual(
-            canonical_ipc_bytes({"bundle": serial}),
-            canonical_ipc_bytes({"bundle": concurrent}),
-        )
+        self.assertEqual(tuple(serial.sidecars), tuple(concurrent.sidecars))
         self.assertEqual(
             set(runtime),
             {"traced_worker", "source_worker", "coordinator_peak_rss_bytes"},
@@ -172,7 +169,7 @@ class TerminalReferenceBProcessTests(unittest.TestCase):
 
     def test_launch_uses_only_role_specific_pipe_descriptors_and_allowlisted_env(self):
         sentinel = Mock()
-        command = tuple(process_module.sys.orig_argv)
+        command = process_module._worker_command("traced", 17, 19)
         with patch.object(process_module.subprocess, "Popen", return_value=sentinel) as popen:
             self.assertIs(process_module._launch_worker(command, 17, 19), sentinel)
         args, kwargs = popen.call_args

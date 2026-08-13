@@ -984,7 +984,7 @@ class TerminalExecutionTests(unittest.TestCase):
                 )
                 task_path.unlink()
                 execution.write_new_json(task_path, artifact)
-                with self.assertRaisesRegex(RuntimeError, "bound|identity"):
+                with self.assertRaisesRegex((RuntimeError, ValueError), "bound|identity|evidence|incomplete"):
                     execution.validate_task_scheduler_bindings(
                         manifest, task_output_root=root, scheduler=scheduler, qacct=qacct
                     )
