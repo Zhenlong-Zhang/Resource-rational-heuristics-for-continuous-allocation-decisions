@@ -39,6 +39,13 @@ class TerminalValidationSubmissionTests(unittest.TestCase):
                     "memory_bytes": 8589934592,
                     "throttle": 4,
                 },
+                "tasks": [
+                    {
+                        "task_id": task_id,
+                        "descriptors": [{"expected_methods": ["analytic"]}],
+                    }
+                    for task_id in range(1, 17)
+                ],
                 "manifest_hash": self.manifest_hash,
             }) + "\n",
             encoding="utf-8",
