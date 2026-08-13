@@ -215,7 +215,7 @@ trap 'rollback $?' ERR
 trap 'rollback 130' INT TERM
 
 write_job() {
-  local job_file="$1" job_name="$2" task_ids="$3" task_throttle="$4" slot_class="$5"
+  local job_file="$1" job_name="$2" task_spec="$3" task_throttle="$4" slot_class="$5"
   if [[ "${slot_class}" == "shared_two" ]]; then
     :
   elif [[ "${slot_class}" != "one_slot" ]]; then
@@ -232,7 +232,7 @@ write_job() {
 #$ -o ${OUTPUT_ROOT}/logs/${job_name}.\$JOB_ID.\$TASK_ID.log
 #$ -l h_rt=${h_rt_text}
 #$ -l h_data=${memory}
-#$ -t ${task_ids}
+#$ -t ${task_spec}
 #$ -tc ${task_throttle}
 EOF
     if [[ "${slot_class}" == "shared_two" ]]; then
@@ -263,6 +263,36 @@ task_id=\${SGE_TASK_ID}
 EOF
   } > "${job_file}"
   chmod 500 "${job_file}"
+}
+
+task_groups() {
+  "${PYTHON_BIN}" - "$1" <<'PY'
+import sys
+
+ids = [int(value) for value in sys.argv[1].split(",")]
+if not ids or ids != sorted(set(ids)) or any(value < 1 for value in ids):
+    raise SystemExit("terminal task IDs must be sorted unique positive integers")
+
+# Preserve a single arithmetic array when possible; otherwise emit maximal
+# contiguous runs because legacy Hoffman2 SGE accepts only one range per -t.
+if len(ids) > 1 and len({right - left for left, right in zip(ids, ids[1:])}) == 1:
+    step = ids[1] - ids[0]
+    spec = "%d-%d" % (ids[0], ids[-1])
+    if step != 1:
+        spec += ":%d" % step
+    print("%s\t%s" % (spec, ",".join(map(str, ids))))
+else:
+    start = previous = ids[0]
+    for value in ids[1:] + [None]:
+        if value is not None and value == previous + 1:
+            previous = value
+            continue
+        spec = str(start) if start == previous else "%d-%d" % (start, previous)
+        members = range(start, previous + 1)
+        print("%s\t%s" % (spec, ",".join(map(str, members))))
+        if value is not None:
+            start = previous = value
+PY
 }
 
 submit_array() {
@@ -353,17 +383,27 @@ PY
     "${raw_file}" "${status_file}" "${job_file}" >> "${submission_tsv}"
 }
 
+submit_partition() {
+  local label="$1" task_ids="$2" task_throttle="$3" slot_class="$4"
+  local part=0 task_spec group_ids job_name job_file
+  while IFS=$'\t' read -r task_spec group_ids; do
+    part=$((part + 1))
+    job_name="tv${stage}${label}p${part}_${token}"
+    job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
+    write_job "${job_file}" "${job_name}" "${task_spec}" "${task_throttle}" "${slot_class}"
+    submit_array "${job_file}" "${job_name}" "${group_ids}"
+  done < <(task_groups "${task_ids}")
+  if [[ "${part}" -eq 0 ]]; then
+    echo "Terminal task partition unexpectedly produced no scheduler ranges." >&2
+    return 1
+  fi
+}
+
 if [[ "${one_slot_ids}" != "-" ]]; then
-  job_name="tv${stage}1_${token}"
-  job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
-  write_job "${job_file}" "${job_name}" "${one_slot_ids}" "${one_slot_throttle}" "one_slot"
-  submit_array "${job_file}" "${job_name}" "${one_slot_ids}"
+  submit_partition "1" "${one_slot_ids}" "${one_slot_throttle}" "one_slot"
 fi
 if [[ "${shared_two_ids}" != "-" ]]; then
-  job_name="tv${stage}2_${token}"
-  job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
-  write_job "${job_file}" "${job_name}" "${shared_two_ids}" "${shared_two_throttle}" "shared_two"
-  submit_array "${job_file}" "${job_name}" "${shared_two_ids}"
+  submit_partition "2" "${shared_two_ids}" "${shared_two_throttle}" "shared_two"
 fi
 
 "${PYTHON_BIN}" - "${submission_tsv}" "${OUTPUT_ROOT}/scheduler/submissions_input.json" <<'PY'

@@ -1774,7 +1774,7 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertLess(ceiling, create_output)
         self.assertLess(create_output, qsub)
         self.assertIn('describe-task-partitions', script)
-        self.assertIn('"${shared_two_ids}" "${shared_two_throttle}" "shared_two"', script)
+        self.assertIn('submit_partition "2" "${shared_two_ids}" "${shared_two_throttle}" "shared_two"', script)
         self.assertIn("#$ -pe shared 2", script)
         self.assertIn('qsub_status_path', script)
         self.assertIn('rollback left a validation-tagged job', script)
