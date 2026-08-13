@@ -749,14 +749,35 @@ class TerminalExecutionTests(unittest.TestCase):
         start_text = started.strftime("%m/%d/%Y %H:%M:%S.%f")[:-3]
         end_text = ended.strftime("%m/%d/%Y %H:%M:%S.%f")[:-3]
         partitions = (
-            (one_slot, one_throttle, "one_slot", "1000"),
-            (shared_two, shared_throttle, "shared_two", "1001"),
+            (one_slot, one_throttle, "one_slot"),
+            (shared_two, shared_throttle, "shared_two"),
         )
-        for task_ids, throttle, slot_class, job_id in partitions:
+        job_number = 1000
+        expanded_partitions = []
+        for task_ids, throttle, slot_class in partitions:
             if not task_ids:
                 continue
-            job_name = f"terminal{slot_class[0]}_{RUN_TAG}"
-            task_spec = ",".join(str(item) for item in task_ids)
+            try:
+                execution._scheduler_task_spec(task_ids)
+                groups = (task_ids,)
+            except RuntimeError:
+                groups = []
+                start = 0
+                for index in range(1, len(task_ids) + 1):
+                    if index < len(task_ids) and task_ids[index] == task_ids[index - 1] + 1:
+                        continue
+                    groups.append(task_ids[start:index])
+                    start = index
+            for group in groups:
+                expanded_partitions.append(
+                    (tuple(group), throttle, slot_class, str(job_number))
+                )
+                job_number += 1
+        for task_ids, throttle, slot_class, job_id in expanded_partitions:
+            if not task_ids:
+                continue
+            job_name = f"terminal{slot_class[0]}{job_id}_{RUN_TAG}"
+            task_spec = execution._scheduler_task_spec(task_ids)
             raw = raw_dir / f"{job_name}.txt"
             raw.write_text(f"{job_id}\n", encoding="utf-8")
             status = raw_dir / f"{job_name}.status"

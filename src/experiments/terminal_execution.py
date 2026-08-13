@@ -2281,6 +2281,22 @@ def _h_rt_seconds(value: str) -> int:
     return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
 
 
+def _scheduler_task_spec(task_ids: Sequence[int]) -> str:
+    """Return the unique SGE range for one canonical arithmetic task group."""
+
+    values = tuple(int(item) for item in task_ids)
+    if not values or values != tuple(sorted(set(values))) or values[0] < 1:
+        raise RuntimeError("scheduler task group is not sorted, unique, and positive")
+    if len(values) == 1:
+        return str(values[0])
+    steps = {right - left for left, right in zip(values, values[1:])}
+    if len(steps) != 1:
+        raise RuntimeError("scheduler task group is not one arithmetic SGE range")
+    step = steps.pop()
+    result = f"{values[0]}-{values[-1]}"
+    return result if step == 1 else f"{result}:{step}"
+
+
 def _partition_throttles(
     manifest: Mapping[str, Any], one_slot: Tuple[int, ...], shared_two: Tuple[int, ...]
 ) -> Tuple[int, int]:
@@ -2312,12 +2328,13 @@ def _job_script_semantics(
 ) -> Dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     one_slot_ids, shared_two_ids = partition_manifest_task_ids(manifest)
-    if task_ids == one_slot_ids:
+    task_set = set(task_ids)
+    if task_ids and tuple(item for item in one_slot_ids if item in task_set) == task_ids:
         slot_class, slots, parallel_environment = "one_slot", 1, None
-    elif task_ids == shared_two_ids:
+    elif task_ids and tuple(item for item in shared_two_ids if item in task_set) == task_ids:
         slot_class, slots, parallel_environment = "shared_two", 2, "shared"
     else:
-        raise RuntimeError("job script task IDs do not equal either frozen slot partition")
+        raise RuntimeError("job script task IDs are not a canonical slot-partition subset")
 
     def unique(pattern: str, context: str, required: bool = True) -> Optional[str]:
         matches = re.findall(pattern, text, flags=re.MULTILINE)
@@ -2405,7 +2422,7 @@ def _job_script_semantics(
         manifest, one_slot_ids, shared_two_ids
     )
     expected_throttle = one_throttle if slot_class == "one_slot" else shared_throttle
-    task_spec = ",".join(str(item) for item in task_ids)
+    task_spec = _scheduler_task_spec(task_ids)
     if array_specs != [task_spec] or throttles != [str(expected_throttle)]:
         raise RuntimeError("array range/throttle differs from manifest")
     expected_pe = [] if slot_class == "one_slot" else [("shared", "2")]
@@ -2483,7 +2500,7 @@ def create_scheduler_evidence(
     expected_partitions = tuple(
         part for part in (one_slot_ids, shared_two_ids) if part
     )
-    if len(submissions) != len(expected_partitions):
+    if not submissions or len(submissions) > len(expected):
         raise RuntimeError("terminal validation submissions do not match slot partitions")
     execution_project_root = Path(
         execution_project_root or Path(__file__).resolve().parents[2]
@@ -2577,10 +2594,19 @@ def create_scheduler_evidence(
         })
     if observed != expected:
         raise RuntimeError("scheduler submissions do not exactly cover manifest tasks")
-    observed_partitions = tuple(
-        tuple(item["manifest_task_ids"]) for item in normalized
-    )
-    if observed_partitions != expected_partitions:
+    observed_partitions = []
+    for expected_partition, parallel_environment in (
+        (one_slot_ids, None), (shared_two_ids, "shared")
+    ):
+        if not expected_partition:
+            continue
+        observed_partitions.append(tuple(
+            task_id
+            for item in normalized
+            if item["parallel_environment"] == parallel_environment
+            for task_id in item["manifest_task_ids"]
+        ))
+    if tuple(observed_partitions) != expected_partitions:
         raise RuntimeError("arrays do not preserve the exact canonical slot partitions")
     if len({item["run_tag"] for item in normalized}) != 1 or len(
         {item["scheduler_user"] for item in normalized}
