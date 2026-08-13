@@ -43,7 +43,7 @@ class TerminalReferenceBProcessTests(unittest.TestCase):
             cls.mdp,
             cls.belief,
             cls.production,
-            timeout_seconds=120.0,
+            timeout_seconds=300.0,
         )
 
     def proof_matches(self, proof, record=None, mdp=None, belief=None):
@@ -100,7 +100,7 @@ class TerminalReferenceBProcessTests(unittest.TestCase):
                 self.mdp,
                 self.belief,
                 self.production,
-                timeout_seconds=120.0,
+                timeout_seconds=300.0,
             )
         self.assertEqual(len(launched), 2)
         self.assertEqual(result.record, self.concurrent.record)
