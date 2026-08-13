@@ -611,7 +611,13 @@ class TerminalExecutionTests(unittest.TestCase):
         belief = mdp.initial_belief()
         template = descriptor_for(mdp, belief)
         template_bundle = execution.evaluate_terminal_evidence_descriptor(template, mdp, belief)
-        template_sidecars = dict(template_bundle.sidecars)
+        template_rows = tuple(
+            row for row in template_bundle.rows if row.method != "reference_b"
+        )
+        template_sidecars = {
+            row.sidecar.relative_path: dict(template_bundle.sidecars)[row.sidecar.relative_path]
+            for row in template_rows
+        }
         descriptors = []
         bundles = {}
         references = []
@@ -620,7 +626,7 @@ class TerminalExecutionTests(unittest.TestCase):
             item = replace(template, descriptor_index=index, descriptor_hash=descriptor_hash)
             rows = []
             sidecars = {}
-            for row in template_bundle.rows:
+            for row in template_rows:
                 logical_path = f"shape_{index}/{row.sidecar.relative_path}"
                 sidecar = replace(row.sidecar, relative_path=logical_path)
                 changed = replace(
@@ -680,7 +686,7 @@ class TerminalExecutionTests(unittest.TestCase):
         ), patch.object(
             execution,
             "evaluate_terminal_evidence_descriptor",
-            side_effect=lambda item, _mdp, _belief: bundles[item.descriptor_hash],
+            side_effect=lambda item, _mdp, _belief, **_kwargs: bundles[item.descriptor_hash],
         ), patch.object(
             execution, "require_terminal_evidence_plan_parity"
         ), patch.object(
@@ -752,7 +758,7 @@ class TerminalExecutionTests(unittest.TestCase):
             job_name = f"terminal{slot_class[0]}_{RUN_TAG}"
             task_spec = ",".join(str(item) for item in task_ids)
             raw = raw_dir / f"{job_name}.txt"
-            raw.write_text(f"{job_id}.{task_spec}\n", encoding="utf-8")
+            raw.write_text(f"{job_id}\n", encoding="utf-8")
             status = raw_dir / f"{job_name}.status"
             status.write_text("0\n", encoding="utf-8")
             job = jobs / f"{job_name}.job"
@@ -1273,7 +1279,16 @@ class TerminalExecutionTests(unittest.TestCase):
         belief = mdp.initial_belief()
         item = descriptor_for(mdp, belief)
         bundle = execution.evaluate_terminal_evidence_descriptor(item, mdp, belief)
-        methods = tuple(row.method for row in bundle.rows)
+        rows = tuple(row for row in bundle.rows if row.method != "reference_b")
+        sidecars = dict(bundle.sidecars)
+        bundle = SimpleNamespace(
+            rows=rows,
+            sidecars=tuple(
+                (row.sidecar.relative_path, sidecars[row.sidecar.relative_path])
+                for row in rows
+            ),
+        )
+        methods = tuple(row.method for row in rows)
         task = {
             "task_id": 1, "logical_case_owner": 0, "subshard_index": 0,
             "subshard_count": 1,
@@ -1306,7 +1321,9 @@ class TerminalExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             with patch.object(execution, "validate_execution_manifest") as validate:
-                with patch.object(execution, "reconstruct_terminal_evidence_source", return_value=(mdp, belief)):
+                with patch.object(execution, "reconstruct_terminal_evidence_source", return_value=(mdp, belief)), patch.object(
+                    execution, "evaluate_terminal_evidence_descriptor", return_value=bundle
+                ):
                     with self.assertRaisesRegex(RuntimeError, "array task ID"):
                         execution.execute_task(
                             manifest=manifest, suites=suites, provider=self.provider,
