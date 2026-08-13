@@ -95,6 +95,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--output-root", type=Path, required=True)
     run.add_argument("--task-id", type=int)
 
+    partition = commands.add_parser("describe-task-partitions")
+    partition.add_argument("--manifest", type=Path, required=True)
+
     collect = commands.add_parser("collect-provisional")
     collect.add_argument("--manifest", type=Path, required=True)
     collect.add_argument("--output-root", type=Path, required=True)
@@ -183,7 +186,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    if args.command == "finalize-and-capture-formal-smoke":
+    if args.command == "describe-task-partitions":
+        manifest = load(args.manifest)
+        one_slot, shared_two = execution.partition_manifest_task_ids(manifest)
+        one_throttle, shared_throttle = execution._partition_throttles(
+            manifest, one_slot, shared_two
+        )
+        print(json.dumps({
+            "one_slot_task_ids": one_slot,
+            "shared_two_task_ids": shared_two,
+            "one_slot_throttle": one_throttle,
+            "shared_two_throttle": shared_throttle,
+        }, sort_keys=True, separators=(",", ":")))
+    elif args.command == "finalize-and-capture-formal-smoke":
         provider, accepted = load_provider(args)
         suites = execution.build_terminal_suites(
             provider, accepted, validate_contents=False

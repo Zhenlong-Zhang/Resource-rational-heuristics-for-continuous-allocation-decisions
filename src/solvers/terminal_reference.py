@@ -35,6 +35,7 @@ REFERENCE_A_ISOLATION_RULES = frozenset(
     }
 )
 _SOURCE_VALIDATION_PROOF_SEAL = object()
+_CROSS_PROCESS_VALIDATION_PROOF_SEAL = object()
 
 TERMINAL_SCIENTIFIC_CONFIG_FIELDS = (
     "mu_need",
@@ -113,6 +114,30 @@ class TerminalReferenceSourceValidationProof:
     evaluation_cap: int
     certificate_hash: str
     valid: bool
+    _seal: object
+
+
+@dataclass(frozen=True)
+class TerminalReferenceCrossProcessValidationProof:
+    """Sealed proof that two isolated workers returned one exact B record."""
+
+    record: TerminalReferenceRecord
+    mdp_object_id: int
+    belief_object_id: int
+    mdp_identity_hash: str
+    belief_identity_hash: str
+    scientific_spec_hash: str
+    numerical_method_config_hash: str
+    evaluation_cap: int
+    certificate_hash: str
+    traced_record_bytes_hash: str
+    source_record_bytes_hash: str
+    source_identity_hash: str
+    interpreter_identity_hash: str
+    production_allocation_hex: str
+    worker_roles: Tuple[str, str]
+    worker_command_hashes: Tuple[str, str]
+    worker_input_hashes: Tuple[str, str]
     _seal: object
 
 
@@ -1494,6 +1519,180 @@ def terminal_reference_source_proof_matches(
         and current_scientific_hash == scientific_spec_hash
         and record.numerical_method_config_hash == numerical_method_config_hash
         and proof.valid is True
+    )
+
+
+def _terminal_reference_record_bytes(record: TerminalReferenceRecord) -> bytes:
+    return json.dumps(
+        _canonical_identity_value({"record": record}),
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _valid_hash_tuple(values: Sequence[Any]) -> bool:
+    return bool(values) and all(_is_sha256(value) for value in values)
+
+
+def _mint_terminal_reference_cross_process_validation_proof(
+    traced_record: TerminalReferenceRecord,
+    source_record: TerminalReferenceRecord,
+    mdp: Any,
+    belief: Any,
+    *,
+    traced_record_bytes: bytes,
+    source_record_bytes: bytes,
+    scientific_spec_hash: str,
+    numerical_method_config_hash: str,
+    source_identity_hash: str,
+    interpreter_identity_hash: str,
+    production_allocation: float,
+    worker_roles: Sequence[str],
+    worker_command_hashes: Sequence[str],
+    worker_input_hashes: Sequence[str],
+) -> TerminalReferenceCrossProcessValidationProof:
+    """Mint the private capability only after exact isolated-record agreement."""
+
+    if (
+        type(traced_record) is not TerminalReferenceRecord
+        or type(source_record) is not TerminalReferenceRecord
+        or traced_record.reference_name != "terminal_reference_b"
+        or source_record.reference_name != "terminal_reference_b"
+    ):
+        raise ValueError("cross-process proof requires two Reference-B records")
+    expected_traced_bytes = _terminal_reference_record_bytes(traced_record)
+    expected_source_bytes = _terminal_reference_record_bytes(source_record)
+    if (
+        type(traced_record_bytes) is not bytes
+        or type(source_record_bytes) is not bytes
+        or traced_record_bytes != expected_traced_bytes
+        or source_record_bytes != expected_source_bytes
+        or traced_record_bytes != source_record_bytes
+    ):
+        raise ValueError("cross-process Reference-B record bytes differ")
+    if (
+        terminal_reference_certificate_hash(traced_record)
+        != traced_record.certificate_hash
+        or terminal_reference_certificate_hash(source_record)
+        != source_record.certificate_hash
+        or traced_record.certificate_hash != source_record.certificate_hash
+    ):
+        raise ValueError("cross-process Reference-B certificate is invalid")
+    try:
+        current_mdp_hash = terminal_mdp_identity_hash(mdp)
+        current_belief_hash = terminal_belief_identity_hash(belief)
+        current_scientific_hash = terminal_scientific_spec_hash(mdp)
+    except (AttributeError, TypeError, ValueError, OverflowError) as error:
+        raise ValueError("cross-process Reference-B source identity is invalid") from error
+    roles = tuple(worker_roles)
+    command_hashes = tuple(worker_command_hashes)
+    input_hashes = tuple(worker_input_hashes)
+    if roles != ("traced", "source_validation"):
+        raise ValueError("cross-process Reference-B worker roles differ")
+    if len(command_hashes) != 2 or not _valid_hash_tuple(command_hashes):
+        raise ValueError("cross-process Reference-B command hashes are invalid")
+    if len(input_hashes) != 2 or not _valid_hash_tuple(input_hashes):
+        raise ValueError("cross-process Reference-B input hashes are invalid")
+    if not _valid_hash_tuple((source_identity_hash, interpreter_identity_hash)):
+        raise ValueError("cross-process Reference-B runtime identities are invalid")
+    if (
+        type(production_allocation) is not float
+        or not math.isfinite(production_allocation)
+        or not 0.0 <= production_allocation <= 1.0
+        or traced_record.production_allocation.hex() != production_allocation.hex()
+        or source_record.production_allocation.hex() != production_allocation.hex()
+    ):
+        raise ValueError("cross-process Reference-B production allocation differs")
+    if (
+        traced_record.mdp_identity_hash != current_mdp_hash
+        or source_record.mdp_identity_hash != current_mdp_hash
+        or traced_record.belief_identity_hash != current_belief_hash
+        or source_record.belief_identity_hash != current_belief_hash
+        or traced_record.scientific_spec_hash != current_scientific_hash
+        or source_record.scientific_spec_hash != current_scientific_hash
+        or scientific_spec_hash != current_scientific_hash
+        or traced_record.numerical_method_config_hash != numerical_method_config_hash
+        or source_record.numerical_method_config_hash != numerical_method_config_hash
+        or traced_record.evaluation_cap != source_record.evaluation_cap
+    ):
+        raise ValueError("cross-process Reference-B source binding differs")
+    traced_hash = hashlib.sha256(traced_record_bytes).hexdigest()
+    source_hash = hashlib.sha256(source_record_bytes).hexdigest()
+    return TerminalReferenceCrossProcessValidationProof(
+        record=traced_record,
+        mdp_object_id=id(mdp),
+        belief_object_id=id(belief),
+        mdp_identity_hash=current_mdp_hash,
+        belief_identity_hash=current_belief_hash,
+        scientific_spec_hash=scientific_spec_hash,
+        numerical_method_config_hash=numerical_method_config_hash,
+        evaluation_cap=traced_record.evaluation_cap,
+        certificate_hash=traced_record.certificate_hash,
+        traced_record_bytes_hash=traced_hash,
+        source_record_bytes_hash=source_hash,
+        source_identity_hash=source_identity_hash,
+        interpreter_identity_hash=interpreter_identity_hash,
+        production_allocation_hex=production_allocation.hex(),
+        worker_roles=(roles[0], roles[1]),
+        worker_command_hashes=(command_hashes[0], command_hashes[1]),
+        worker_input_hashes=(input_hashes[0], input_hashes[1]),
+        _seal=_CROSS_PROCESS_VALIDATION_PROOF_SEAL,
+    )
+
+
+def terminal_reference_cross_process_proof_matches(
+    proof: TerminalReferenceCrossProcessValidationProof,
+    record: TerminalReferenceRecord,
+    mdp: Any,
+    belief: Any,
+    *,
+    scientific_spec_hash: str,
+    numerical_method_config_hash: str,
+    source_identity_hash: str,
+    interpreter_identity_hash: str,
+    production_allocation: float,
+) -> bool:
+    """Reject forged, copied, stale, mutated, or cross-evaluator B proofs."""
+
+    try:
+        current_mdp_hash = terminal_mdp_identity_hash(mdp)
+        current_belief_hash = terminal_belief_identity_hash(belief)
+        current_scientific_hash = terminal_scientific_spec_hash(mdp)
+        current_record_hash = hashlib.sha256(
+            _terminal_reference_record_bytes(record)
+        ).hexdigest()
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return False
+    return (
+        type(proof) is TerminalReferenceCrossProcessValidationProof
+        and proof._seal is _CROSS_PROCESS_VALIDATION_PROOF_SEAL
+        and proof.record is record
+        and proof.mdp_object_id == id(mdp)
+        and proof.belief_object_id == id(belief)
+        and proof.mdp_identity_hash == current_mdp_hash == record.mdp_identity_hash
+        and proof.belief_identity_hash == current_belief_hash == record.belief_identity_hash
+        and proof.scientific_spec_hash
+        == scientific_spec_hash
+        == current_scientific_hash
+        == record.scientific_spec_hash
+        and proof.numerical_method_config_hash
+        == numerical_method_config_hash
+        == record.numerical_method_config_hash
+        and proof.evaluation_cap == record.evaluation_cap
+        and proof.certificate_hash == record.certificate_hash
+        and terminal_reference_certificate_hash(record) == record.certificate_hash
+        and proof.traced_record_bytes_hash == current_record_hash
+        and proof.source_record_bytes_hash == current_record_hash
+        and proof.source_identity_hash == source_identity_hash
+        and proof.interpreter_identity_hash == interpreter_identity_hash
+        and proof.production_allocation_hex == production_allocation.hex()
+        and record.production_allocation.hex() == production_allocation.hex()
+        and proof.worker_roles == ("traced", "source_validation")
+        and len(proof.worker_command_hashes) == 2
+        and _valid_hash_tuple(proof.worker_command_hashes)
+        and len(proof.worker_input_hashes) == 2
+        and _valid_hash_tuple(proof.worker_input_hashes)
     )
 
 

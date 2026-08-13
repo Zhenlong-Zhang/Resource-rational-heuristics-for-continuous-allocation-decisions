@@ -12,8 +12,10 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from .terminal import StructuralSymmetry, validate_structural_symmetry_proof
 from .terminal_reference import (
+    TerminalReferenceCrossProcessValidationProof,
     TerminalReferenceRecord,
     TerminalReferenceSourceValidationProof,
+    terminal_reference_cross_process_proof_matches,
     terminal_belief_identity_hash,
     terminal_mdp_identity_hash,
     terminal_reference_a_numerical_method_config_hash,
@@ -279,6 +281,11 @@ def validate_terminal_reference_agreement(
     reference_b_numerical_method_config_hash: str,
     _source_validation_proof_a: Optional[TerminalReferenceSourceValidationProof] = None,
     _source_validation_proof_b: Optional[TerminalReferenceSourceValidationProof] = None,
+    _cross_process_validation_proof_b: Optional[
+        TerminalReferenceCrossProcessValidationProof
+    ] = None,
+    _cross_process_source_identity_hash_b: Optional[str] = None,
+    _cross_process_interpreter_identity_hash_b: Optional[str] = None,
 ) -> TerminalReferenceAgreementRecord:
     """Validate source identities, A/B agreement, and production acceptance.
 
@@ -365,8 +372,29 @@ def validate_terminal_reference_agreement(
     except (AttributeError, TypeError, ValueError, RuntimeError, OverflowError):
         a_source_valid = False
     try:
-        b_source_valid = (
-            terminal_reference_source_proof_matches(
+        if (
+            _source_validation_proof_b is not None
+            and _cross_process_validation_proof_b is not None
+        ):
+            b_source_valid = False
+        elif _cross_process_validation_proof_b is not None:
+            b_source_valid = (
+                _cross_process_source_identity_hash_b is not None
+                and _cross_process_interpreter_identity_hash_b is not None
+                and terminal_reference_cross_process_proof_matches(
+                    _cross_process_validation_proof_b,
+                    reference_b,
+                    mdp,
+                    belief,
+                    scientific_spec_hash=scientific_spec_hash,
+                    numerical_method_config_hash=reference_b_numerical_method_config_hash,
+                    source_identity_hash=_cross_process_source_identity_hash_b,
+                    interpreter_identity_hash=_cross_process_interpreter_identity_hash_b,
+                    production_allocation=reference_b.production_allocation,
+                )
+            )
+        elif _source_validation_proof_b is not None:
+            b_source_valid = terminal_reference_source_proof_matches(
                 _source_validation_proof_b,
                 reference_b,
                 mdp,
@@ -374,15 +402,14 @@ def validate_terminal_reference_agreement(
                 scientific_spec_hash=scientific_spec_hash,
                 numerical_method_config_hash=reference_b_numerical_method_config_hash,
             )
-            if _source_validation_proof_b is not None
-            else validate_terminal_reference_b_record(
+        else:
+            b_source_valid = validate_terminal_reference_b_record(
                 reference_b,
                 mdp,
                 belief,
                 scientific_spec_hash=scientific_spec_hash,
                 numerical_method_config_hash=reference_b_numerical_method_config_hash,
             )
-        )
     except (AttributeError, TypeError, ValueError, RuntimeError, OverflowError):
         b_source_valid = False
     check("reference_a_source_valid", a_source_valid)

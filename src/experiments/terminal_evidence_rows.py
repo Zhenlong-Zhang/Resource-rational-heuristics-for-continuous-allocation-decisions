@@ -15,7 +15,7 @@ import json
 import math
 import time
 from pathlib import PurePosixPath
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 from ..mdp.finite_support import FiniteSupportMetaMDP
 from ..solvers.terminal import (
@@ -37,6 +37,7 @@ from ..solvers.terminal_reference import (
     terminal_belief_identity_hash,
     terminal_reference_a_numerical_method_config_hash,
     terminal_reference_certificate_hash,
+    terminal_reference_cross_process_proof_matches,
     terminal_scientific_spec_hash,
     validate_production_against_reference_a,
 )
@@ -58,6 +59,7 @@ from ..solvers.terminal_reference_b import (
 from .r6_prefeedback_positive_need import (
     build_development_environments,
 )
+from .terminal_reference_b_process import solve_terminal_reference_b_concurrently
 from .terminal_validation_suite import (
     CanonicalBaseProvider,
     TerminalHistoryStep,
@@ -833,6 +835,9 @@ def evaluate_terminal_evidence_descriptor(
     descriptor: TerminalValidationDescriptor,
     mdp: Any,
     belief: Any,
+    *,
+    concurrent_reference_b: bool = False,
+    reference_b_runtime_evidence: Optional[MutableMapping[str, Any]] = None,
 ) -> TerminalEvidenceBundle:
     failures = terminal_descriptor_source_failures(descriptor, mdp, belief)
     if failures:
@@ -943,16 +948,56 @@ def evaluate_terminal_evidence_descriptor(
     ))
 
     if b_required:
-        reference_b, reference_b_trace = solve_terminal_reference_b_with_trace(
-            mdp, belief, production.allocation
-        )
-        b_hash = terminal_reference_b_numerical_method_config_hash(reference_b.evaluation_cap)
-        b_source_proof = source_validate_terminal_reference_b_record(
-            reference_b, mdp, belief,
-            scientific_spec_hash=solver_scientific_hash,
-            numerical_method_config_hash=b_hash,
-        )
-        b_source_pass = b_source_proof.valid
+        cross_process_proof = None
+        cross_process_source_hash = None
+        cross_process_interpreter_hash = None
+        if concurrent_reference_b:
+            concurrent_result = solve_terminal_reference_b_concurrently(
+                descriptor, mdp, belief, production
+            )
+            reference_b = concurrent_result.record
+            reference_b_trace = concurrent_result.complete_trace
+            b_hash = terminal_reference_b_numerical_method_config_hash(
+                reference_b.evaluation_cap
+            )
+            cross_process_proof = concurrent_result.source_validation_proof
+            cross_process_source_hash = concurrent_result.traced_worker.source_identity_hash
+            cross_process_interpreter_hash = (
+                concurrent_result.traced_worker.interpreter_identity_hash
+            )
+            b_source_pass = terminal_reference_cross_process_proof_matches(
+                cross_process_proof,
+                reference_b,
+                mdp,
+                belief,
+                scientific_spec_hash=solver_scientific_hash,
+                numerical_method_config_hash=b_hash,
+                source_identity_hash=cross_process_source_hash,
+                interpreter_identity_hash=cross_process_interpreter_hash,
+                production_allocation=production.allocation,
+            )
+            if reference_b_runtime_evidence is not None:
+                reference_b_runtime_evidence.update({
+                    "traced_worker": asdict(concurrent_result.traced_worker),
+                    "source_worker": asdict(concurrent_result.source_worker),
+                    "coordinator_peak_rss_bytes": (
+                        concurrent_result.coordinator_peak_rss_bytes
+                    ),
+                })
+            b_source_proof = None
+        else:
+            reference_b, reference_b_trace = solve_terminal_reference_b_with_trace(
+                mdp, belief, production.allocation
+            )
+            b_hash = terminal_reference_b_numerical_method_config_hash(
+                reference_b.evaluation_cap
+            )
+            b_source_proof = source_validate_terminal_reference_b_record(
+                reference_b, mdp, belief,
+                scientific_spec_hash=solver_scientific_hash,
+                numerical_method_config_hash=b_hash,
+            )
+            b_source_pass = b_source_proof.valid
         agreement = validate_terminal_reference_agreement(
             mdp, belief, production, reference_a, reference_b,
             scientific_spec_hash=solver_scientific_hash,
@@ -960,6 +1005,11 @@ def evaluate_terminal_evidence_descriptor(
             reference_b_numerical_method_config_hash=b_hash,
             _source_validation_proof_a=a_source_proof,
             _source_validation_proof_b=b_source_proof,
+            _cross_process_validation_proof_b=cross_process_proof,
+            _cross_process_source_identity_hash_b=cross_process_source_hash,
+            _cross_process_interpreter_identity_hash_b=(
+                cross_process_interpreter_hash
+            ),
         )
         b_checks = (("reference_b_source_valid", b_source_pass),)
         b_sidecar, payload = build_terminal_certificate_sidecar(

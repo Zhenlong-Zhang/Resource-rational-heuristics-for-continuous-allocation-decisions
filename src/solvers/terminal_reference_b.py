@@ -1495,6 +1495,33 @@ def validate_terminal_reference_b_record(
     return recomputed.certificate_hash == record.certificate_hash
 
 
+def validate_terminal_reference_b_record_structure(
+    record: TerminalReferenceRecord,
+    mdp: Any,
+    belief: Any,
+    *,
+    scientific_spec_hash: str,
+    numerical_method_config_hash: str,
+) -> bool:
+    """Validate a complete B record and source identities without recomputation."""
+
+    try:
+        if not _record_shape_is_valid(record):
+            return False
+        identities = _reference_b_identities(mdp, belief, record.evaluation_cap)
+    except (AttributeError, IndexError, OverflowError, TypeError, ValueError):
+        return False
+    return (
+        scientific_spec_hash == identities.scientific_spec_hash
+        and numerical_method_config_hash == identities.numerical_method_config_hash
+        and record.mdp_identity_hash == identities.mdp_identity_hash
+        and record.belief_identity_hash == identities.belief_identity_hash
+        and record.scientific_spec_hash == identities.scientific_spec_hash
+        and record.numerical_method_config_hash
+        == identities.numerical_method_config_hash
+    )
+
+
 def source_validate_terminal_reference_b_record(
     record: TerminalReferenceRecord,
     mdp: Any,
@@ -1533,5 +1560,6 @@ __all__ = [
     "solve_terminal_reference_b",
     "terminal_reference_b_numerical_method_config_hash",
     "validate_terminal_reference_b_record",
+    "validate_terminal_reference_b_record_structure",
     "source_validate_terminal_reference_b_record",
 ]

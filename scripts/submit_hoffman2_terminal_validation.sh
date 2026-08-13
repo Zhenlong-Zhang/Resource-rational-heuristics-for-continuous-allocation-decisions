@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Submit immutable one-slot terminal smoke tasks or the 90-owner validation array.
+# Submit immutable terminal tasks as disjoint one-slot and shared-two arrays.
 
 set -Eeuo pipefail
 
@@ -46,6 +46,26 @@ print(m["stage"], m["task_count"], r["queue"], r["h_rt_seconds"],
       r["memory_bytes"], r["throttle"], m["manifest_hash"])
 PY
 )
+mapfile -t partition_values < <(
+  "${PYTHON_BIN}" scripts/terminal_validation_array.py describe-task-partitions \
+    --manifest "${MANIFEST}" | "${PYTHON_BIN}" -c '
+import json,sys
+p=json.load(sys.stdin)
+for key in ("one_slot_task_ids","shared_two_task_ids"):
+    values=p[key]
+    print(",".join(map(str,values)) if values else "-")
+print(p["one_slot_throttle"])
+print(p["shared_two_throttle"])
+'
+)
+if [[ "${#partition_values[@]}" -ne 4 ]]; then
+  echo "Unable to derive exact terminal task partitions." >&2
+  exit 1
+fi
+one_slot_ids="${partition_values[0]}"
+shared_two_ids="${partition_values[1]}"
+one_slot_throttle="${partition_values[2]}"
+shared_two_throttle="${partition_values[3]}"
 
 if [[ "${stage}" == "smoke" ]]; then
   required_verdict='ACCEPT TERMINAL IMPLEMENTATION FOR SCHEDULED SMOKE'
@@ -195,8 +215,15 @@ trap 'rollback $?' ERR
 trap 'rollback 130' INT TERM
 
 write_job() {
-  local job_file="$1" job_name="$2" array_directive="$3" task_expression="$4"
-  cat > "${job_file}" <<EOF
+  local job_file="$1" job_name="$2" task_ids="$3" task_throttle="$4" slot_class="$5"
+  if [[ "${slot_class}" == "shared_two" ]]; then
+    :
+  elif [[ "${slot_class}" != "one_slot" ]]; then
+    echo "Unknown terminal slot class: ${slot_class}" >&2
+    return 1
+  fi
+  {
+    cat <<EOF
 #!/usr/bin/env bash
 #$ -cwd
 #$ -N ${job_name}
@@ -205,17 +232,36 @@ write_job() {
 #$ -o ${OUTPUT_ROOT}/logs/${job_name}.\$JOB_ID.\$TASK_ID.log
 #$ -l h_rt=${h_rt_text}
 #$ -l h_data=${memory}
-${array_directive}
+#$ -t ${task_ids}
+#$ -tc ${task_throttle}
+EOF
+    if [[ "${slot_class}" == "shared_two" ]]; then
+      printf '%s\n' '#$ -pe shared 2'
+    fi
+    cat <<EOF
 set -euo pipefail
 export LANG=C
 export LC_ALL=C
+EOF
+    if [[ "${slot_class}" == "shared_two" ]]; then
+      cat <<'EOF'
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
+export BLIS_NUM_THREADS=1
+EOF
+    fi
+    cat <<EOF
 cd "${PROJECT_ROOT}"
-task_id=${task_expression}
+task_id=\${SGE_TASK_ID}
 "${PYTHON_BIN}" scripts/terminal_validation_array.py run-task \\
   --manifest "${MANIFEST}" \\
   --output-root "${OUTPUT_ROOT}" \\
   --task-id "\${task_id}"
 EOF
+  } > "${job_file}"
   chmod 500 "${job_file}"
 }
 
@@ -246,10 +292,14 @@ for job in root.iter():
         print(values["JB_job_number"])
 PY
 )
+  declare -a unexpected_tagged_jobs=()
   for preexisting_id in ${preexisting_tagged_jobs[@]+"${preexisting_tagged_jobs[@]}"}; do
-    preexisting_tagged_job_set+="${preexisting_id} "
+    if [[ "${submitted_job_set}" != *" ${preexisting_id} "* ]]; then
+      unexpected_tagged_jobs+=("${preexisting_id}")
+      preexisting_tagged_job_set+="${preexisting_id} "
+    fi
   done
-  if [[ "${#preexisting_tagged_jobs[@]}" -gt 0 ]]; then
+  if [[ "${#unexpected_tagged_jobs[@]}" -gt 0 ]]; then
     cleanup_uncertain=1
     echo "Validation run tag already exists in scheduler state; refusing submission." >&2
     return 96
@@ -303,12 +353,18 @@ PY
     "${raw_file}" "${status_file}" "${job_file}" >> "${submission_tsv}"
 }
 
-job_name="tv${stage}_${token}"
-job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
-array_directive="$(printf '#$ -t 1-%s\n#$ -tc %s' "${task_count}" "${throttle}")"
-write_job "${job_file}" "${job_name}" "${array_directive}" '${SGE_TASK_ID}'
-task_ids="$(seq -s, 1 "${task_count}")"
-submit_array "${job_file}" "${job_name}" "${task_ids}"
+if [[ "${one_slot_ids}" != "-" ]]; then
+  job_name="tv${stage}1_${token}"
+  job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
+  write_job "${job_file}" "${job_name}" "${one_slot_ids}" "${one_slot_throttle}" "one_slot"
+  submit_array "${job_file}" "${job_name}" "${one_slot_ids}"
+fi
+if [[ "${shared_two_ids}" != "-" ]]; then
+  job_name="tv${stage}2_${token}"
+  job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
+  write_job "${job_file}" "${job_name}" "${shared_two_ids}" "${shared_two_throttle}" "shared_two"
+  submit_array "${job_file}" "${job_name}" "${shared_two_ids}"
+fi
 
 "${PYTHON_BIN}" - "${submission_tsv}" "${OUTPUT_ROOT}/scheduler/submissions_input.json" <<'PY'
 import json, sys
@@ -334,5 +390,5 @@ PY
   --output "${OUTPUT_ROOT}/scheduler/scheduler_evidence.json"
 
 trap - ERR INT TERM
-printf 'Submitted %s terminal stage with %s one-slot tasks.\n' "${stage}" "${task_count}"
+printf 'Submitted %s terminal stage with %s total tasks in exact slot partitions.\n' "${stage}" "${task_count}"
 printf 'Run provisional collection only after every task has completed; capture exact qacct before finalization.\n'

@@ -17,9 +17,11 @@ import os
 from pathlib import Path
 import platform
 import re
+import resource
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
@@ -59,8 +61,8 @@ from .terminal_validation_suite import (
 )
 
 
-EXECUTION_MANIFEST_SCHEMA = "terminal_validation_execution_manifest_v2"
-TASK_ARTIFACT_SCHEMA = "terminal_validation_task_artifact_v1"
+EXECUTION_MANIFEST_SCHEMA = "terminal_validation_execution_manifest_v3"
+TASK_ARTIFACT_SCHEMA = "terminal_validation_task_artifact_v2"
 PROVISIONAL_SCHEMA = "terminal_validation_provisional_v1"
 SCHEDULER_EVIDENCE_SCHEMA = "terminal_validation_scheduler_evidence_v1"
 QACCT_AUDIT_SCHEMA = "terminal_validation_qacct_audit_v1"
@@ -85,12 +87,16 @@ TERMINAL_SOURCE_PATHS = (
     "scripts/create_hoffman2_compute_ceiling_report.py",
     "scripts/submit_hoffman2_terminal_manifest_setup.sh",
     "scripts/submit_hoffman2_terminal_plan_diagnostic.sh",
+    "scripts/submit_hoffman2_terminal_targeted_concurrent.sh",
     "scripts/submit_hoffman2_terminal_validation.sh",
+    "scripts/run_terminal_targeted_concurrent.py",
+    "scripts/audit_terminal_targeted_concurrent.py",
     "scripts/terminal_validation_array.py",
     "src/experiments/terminal_canonical_provider.py",
     "src/experiments/terminal_evidence_rows.py",
     "src/experiments/terminal_execution.py",
     "src/experiments/terminal_plan_diagnostics.py",
+    "src/experiments/terminal_reference_b_process.py",
     "src/experiments/terminal_setup_diagnostics.py",
     "src/experiments/terminal_validation_suite.py",
     "src/mdp/finite_support.py",
@@ -112,6 +118,18 @@ TERMINAL_NUMERICAL_RESOURCE_CAPS = {
 }
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMPUTE_HOST_RE = re.compile(r"^(?:n|g|compute)[a-z0-9.-]*$", re.IGNORECASE)
+REFERENCE_B_RUNTIME_EVIDENCE_SCHEMA = "terminal_reference_b_runtime_evidence_v1"
+REFERENCE_B_THREAD_ENVIRONMENT = (
+    "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS",
+)
+REFERENCE_B_SHARED_TWO_PROBE_JOB_ID = "14313929"
+REFERENCE_B_SHARED_TWO_PROBE_LOG_SHA256 = (
+    "edf01972abf9cd435a4bd0a86b7dc7fd381c1eb8955aa2929b04466b2af2642f"
+)
+REFERENCE_B_SHARED_TWO_PROBE_QACCT_SHA256 = (
+    "3dfa54fd121bfbfd89cdbbf61400b13b13bad6c6cf75272dd68c02164a9dc54a"
+)
 _MANIFEST_FIELDS = {
     "schema", "stage", "artifact_type", "case_owner_count", "case_owners",
     "task_count", "tasks", "expected_descriptor_count", "expected_row_count",
@@ -125,7 +143,7 @@ _MANIFEST_FIELDS = {
     "expected_tie_path_row_count", "expected_symmetry_path_row_count",
     "expected_negative_control_count", "numerical_resource_caps",
     "max_descriptors_per_subshard", "task_descriptor_limit",
-    "one_slot_required", "array_required",
+    "mixed_slot_partitions_required", "array_required",
     "no_overwrite", "manifest_hash",
 }
 _TASK_FIELDS = {
@@ -146,6 +164,8 @@ _TASK_ARTIFACT_FIELDS = {
     "provider_hash", "scientific_spec_hash", "numerical_method_config_hash",
     "rows_file_hash", "metrics_file_hash", "row_count",
     "sidecar_count", "sidecar_index", "task_cpu_seconds", "task_wall_seconds",
+    "slot_class", "parallel_environment", "pe_hostfile_sha256",
+    "pe_host_slots", "thread_environment", "reference_b_runtime_evidence",
     "logical_record_hash",
 }
 _SIDECAR_INDEX_FIELDS = {
@@ -155,7 +175,19 @@ _METRIC_FIELDS = {
     "task_id", "descriptor_hash", "method", "stratum", "evaluation_count", "cpu_seconds",
     "wall_seconds", "row_bytes", "sidecar_bytes", "timing_scope",
 }
-_SCHEDULER_FIELDS = {"schema", "manifest_hash", "submissions", "logical_record_hash"}
+_REFERENCE_B_WORKER_EVIDENCE_FIELDS = {
+    "role", "command", "command_hash", "input_hash", "output_hash",
+    "record_bytes_hash", "source_identity_hash", "interpreter_identity_hash",
+    "peak_rss_bytes", "wall_seconds",
+}
+_REFERENCE_B_RUNTIME_EVIDENCE_FIELDS = {
+    "schema", "descriptor_hash", "traced_worker", "source_worker",
+    "coordinator_peak_rss_bytes", "thread_environment", "evidence_hash",
+}
+_SCHEDULER_FIELDS = {
+    "schema", "manifest_hash", "submissions", "shared_two_probe_trust_root",
+    "logical_record_hash",
+}
 _SUBMISSION_FIELDS = {
     "job_id", "job_name", "queue", "array_job", "manifest_task_ids",
     "qsub_raw_path", "qsub_raw_sha256", "qsub_status_path", "qsub_status_sha256",
@@ -1254,7 +1286,7 @@ def create_execution_manifest(
         "planned_full_task_strata": planned_full_tasks,
         "max_descriptors_per_subshard": max_descriptors_per_subshard,
         "task_descriptor_limit": task_descriptor_limit,
-        "one_slot_required": True,
+        "mixed_slot_partitions_required": True,
         "array_required": True,
         "no_overwrite": True,
         "manifest_hash": "",
@@ -1285,7 +1317,7 @@ def validate_execution_manifest(
         raise RuntimeError("manifest source identity schema mismatch")
     _validate_self_hash(source_identity, "identity_hash", "manifest source identity")
     if not all((
-        manifest.get("one_slot_required") is True,
+        manifest.get("mixed_slot_partitions_required") is True,
         manifest.get("no_overwrite") is True,
         manifest.get("array_required") is True,
         _is_hash(manifest.get("compute_ceiling_report_hash")),
@@ -1471,6 +1503,168 @@ def _task_by_id(manifest: Mapping[str, Any], task_id: int) -> Mapping[str, Any]:
     return matches[0]
 
 
+def task_requires_reference_b(task: Mapping[str, Any]) -> bool:
+    """Return the frozen slot class for one manifest task."""
+
+    descriptors = tuple(task.get("descriptors", ()))
+    if not descriptors:
+        raise RuntimeError("manifest task has no descriptors")
+    return any(
+        "reference_b" in tuple(descriptor.get("expected_methods", ()))
+        for descriptor in descriptors
+    )
+
+
+def partition_manifest_task_ids(
+    manifest: Mapping[str, Any],
+) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
+    """Partition canonical task IDs into disjoint one-slot/shared-two classes."""
+
+    one_slot = []
+    shared_two = []
+    seen = set()
+    for task in manifest.get("tasks", ()):
+        task_id = int(task["task_id"])
+        if task_id in seen:
+            raise RuntimeError("manifest task partition contains a duplicate task ID")
+        seen.add(task_id)
+        (shared_two if task_requires_reference_b(task) else one_slot).append(task_id)
+    expected = set(range(1, int(manifest.get("task_count", -1)) + 1))
+    if seen != expected or set(one_slot).intersection(shared_two):
+        raise RuntimeError("manifest task partition is not exact")
+    return tuple(one_slot), tuple(shared_two)
+
+
+def _peak_rss_bytes() -> int:
+    value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    return value if sys.platform == "darwin" else value * 1024
+
+
+def _scheduler_task_shape(
+    task: Mapping[str, Any], environment: Mapping[str, str]
+) -> Tuple[str, int, Optional[str], Optional[str], Tuple[Tuple[str, int], ...], Tuple[Tuple[str, str], ...]]:
+    requires_b = task_requires_reference_b(task)
+    expected_slots = 2 if requires_b else 1
+    if environment.get("NSLOTS") != str(expected_slots):
+        raise RuntimeError(
+            f"terminal validation task requires exactly {expected_slots} scheduler slot(s)"
+        )
+    pe_hostfile = environment.get("PE_HOSTFILE", "")
+    if not requires_b:
+        if pe_hostfile:
+            raise RuntimeError("one-slot terminal task forbids a parallel environment")
+        return "one_slot", 1, None, None, (), ()
+    if not pe_hostfile:
+        raise RuntimeError("Reference-B task requires a shared-two PE hostfile")
+    path = Path(pe_hostfile)
+    if not path.is_file():
+        raise RuntimeError("Reference-B PE hostfile is missing")
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        fields = line.split()
+        if not fields:
+            continue
+        if len(fields) < 2 or not fields[1].isdigit():
+            raise RuntimeError("Reference-B PE hostfile is malformed")
+        rows.append((fields[0].split(".", 1)[0].lower(), int(fields[1])))
+    if len(rows) != 1 or rows[0][1] != 2:
+        raise RuntimeError("Reference-B task requires two slots on one host")
+    host = platform.node().split(".", 1)[0].lower()
+    if rows[0][0] != host:
+        raise RuntimeError("Reference-B PE hostfile host differs from coordinator host")
+    thread_environment = tuple(
+        (name, str(environment.get(name, ""))) for name in REFERENCE_B_THREAD_ENVIRONMENT
+    )
+    if any(value != "1" for _, value in thread_environment):
+        raise RuntimeError("Reference-B numerical-library thread controls must equal one")
+    return (
+        "shared_two", 2, "shared", sha256_file(path), tuple(rows), thread_environment
+    )
+
+
+def _reference_b_runtime_payload(
+    descriptor_hash: str,
+    raw: Mapping[str, Any],
+    thread_environment: Tuple[Tuple[str, str], ...],
+) -> Mapping[str, Any]:
+    payload: Dict[str, Any] = {
+        "schema": REFERENCE_B_RUNTIME_EVIDENCE_SCHEMA,
+        "descriptor_hash": descriptor_hash,
+        "traced_worker": dict(raw.get("traced_worker", {})),
+        "source_worker": dict(raw.get("source_worker", {})),
+        "coordinator_peak_rss_bytes": int(raw.get("coordinator_peak_rss_bytes", 0)),
+        "thread_environment": thread_environment,
+        "evidence_hash": "",
+    }
+    _validate_reference_b_runtime_evidence(payload, require_hash=False)
+    payload["evidence_hash"] = logical_hash(_without_hash(payload, "evidence_hash"))
+    return payload
+
+
+def _validate_reference_b_runtime_evidence(
+    evidence: Mapping[str, Any], *, require_hash: bool = True
+) -> None:
+    if set(evidence) != _REFERENCE_B_RUNTIME_EVIDENCE_FIELDS:
+        raise ValueError("Reference-B runtime-evidence fields differ from the exact schema")
+    if evidence.get("schema") != REFERENCE_B_RUNTIME_EVIDENCE_SCHEMA:
+        raise ValueError("Reference-B runtime-evidence schema mismatch")
+    if not _is_hash(evidence.get("descriptor_hash")):
+        raise ValueError("Reference-B runtime evidence lacks a descriptor binding")
+    workers = (evidence.get("traced_worker", {}), evidence.get("source_worker", {}))
+    for worker, role in zip(workers, ("traced", "source_validation")):
+        if set(worker) != _REFERENCE_B_WORKER_EVIDENCE_FIELDS or worker.get("role") != role:
+            raise ValueError("Reference-B worker runtime-evidence schema/role mismatch")
+        if any(
+            not _is_hash(worker.get(field))
+            for field in (
+                "command_hash", "input_hash", "output_hash", "record_bytes_hash",
+                "source_identity_hash", "interpreter_identity_hash",
+            )
+        ):
+            raise ValueError("Reference-B worker runtime-evidence hash is malformed")
+        if (
+            not worker.get("command")
+            or type(worker.get("peak_rss_bytes")) is not int
+            or int(worker["peak_rss_bytes"]) <= 0
+            or not isinstance(worker.get("wall_seconds"), (int, float))
+            or isinstance(worker.get("wall_seconds"), bool)
+            or not math.isfinite(float(worker["wall_seconds"]))
+            or float(worker["wall_seconds"]) < 0.0
+        ):
+            raise ValueError("Reference-B worker runtime evidence is invalid")
+    if workers[0]["record_bytes_hash"] != workers[1]["record_bytes_hash"]:
+        raise ValueError("Reference-B worker records are not byte-identical")
+    for field in ("source_identity_hash", "interpreter_identity_hash"):
+        if workers[0][field] != workers[1][field]:
+            raise ValueError("Reference-B worker identities disagree")
+    if workers[0]["input_hash"] == workers[1]["input_hash"]:
+        raise ValueError("Reference-B role-specific inputs are not distinct")
+    if type(evidence.get("coordinator_peak_rss_bytes")) is not int or int(
+        evidence["coordinator_peak_rss_bytes"]
+    ) <= 0:
+        raise ValueError("Reference-B coordinator peak RSS is invalid")
+    if tuple(tuple(item) for item in evidence.get("thread_environment", ())) != tuple(
+        (name, "1") for name in REFERENCE_B_THREAD_ENVIRONMENT
+    ):
+        raise ValueError("Reference-B runtime evidence has invalid thread controls")
+    if require_hash:
+        _validate_self_hash(evidence, "evidence_hash", "Reference-B runtime evidence")
+
+
+def _conservative_task_memory_bytes(
+    artifact: Mapping[str, Any], qacct_memory_bytes: int
+) -> int:
+    if artifact.get("slot_class") != "shared_two":
+        return int(qacct_memory_bytes)
+    process_peak = max(
+        int(item["traced_worker"]["peak_rss_bytes"])
+        + int(item["source_worker"]["peak_rss_bytes"])
+        + int(item["coordinator_peak_rss_bytes"])
+        for item in artifact["reference_b_runtime_evidence"]
+    )
+    return max(int(qacct_memory_bytes), process_peak)
+
+
 def execute_task(
     *,
     manifest: Mapping[str, Any],
@@ -1493,15 +1687,19 @@ def execute_task(
         reconstruct_expected=False,
     )
     environment = dict(scheduler_environment or os.environ)
-    if environment.get("NSLOTS") != "1":
-        raise RuntimeError("terminal validation tasks require exactly one scheduler slot")
     if not environment.get("JOB_ID", "").isdigit():
         raise RuntimeError("terminal validation task lacks a scheduler job ID")
     if manifest.get("array_required") is True and int(environment.get("SGE_TASK_ID", "-1")) != task_id:
         raise RuntimeError("array task ID differs from immutable manifest task")
-    if environment.get("PE_HOSTFILE"):
-        raise RuntimeError("shared-memory parallel environments are forbidden")
     task = _task_by_id(manifest, task_id)
+    (
+        slot_class,
+        slots,
+        parallel_environment,
+        pe_hostfile_sha256,
+        pe_host_slots,
+        thread_environment,
+    ) = _scheduler_task_shape(task, environment)
     target = output_root / "tasks" / f"task_{task_id:05d}"
     target.parent.mkdir(parents=True, exist_ok=True)
     reservation = target.parent / f".{target.name}.exclusive"
@@ -1522,6 +1720,7 @@ def execute_task(
     rows = []
     sidecar_index = []
     metrics = []
+    reference_b_runtime_evidence = []
     descriptor_lookup = {
         (suite_class, descriptor.descriptor_index): descriptor
         for suite_class, suite in suites.items() for descriptor in suite.descriptors
@@ -1532,7 +1731,21 @@ def execute_task(
         for raw_ref in task["descriptors"]:
             descriptor = descriptor_lookup[(raw_ref["suite_class"], int(raw_ref["descriptor_index"]))]
             mdp, belief = reconstruct_terminal_evidence_source(descriptor, provider)
-            bundle = evaluate_terminal_evidence_descriptor(descriptor, mdp, belief)
+            runtime: Dict[str, Any] = {}
+            descriptor_requires_b = "reference_b" in tuple(raw_ref["expected_methods"])
+            bundle = evaluate_terminal_evidence_descriptor(
+                descriptor,
+                mdp,
+                belief,
+                concurrent_reference_b=descriptor_requires_b,
+                reference_b_runtime_evidence=runtime if descriptor_requires_b else None,
+            )
+            if descriptor_requires_b:
+                reference_b_runtime_evidence.append(
+                    _reference_b_runtime_payload(
+                        descriptor.descriptor_hash, runtime, thread_environment
+                    )
+                )
             require_terminal_evidence_plan_parity(
                 TerminalEvidencePlan(
                     tuple(raw_ref["expected_methods"]),
@@ -1595,7 +1808,7 @@ def execute_task(
             "subshard_count": task["subshard_count"],
             "job_id": environment["JOB_ID"],
             "sge_task_id": environment.get("SGE_TASK_ID"),
-            "slots": 1,
+            "slots": slots,
             "hostname": platform.node().split(".", 1)[0].lower(),
             "source_identity_hash": manifest["source_identity"]["identity_hash"],
             "provider_hash": provider.provider_hash,
@@ -1608,8 +1821,19 @@ def execute_task(
             "sidecar_index": tuple(sidecar_index),
             "task_cpu_seconds": evidence_cpu,
             "task_wall_seconds": evidence_wall,
+            "slot_class": slot_class,
+            "parallel_environment": parallel_environment,
+            "pe_hostfile_sha256": pe_hostfile_sha256,
+            "pe_host_slots": pe_host_slots,
+            "thread_environment": thread_environment,
+            "reference_b_runtime_evidence": tuple(reference_b_runtime_evidence),
             "logical_record_hash": "",
         }
+        if len(reference_b_runtime_evidence) != sum(
+            "reference_b" in tuple(ref["expected_methods"])
+            for ref in task["descriptors"]
+        ):
+            raise RuntimeError("Reference-B runtime evidence coverage is incomplete")
         artifact["logical_record_hash"] = logical_hash(_without_hash(artifact, "logical_record_hash"))
         write_new_json(temporary / "task.json", artifact)
         if target.exists():
@@ -1631,6 +1855,31 @@ def _load_task_artifact(path: Path) -> Mapping[str, Any]:
         raise ValueError("task artifact fields differ from the exact schema")
     if any(set(item) != _SIDECAR_INDEX_FIELDS for item in artifact.get("sidecar_index", ())):
         raise ValueError("task sidecar-index fields differ from the exact schema")
+    for evidence in artifact.get("reference_b_runtime_evidence", ()):
+        _validate_reference_b_runtime_evidence(evidence)
+    if artifact.get("slot_class") == "one_slot":
+        if any((
+            int(artifact.get("slots", -1)) != 1,
+            artifact.get("parallel_environment") is not None,
+            artifact.get("pe_hostfile_sha256") is not None,
+            tuple(artifact.get("pe_host_slots", ())) != (),
+            tuple(artifact.get("thread_environment", ())) != (),
+            tuple(artifact.get("reference_b_runtime_evidence", ())) != (),
+        )):
+            raise ValueError("one-slot task artifact contains shared-two evidence")
+    elif artifact.get("slot_class") == "shared_two":
+        if any((
+            int(artifact.get("slots", -1)) != 2,
+            artifact.get("parallel_environment") != "shared",
+            not _is_hash(artifact.get("pe_hostfile_sha256")),
+            len(tuple(artifact.get("pe_host_slots", ()))) != 1,
+            tuple(tuple(item) for item in artifact.get("thread_environment", ()))
+            != tuple((name, "1") for name in REFERENCE_B_THREAD_ENVIRONMENT),
+            not tuple(artifact.get("reference_b_runtime_evidence", ())),
+        )):
+            raise ValueError("shared-two task artifact evidence is incomplete")
+    else:
+        raise ValueError("task artifact slot class is unknown")
     _validate_self_hash(artifact, "logical_record_hash", "task artifact")
     if sha256_file(path / "rows.json") != artifact["rows_file_hash"]:
         raise ValueError("task row-file hash mismatch")
@@ -1672,6 +1921,7 @@ def recompute_provisional(
         task_dir = output_root / "tasks" / f"task_{task_id:05d}"
         try:
             artifact = _load_task_artifact(task_dir)
+            expected_shared = task_requires_reference_b(raw_task)
             if (
                 artifact["manifest_hash"] != manifest["manifest_hash"]
                 or artifact["assignment_hash"] != raw_task["assignment_hash"]
@@ -1679,13 +1929,24 @@ def recompute_provisional(
                 or int(artifact["logical_case_owner"]) != int(raw_task["logical_case_owner"])
                 or int(artifact["subshard_index"]) != int(raw_task["subshard_index"])
                 or int(artifact["subshard_count"]) != int(raw_task["subshard_count"])
-                or int(artifact["slots"]) != 1
+                or int(artifact["slots"]) != (2 if expected_shared else 1)
+                or artifact["slot_class"] != ("shared_two" if expected_shared else "one_slot")
                 or artifact["source_identity_hash"] != manifest["source_identity"]["identity_hash"]
                 or artifact["provider_hash"] != provider.provider_hash
                 or artifact["scientific_spec_hash"] != manifest["scientific_spec_hash"]
                 or artifact["numerical_method_config_hash"] != manifest["numerical_method_config_hash"]
             ):
                 raise ValueError("task identity mismatch")
+            expected_runtime_descriptors = {
+                ref["descriptor_hash"] for ref in raw_task["descriptors"]
+                if "reference_b" in tuple(ref["expected_methods"])
+            }
+            observed_runtime_descriptors = {
+                item["descriptor_hash"]
+                for item in artifact["reference_b_runtime_evidence"]
+            }
+            if observed_runtime_descriptors != expected_runtime_descriptors:
+                raise ValueError("Reference-B runtime-evidence coverage mismatch")
             rows_payload = json.loads((task_dir / "rows.json").read_text(encoding="utf-8"))
             rows = tuple(_row_from_payload(item) for item in rows_payload)
             metrics = tuple(_decode(item) for item in json.loads((task_dir / "metrics.json").read_text(encoding="utf-8")))
@@ -2020,6 +2281,24 @@ def _h_rt_seconds(value: str) -> int:
     return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
 
 
+def _partition_throttles(
+    manifest: Mapping[str, Any], one_slot: Tuple[int, ...], shared_two: Tuple[int, ...]
+) -> Tuple[int, int]:
+    total = int(manifest["resources"]["throttle"])
+    if one_slot and shared_two:
+        if total < 2:
+            raise RuntimeError("mixed slot classes require aggregate throttle of at least two")
+        shared = min(len(shared_two), max(1, total // 2))
+        one = min(len(one_slot), total - shared)
+        unused = total - shared - one
+        one += min(unused, len(one_slot) - one)
+        unused = total - shared - one
+        shared += min(unused, len(shared_two) - shared)
+        return one, shared
+    return (min(len(one_slot), total) if one_slot else 0,
+            min(len(shared_two), total) if shared_two else 0)
+
+
 def _job_script_semantics(
     path: Path,
     manifest: Mapping[str, Any],
@@ -2032,8 +2311,13 @@ def _job_script_semantics(
     authorized_manifest_path: Path,
 ) -> Dict[str, Any]:
     text = path.read_text(encoding="utf-8")
-    if re.search(r"(?m)^#\$\s+-pe\b", text) or "PE_HOSTFILE" in text:
-        raise RuntimeError("parallel-environment semantics are forbidden")
+    one_slot_ids, shared_two_ids = partition_manifest_task_ids(manifest)
+    if task_ids == one_slot_ids:
+        slot_class, slots, parallel_environment = "one_slot", 1, None
+    elif task_ids == shared_two_ids:
+        slot_class, slots, parallel_environment = "shared_two", 2, "shared"
+    else:
+        raise RuntimeError("job script task IDs do not equal either frozen slot partition")
 
     def unique(pattern: str, context: str, required: bool = True) -> Optional[str]:
         matches = re.findall(pattern, text, flags=re.MULTILINE)
@@ -2047,8 +2331,9 @@ def _job_script_semantics(
     name = unique(r"^#\$\s+-N\s+(\S+)\s*$", "name")
     h_rt = unique(r"^#\$\s+-l\s+h_rt=(\S+)\s*$", "h_rt")
     memory = unique(r"^#\$\s+-l\s+h_data=(\d+)\s*$", "h_data")
-    array_ranges = re.findall(r"^#\$\s+-t\s+(\d+)-(\d+)\s*$", text, flags=re.MULTILINE)
+    array_specs = re.findall(r"^#\$\s+-t\s+([0-9,:-]+)\s*$", text, flags=re.MULTILINE)
     throttles = re.findall(r"^#\$\s+-tc\s+(\d+)\s*$", text, flags=re.MULTILINE)
+    pe_values = re.findall(r"^#\$\s+-pe\s+(\S+)\s+(\d+)\s*$", text, flags=re.MULTILINE)
     resources = manifest["resources"]
     if queue != resources["queue"] or name != job_name:
         raise RuntimeError("job script queue/name differs from submission contract")
@@ -2077,7 +2362,8 @@ def _job_script_semantics(
         r"^#\$\s+-cwd$", r"^#\$\s+-N\s+\S+$", r"^#\$\s+-q\s+\S+$",
         r"^#\$\s+-j\s+y$", r"^#\$\s+-o\s+\S+$",
         r"^#\$\s+-l\s+h_rt=\S+$", r"^#\$\s+-l\s+h_data=\d+$",
-        r"^#\$\s+-t\s+\d+-\d+$", r"^#\$\s+-tc\s+\d+$",
+        r"^#\$\s+-t\s+[0-9,:-]+$", r"^#\$\s+-tc\s+\d+$",
+        r"^#\$\s+-pe\s+shared\s+2$",
     )
     directives = [line.strip() for line in text.splitlines() if line.strip().startswith("#$")]
     if any(not any(re.fullmatch(pattern, line) for pattern in allowed_directives) for line in directives):
@@ -2094,6 +2380,11 @@ def _job_script_semantics(
         if (
             line == "set -euo pipefail"
             or line in ("export LANG=C", "export LC_ALL=C")
+            or re.fullmatch(
+                r"export (?:OMP_NUM_THREADS|OPENBLAS_NUM_THREADS|MKL_NUM_THREADS|"
+                r"NUMEXPR_NUM_THREADS|VECLIB_MAXIMUM_THREADS|BLIS_NUM_THREADS)=1",
+                line,
+            )
             or line.startswith("cd ")
             or re.fullmatch(r"task_id=(?:\d+|\$\{SGE_TASK_ID\})", line)
         ):
@@ -2109,54 +2400,61 @@ def _job_script_semantics(
     if tuple(tokens[3::2]) != required_flags or any(not value for value in tokens[4::2]):
         raise RuntimeError("job script terminal command arguments mismatch")
     if not array_job or manifest.get("array_required") is not True:
-        raise RuntimeError("terminal validation requires one exact array submission")
-    expected_range = [("1", str(manifest["task_count"]))]
-    if array_ranges != expected_range or throttles != [str(resources["throttle"])]:
+        raise RuntimeError("terminal validation requires exact array submissions")
+    one_throttle, shared_throttle = _partition_throttles(
+        manifest, one_slot_ids, shared_two_ids
+    )
+    expected_throttle = one_throttle if slot_class == "one_slot" else shared_throttle
+    task_spec = ",".join(str(item) for item in task_ids)
+    if array_specs != [task_spec] or throttles != [str(expected_throttle)]:
         raise RuntimeError("array range/throttle differs from manifest")
-    if task_ids != tuple(range(1, int(manifest["task_count"]) + 1)):
-        raise RuntimeError("array task mapping differs from manifest")
+    expected_pe = [] if slot_class == "one_slot" else [("shared", "2")]
+    if pe_values != expected_pe:
+        raise RuntimeError("parallel-environment shape differs from slot partition")
     if not re.search(r"(?m)^task_id=\$\{SGE_TASK_ID\}\s*$", text):
         raise RuntimeError("array task ID is not sourced from SGE_TASK_ID")
     task_id_mode = "sge_array_exact"
-    throttle = resources["throttle"]
+    throttle = expected_throttle
 
     h_rt_seconds = int(resources["h_rt_seconds"])
     h_rt_text = f"{h_rt_seconds // 3600:02d}:{(h_rt_seconds % 3600) // 60:02d}:{h_rt_seconds % 60:02d}"
     output_root = path.resolve().parents[2]
-    expected_text = (
-        "#!/usr/bin/env bash\n"
-        "#$ -cwd\n"
-        f"#$ -N {job_name}\n"
-        f"#$ -q {resources['queue']}\n"
-        "#$ -j y\n"
-        f"#$ -o {output_root}/logs/{job_name}.$JOB_ID.$TASK_ID.log\n"
-        f"#$ -l h_rt={h_rt_text}\n"
-        f"#$ -l h_data={resources['memory_bytes']}\n"
-        f"#$ -t 1-{manifest['task_count']}\n"
-        f"#$ -tc {resources['throttle']}\n"
-        "set -euo pipefail\n"
-        "export LANG=C\n"
-        "export LC_ALL=C\n"
-        f'cd "{execution_project_root}"\n'
-        "task_id=${SGE_TASK_ID}\n"
-        f'"{approved_python_bin}" scripts/terminal_validation_array.py run-task \\\n'
-        f'  --manifest "{authorized_manifest_path}" \\\n'
-        f'  --output-root "{output_root}" \\\n'
-        '  --task-id "${task_id}"\n'
-    )
+    expected_lines = [
+        "#!/usr/bin/env bash", "#$ -cwd", f"#$ -N {job_name}",
+        f"#$ -q {resources['queue']}", "#$ -j y",
+        f"#$ -o {output_root}/logs/{job_name}.$JOB_ID.$TASK_ID.log",
+        f"#$ -l h_rt={h_rt_text}", f"#$ -l h_data={resources['memory_bytes']}",
+        f"#$ -t {task_spec}", f"#$ -tc {expected_throttle}",
+    ]
+    if slot_class == "shared_two":
+        expected_lines.append("#$ -pe shared 2")
+    expected_lines.extend(("set -euo pipefail", "export LANG=C", "export LC_ALL=C"))
+    if slot_class == "shared_two":
+        expected_lines.extend(
+            f"export {name}=1" for name in REFERENCE_B_THREAD_ENVIRONMENT
+        )
+    expected_lines.extend((
+        f'cd "{execution_project_root}"',
+        "task_id=${SGE_TASK_ID}",
+        f'"{approved_python_bin}" scripts/terminal_validation_array.py run-task \\',
+        f'  --manifest "{authorized_manifest_path}" \\',
+        f'  --output-root "{output_root}" \\',
+        '  --task-id "${task_id}"',
+    ))
+    expected_text = "\n".join(expected_lines) + "\n"
     if text != expected_text:
         raise RuntimeError("submitted terminal job script differs from the canonical byte template")
     semantics = {
         "queue": queue,
         "job_name": name,
-        "slots": 1,
+        "slots": slots,
         "h_rt_seconds": resources["h_rt_seconds"],
         "memory_bytes": resources["memory_bytes"],
         "array_job": array_job,
         "task_ids": task_ids,
         "throttle": throttle,
         "task_id_mode": task_id_mode,
-        "parallel_environment": None,
+        "parallel_environment": parallel_environment,
         "execution_project_root": str(execution_project_root),
         "python_bin": str(approved_python_bin),
         "authorized_manifest_path": str(authorized_manifest_path),
@@ -2181,8 +2479,12 @@ def create_scheduler_evidence(
     expected = {int(task["task_id"]) for task in manifest["tasks"]}
     if manifest["stage"] not in ("smoke", "full"):
         raise RuntimeError("scheduler stage is unknown")
-    if len(submissions) != 1:
-        raise RuntimeError("terminal validation requires exactly one array submission")
+    one_slot_ids, shared_two_ids = partition_manifest_task_ids(manifest)
+    expected_partitions = tuple(
+        part for part in (one_slot_ids, shared_two_ids) if part
+    )
+    if len(submissions) != len(expected_partitions):
+        raise RuntimeError("terminal validation submissions do not match slot partitions")
     execution_project_root = Path(
         execution_project_root or Path(__file__).resolve().parents[2]
     )
@@ -2275,14 +2577,27 @@ def create_scheduler_evidence(
         })
     if observed != expected:
         raise RuntimeError("scheduler submissions do not exactly cover manifest tasks")
-    if tuple(normalized[0]["manifest_task_ids"]) != tuple(
-        range(1, int(manifest["task_count"]) + 1)
-    ):
-        raise RuntimeError("array does not preserve exact manifest task order")
+    observed_partitions = tuple(
+        tuple(item["manifest_task_ids"]) for item in normalized
+    )
+    if observed_partitions != expected_partitions:
+        raise RuntimeError("arrays do not preserve the exact canonical slot partitions")
+    if len({item["run_tag"] for item in normalized}) != 1 or len(
+        {item["scheduler_user"] for item in normalized}
+    ) != 1:
+        raise RuntimeError("scheduler submissions do not share one run identity")
     payload: Dict[str, Any] = {
         "schema": SCHEDULER_EVIDENCE_SCHEMA,
         "manifest_hash": manifest["manifest_hash"],
         "submissions": tuple(normalized),
+        "shared_two_probe_trust_root": {
+            "job_id": REFERENCE_B_SHARED_TWO_PROBE_JOB_ID,
+            "log_sha256": REFERENCE_B_SHARED_TWO_PROBE_LOG_SHA256,
+            "qacct_sha256": REFERENCE_B_SHARED_TWO_PROBE_QACCT_SHA256,
+            "granted_pe": "shared",
+            "slots": 2,
+            "single_host": True,
+        },
         "logical_record_hash": "",
     }
     payload["logical_record_hash"] = logical_hash(_without_hash(payload, "logical_record_hash"))
@@ -2302,6 +2617,15 @@ def audit_qacct(
         raise RuntimeError("scheduler evidence fields differ from the exact schema")
     if any(set(item) != _SUBMISSION_FIELDS for item in scheduler_evidence.get("submissions", ())):
         raise RuntimeError("scheduler submission fields differ from the exact schema")
+    if scheduler_evidence.get("shared_two_probe_trust_root") != {
+        "job_id": REFERENCE_B_SHARED_TWO_PROBE_JOB_ID,
+        "log_sha256": REFERENCE_B_SHARED_TWO_PROBE_LOG_SHA256,
+        "qacct_sha256": REFERENCE_B_SHARED_TWO_PROBE_QACCT_SHA256,
+        "granted_pe": "shared",
+        "slots": 2,
+        "single_host": True,
+    }:
+        raise RuntimeError("shared-two scheduler probe trust root mismatch")
     _validate_self_hash(scheduler_evidence, "logical_record_hash", "scheduler evidence")
     if scheduler_evidence.get("manifest_hash") != manifest.get("manifest_hash"):
         raise RuntimeError("scheduler evidence manifest mismatch")
@@ -2335,12 +2659,13 @@ def audit_qacct(
     root = evidence_root.resolve()
     for submission in scheduler_evidence.get("submissions", ()):
         job_id = str(submission["job_id"])
+        expected_slots = 2 if submission["parallel_environment"] == "shared" else 1
         if (
             submission["queue"] != manifest["resources"]["queue"]
-            or int(submission["slots"]) != 1
+            or int(submission["slots"]) != expected_slots
             or int(submission["h_rt_seconds"]) != int(manifest["resources"]["h_rt_seconds"])
             or int(submission["memory_bytes"]) != int(manifest["resources"]["memory_bytes"])
-            or submission["parallel_environment"] is not None
+            or submission["parallel_environment"] not in (None, "shared")
         ):
             raise RuntimeError("scheduler resources differ from manifest")
         for path_field, hash_field in (
@@ -2387,8 +2712,15 @@ def audit_qacct(
                 raise RuntimeError("qacct job identity mismatch")
             if not _queue_matches(str(submission["queue"]), record["qname"]):
                 raise RuntimeError("qacct queue mismatch")
-            if record["slots"] != "1" or record["failed"] != "0" or record["exit_status"] != "0":
-                raise RuntimeError("qacct does not prove a successful one-slot task")
+            granted_pe = record.get("granted_pe")
+            if (
+                record["slots"] != str(expected_slots)
+                or record["failed"] != "0"
+                or record["exit_status"] != "0"
+                or (expected_slots == 2 and granted_pe != "shared")
+                or (expected_slots == 1 and granted_pe not in (None, "NONE", "none", "undefined"))
+            ):
+                raise RuntimeError("qacct does not prove the exact successful slot/PE shape")
             host = record["hostname"].split(".", 1)[0].lower()
             if host.startswith("login") or _COMPUTE_HOST_RE.fullmatch(host) is None:
                 raise RuntimeError("qacct hostname is not a compute node")
@@ -2426,7 +2758,8 @@ def audit_qacct(
                 "job_id": job_id,
                 "sge_task_id": task_id if submission["array_job"] else None,
                 "hostname": host,
-                "slots": 1,
+                "slots": expected_slots,
+                "parallel_environment": submission["parallel_environment"],
                 "cpu_seconds": cpu_seconds,
                 "wall_seconds": wall_seconds,
                 "max_memory_bytes": memory_bytes,
@@ -2508,6 +2841,8 @@ def validate_task_scheduler_bindings(
         )
         submission = submission_by_task[task_id]
         binding = binding_by_task[task_id]
+        expected_slots = 2 if task_requires_reference_b(raw_task) else 1
+        expected_pe = "shared" if expected_slots == 2 else None
         expected_sge = task_id
         observed_sge = artifact["sge_task_id"]
         if observed_sge in ("undefined", "NONE", ""):
@@ -2520,7 +2855,8 @@ def validate_task_scheduler_bindings(
             artifact["job_id"] == submission["job_id"] == binding["job_id"],
             observed_sge == expected_sge == binding["sge_task_id"],
             artifact["hostname"] == binding["hostname"],
-            int(artifact["slots"]) == int(binding["slots"]) == 1,
+            int(artifact["slots"]) == int(binding["slots"]) == expected_slots,
+            artifact["parallel_environment"] == binding["parallel_environment"] == expected_pe,
             artifact["manifest_hash"] == manifest["manifest_hash"],
             artifact["source_identity_hash"] == manifest["source_identity"]["identity_hash"],
             artifact["provider_hash"] == manifest["provider_hash"],
@@ -2533,6 +2869,18 @@ def validate_task_scheduler_bindings(
         ))
         if not exact:
             raise RuntimeError(f"task {task_id} is not bound to qsub/qacct/manifest identity")
+        if expected_slots == 2:
+            pe_rows = tuple(tuple(item) for item in artifact["pe_host_slots"])
+            if pe_rows != ((artifact["hostname"], 2),):
+                raise RuntimeError(f"task {task_id} PE host placement is not exact")
+            conservative_memory = _conservative_task_memory_bytes(
+                artifact, int(binding["max_memory_bytes"])
+            )
+            if (
+                conservative_memory > 6 * 1024**3
+                or conservative_memory > 0.75 * int(manifest["resources"]["memory_bytes"])
+            ):
+                raise RuntimeError(f"task {task_id} conservative shared-two memory gate failed")
         task_cpu = float(artifact["task_cpu_seconds"])
         task_wall = float(artifact["task_wall_seconds"])
         if (
@@ -3068,10 +3416,16 @@ def _capture_formal_smoke_finalization(
     ):
         raise RuntimeError("formal smoke finalization inputs are incomplete or mismatched")
     submissions = tuple(scheduler.get("submissions", ()))
-    if len(submissions) != 1:
-        raise RuntimeError("formal smoke finalization requires one scheduler submission")
+    expected_submission_count = sum(bool(part) for part in partition_manifest_task_ids(manifest))
+    if len(submissions) != expected_submission_count:
+        raise RuntimeError("formal smoke finalization requires the exact slot partitions")
     run_tag = str(submissions[0].get("run_tag", ""))
     scheduler_user = str(submissions[0].get("scheduler_user", ""))
+    if any(
+        item.get("run_tag") != run_tag or item.get("scheduler_user") != scheduler_user
+        for item in submissions
+    ):
+        raise RuntimeError("formal smoke submissions do not share one run identity")
     if re.fullmatch(r"[A-Za-z0-9._-]+", scheduler_user) is None:
         raise RuntimeError("formal smoke scheduler user is not bound")
     job_ids = tuple(str(item["job_id"]) for item in submissions)
@@ -3349,12 +3703,17 @@ def audit_formal_smoke(
         or marker.get("server_host") == readback.get("readback_host")
     ):
         raise RuntimeError("formal smoke finalization/readback bindings differ from the executed run")
+    one_slot_ids, shared_two_ids = partition_manifest_task_ids(manifest)
+    expected_partitions = tuple(part for part in (one_slot_ids, shared_two_ids) if part)
+    submissions = tuple(scheduler.get("submissions", ()))
     if (
-        len(scheduler.get("submissions", ())) != 1
-        or scheduler["submissions"][0].get("array_job") is not True
-        or int(scheduler["submissions"][0].get("throttle", -1)) != 4
+        tuple(tuple(item.get("manifest_task_ids", ())) for item in submissions)
+        != expected_partitions
+        or any(item.get("array_job") is not True for item in submissions)
+        or sum(int(item.get("throttle", 0)) for item in submissions)
+        > int(manifest["resources"]["throttle"])
     ):
-        raise RuntimeError("formal smoke scheduler shape is not the exact throttle-four array")
+        raise RuntimeError("formal smoke scheduler shape is not the exact mixed-slot partition")
     validate_task_scheduler_bindings(
         manifest,
         task_output_root=task_output_root,
@@ -3366,13 +3725,36 @@ def audit_formal_smoke(
     if len(bindings) != 16 or tuple(int(item["task_id"]) for item in bindings) != tuple(range(1, 17)):
         raise RuntimeError("formal smoke qacct binding coverage is not exact")
     max_wall = max(float(item["wall_seconds"]) for item in bindings)
-    max_memory = max(int(item["max_memory_bytes"]) for item in bindings)
+    max_memory = max(
+        _conservative_task_memory_bytes(
+            _load_task_artifact(
+                task_output_root / "tasks" / f"task_{int(item['task_id']):05d}"
+            ),
+            int(item["max_memory_bytes"]),
+        )
+        for item in bindings
+    )
     if (
         max_wall > 7200.0
         or max_memory > 6 * 1024**3
         or max_memory > 0.75 * int(manifest["resources"]["memory_bytes"])
     ):
         raise RuntimeError("formal smoke qacct performance gate failed")
+    base_72_tasks = tuple(
+        int(task["task_id"])
+        for task in manifest["tasks"]
+        if any(
+            ref["suite_class"] == "base" and int(ref["descriptor_index"]) == 72
+            for ref in task["descriptors"]
+        )
+    )
+    if len(base_72_tasks) != 1:
+        raise RuntimeError("formal smoke does not contain exactly one base:72 task")
+    base_72_binding = next(
+        item for item in bindings if int(item["task_id"]) == base_72_tasks[0]
+    )
+    if float(base_72_binding["wall_seconds"]) > 6000.0:
+        raise RuntimeError("formal smoke base:72 exceeds the 6000-second headroom gate")
 
     if (
         not final_qstat_status_path.is_file()
@@ -3403,24 +3785,25 @@ def audit_formal_smoke(
         if not path.is_file():
             raise RuntimeError("formal smoke task artifact is missing")
         task_hashes.append((task_id, sha256_file(path)))
-    submission = scheduler["submissions"][0]
-    pattern = f"{submission['job_name']}.{submission['job_id']}.*.log"
-    logs = sorted(logs_dir.glob(pattern))
     expected_log_tasks = set(range(1, 17))
     observed_log_tasks = set()
     log_hashes = []
-    for path in logs:
-        match = re.fullmatch(
-            rf"{re.escape(str(submission['job_name']))}\.{re.escape(str(submission['job_id']))}\.(\d+)\.log",
-            path.name,
-        )
-        if match is None or int(match.group(1)) in observed_log_tasks:
-            raise RuntimeError("formal smoke log identity is malformed or duplicated")
-        task_id = int(match.group(1))
-        observed_log_tasks.add(task_id)
-        if path.read_bytes():
-            raise RuntimeError("formal smoke task log is not empty")
-        log_hashes.append((task_id, sha256_file(path)))
+    for submission in submissions:
+        pattern = f"{submission['job_name']}.{submission['job_id']}.*.log"
+        for path in sorted(logs_dir.glob(pattern)):
+            match = re.fullmatch(
+                rf"{re.escape(str(submission['job_name']))}\.{re.escape(str(submission['job_id']))}\.(\d+)\.log",
+                path.name,
+            )
+            if match is None or int(match.group(1)) in observed_log_tasks:
+                raise RuntimeError("formal smoke log identity is malformed or duplicated")
+            task_id = int(match.group(1))
+            if task_id not in set(submission["manifest_task_ids"]):
+                raise RuntimeError("formal smoke log task belongs to the wrong submission")
+            observed_log_tasks.add(task_id)
+            if path.read_bytes():
+                raise RuntimeError("formal smoke task log is not empty")
+            log_hashes.append((task_id, sha256_file(path)))
     if observed_log_tasks != expected_log_tasks:
         raise RuntimeError("formal smoke log coverage is not exact")
 

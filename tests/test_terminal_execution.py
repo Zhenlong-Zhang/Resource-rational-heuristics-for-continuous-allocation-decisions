@@ -538,6 +538,59 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertTrue(all(len(task["descriptors"]) == 1 for task in manifest["tasks"]))
         self.assertTrue(all(item["subshard_count"] == 4 for item in manifest["tasks"]))
 
+    def test_mixed_slot_partition_and_scheduler_shapes_are_fail_closed(self):
+        manifest, _ = self.make_manifest("smoke")
+        tasks = [dict(item) for item in manifest["tasks"]]
+        first_refs = [dict(item) for item in tasks[0]["descriptors"]]
+        first_refs[0]["expected_methods"] = ("production_terminal", "reference_a")
+        tasks[0]["descriptors"] = tuple(first_refs)
+        tasks[0]["assignment_hash"] = execution._task_hash(tasks[0])
+        mixed = dict(manifest, tasks=tuple(tasks))
+        mixed["manifest_hash"] = execution.logical_hash(
+            execution._without_hash(mixed, "manifest_hash")
+        )
+        one_slot, shared_two = execution.partition_manifest_task_ids(mixed)
+        self.assertEqual(one_slot, (1,))
+        self.assertEqual(shared_two, tuple(range(2, 17)))
+
+        one_task = tasks[0]
+        self.assertEqual(
+            execution._scheduler_task_shape(
+                one_task, {"NSLOTS": "1", "JOB_ID": "1", "SGE_TASK_ID": "1"}
+            ),
+            ("one_slot", 1, None, None, (), ()),
+        )
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            execution.platform, "node", return_value="n1234"
+        ):
+            pe = Path(directory) / "pe_hostfile"
+            pe.write_text("n1234 2 queue@host UNDEFINED\n", encoding="utf-8")
+            environment = {
+                "NSLOTS": "2", "PE_HOSTFILE": str(pe),
+                **{name: "1" for name in execution.REFERENCE_B_THREAD_ENVIRONMENT},
+            }
+            shape = execution._scheduler_task_shape(tasks[1], environment)
+            self.assertEqual(shape[0:3], ("shared_two", 2, "shared"))
+            with self.assertRaisesRegex(RuntimeError, "exactly 2"):
+                execution._scheduler_task_shape(tasks[1], dict(environment, NSLOTS="1"))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            submissions, qacct_paths = self.scheduler_fixture(root, mixed)
+            self.assertEqual(len(submissions), 2)
+            scheduler = self.create_scheduler(mixed, submissions, root)
+            self.assertEqual(
+                tuple(tuple(item["manifest_task_ids"]) for item in scheduler["submissions"]),
+                (one_slot, shared_two),
+            )
+            qacct = execution.audit_qacct(
+                mixed, scheduler, qacct_paths, evidence_root=root
+            )
+            self.write_binding_task_artifacts(root, mixed, scheduler, qacct)
+            execution.validate_task_scheduler_bindings(
+                mixed, task_output_root=root, scheduler=scheduler, qacct=qacct
+            )
+
     def test_smoke_rejects_owner_and_subshard_substitution(self):
         manifest, suites = self.make_manifest("smoke")
         for field, value in (
@@ -677,55 +730,77 @@ class TerminalExecutionTests(unittest.TestCase):
         raw_dir = scheduler / "qsub_raw"
         jobs.mkdir(parents=True)
         raw_dir.mkdir(parents=True)
-        job_id = "1000"
-        job_name = f"terminal_{RUN_TAG}"
-        raw = raw_dir / f"{job_name}.txt"
-        raw.write_text(f"{job_id}.1-{manifest['task_count']}:1\n", encoding="utf-8")
-        status = raw_dir / f"{job_name}.status"
-        status.write_text("0\n", encoding="utf-8")
-        job = jobs / f"{job_name}.job"
+        one_slot, shared_two = execution.partition_manifest_task_ids(manifest)
+        one_throttle, shared_throttle = execution._partition_throttles(
+            manifest, one_slot, shared_two
+        )
         project = Path(execution.__file__).resolve().parents[2]
         h_rt = int(manifest["resources"]["h_rt_seconds"])
-        job.write_text(
-            "#!/usr/bin/env bash\n"
-            "#$ -cwd\n"
-            f"#$ -N {job_name}\n#$ -q campus\n#$ -j y\n"
-            f"#$ -o {root}/logs/{job_name}.$JOB_ID.$TASK_ID.log\n"
-            f"#$ -l h_rt={h_rt // 3600:02d}:{(h_rt % 3600) // 60:02d}:{h_rt % 60:02d}\n"
-            "#$ -l h_data=2000000000\n"
-            f"#$ -t 1-{manifest['task_count']}\n#$ -tc {manifest['resources']['throttle']}\n"
-            "set -euo pipefail\nexport LANG=C\nexport LC_ALL=C\n"
-            f'cd "{project}"\n'
-            "task_id=${SGE_TASK_ID}\n"
-            f'"python" scripts/terminal_validation_array.py run-task \\\n'
-            '  --manifest "m" \\\n'
-            f'  --output-root "{root}" \\\n'
-            '  --task-id "${task_id}"\n',
-            encoding="utf-8",
-        )
-        submissions = ({
-            "job_id": job_id, "job_name": job_name, "queue": "campus",
-            "array_job": True,
-            "manifest_task_ids": tuple(range(1, int(manifest["task_count"]) + 1)),
-            "qsub_raw_path": str(raw), "qsub_status_path": str(status),
-            "job_script_path": str(job),
-        },)
-        account = root / f"qacct_{job_id}.txt"
-        records = []
+        submissions = []
+        qacct_paths = {}
         ended = datetime.now(ZoneInfo("America/Los_Angeles"))
         started = ended - timedelta(seconds=2)
         start_text = started.strftime("%m/%d/%Y %H:%M:%S.%f")[:-3]
         end_text = ended.strftime("%m/%d/%Y %H:%M:%S.%f")[:-3]
-        for task_id in range(1, int(manifest["task_count"]) + 1):
-            records.append(
-                f"jobnumber {job_id}\njobname {job_name}\ntaskid {task_id}\nqname campus\n"
-                "hostname n1234\nslots 1\nfailed 0\nexit_status 0\n"
-                f"start_time {start_text}\n"
-                f"end_time {end_text}\n"
-                "cpu 00:00:01\nru_wallclock 2\nmaxvmem 100M\n"
+        partitions = (
+            (one_slot, one_throttle, "one_slot", "1000"),
+            (shared_two, shared_throttle, "shared_two", "1001"),
+        )
+        for task_ids, throttle, slot_class, job_id in partitions:
+            if not task_ids:
+                continue
+            job_name = f"terminal{slot_class[0]}_{RUN_TAG}"
+            task_spec = ",".join(str(item) for item in task_ids)
+            raw = raw_dir / f"{job_name}.txt"
+            raw.write_text(f"{job_id}.{task_spec}\n", encoding="utf-8")
+            status = raw_dir / f"{job_name}.status"
+            status.write_text("0\n", encoding="utf-8")
+            job = jobs / f"{job_name}.job"
+            lines = [
+                "#!/usr/bin/env bash", "#$ -cwd", f"#$ -N {job_name}",
+                "#$ -q campus", "#$ -j y",
+                f"#$ -o {root}/logs/{job_name}.$JOB_ID.$TASK_ID.log",
+                f"#$ -l h_rt={h_rt // 3600:02d}:{(h_rt % 3600) // 60:02d}:{h_rt % 60:02d}",
+                "#$ -l h_data=2000000000", f"#$ -t {task_spec}",
+                f"#$ -tc {throttle}",
+            ]
+            if slot_class == "shared_two":
+                lines.append("#$ -pe shared 2")
+            lines.extend(("set -euo pipefail", "export LANG=C", "export LC_ALL=C"))
+            if slot_class == "shared_two":
+                lines.extend(
+                    f"export {name}=1" for name in execution.REFERENCE_B_THREAD_ENVIRONMENT
+                )
+            lines.extend((
+                f'cd "{project}"', "task_id=${SGE_TASK_ID}",
+                '"python" scripts/terminal_validation_array.py run-task \\',
+                '  --manifest "m" \\', f'  --output-root "{root}" \\',
+                '  --task-id "${task_id}"',
+            ))
+            job.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            submissions.append({
+                "job_id": job_id, "job_name": job_name, "queue": "campus",
+                "array_job": True, "manifest_task_ids": task_ids,
+                "qsub_raw_path": str(raw), "qsub_status_path": str(status),
+                "job_script_path": str(job),
+            })
+            slots = 2 if slot_class == "shared_two" else 1
+            granted_pe = "granted_pe shared\n" if slots == 2 else ""
+            records = []
+            for task_id in task_ids:
+                records.append(
+                    f"jobnumber {job_id}\njobname {job_name}\ntaskid {task_id}\nqname campus\n"
+                    f"hostname n1234\nslots {slots}\n{granted_pe}failed 0\nexit_status 0\n"
+                    f"start_time {start_text}\nend_time {end_text}\n"
+                    "cpu 00:00:01\nru_wallclock 2\nmaxvmem 100M\n"
+                )
+            account = root / f"qacct_{job_id}.txt"
+            account.write_text(
+                "==============================================================\n".join(records),
+                encoding="utf-8",
             )
-        account.write_text("==============================================================\n".join(records), encoding="utf-8")
-        return submissions, {job_id: account}
+            qacct_paths[job_id] = account
+        return tuple(submissions), qacct_paths
 
     def create_scheduler(self, manifest, submissions, root):
         return execution.create_scheduler_evidence(
@@ -753,6 +828,7 @@ class TerminalExecutionTests(unittest.TestCase):
             (target / "rows.json").write_text("[]\n", encoding="utf-8")
             (target / "metrics.json").write_text("[]\n", encoding="utf-8")
             binding = qacct_by_task[task_id]
+            requires_b = execution.task_requires_reference_b(task)
             artifact = {
                 "schema": execution.TASK_ARTIFACT_SCHEMA,
                 "manifest_hash": manifest["manifest_hash"],
@@ -763,7 +839,7 @@ class TerminalExecutionTests(unittest.TestCase):
                 "subshard_count": task["subshard_count"],
                 "job_id": submission_by_task[task_id]["job_id"],
                 "sge_task_id": task_id,
-                "slots": 1,
+                "slots": 2 if requires_b else 1,
                 "hostname": binding["hostname"],
                 "source_identity_hash": manifest["source_identity"]["identity_hash"],
                 "provider_hash": manifest["provider_hash"],
@@ -776,12 +852,55 @@ class TerminalExecutionTests(unittest.TestCase):
                 "sidecar_index": (),
                 "task_cpu_seconds": 0.1,
                 "task_wall_seconds": 0.1,
+                "slot_class": "shared_two" if requires_b else "one_slot",
+                "parallel_environment": "shared" if requires_b else None,
+                "pe_hostfile_sha256": "a" * 64 if requires_b else None,
+                "pe_host_slots": ((binding["hostname"], 2),) if requires_b else (),
+                "thread_environment": tuple(
+                    (name, "1") for name in execution.REFERENCE_B_THREAD_ENVIRONMENT
+                ) if requires_b else (),
+                "reference_b_runtime_evidence": (
+                    self.reference_b_runtime_evidence(
+                        task["descriptors"][0]["descriptor_hash"]
+                    ),
+                ) if requires_b else (),
                 "logical_record_hash": "",
             }
             artifact["logical_record_hash"] = execution.logical_hash(
                 execution._without_hash(artifact, "logical_record_hash")
             )
             execution.write_new_json(target / "task.json", artifact)
+
+    @staticmethod
+    def reference_b_runtime_evidence(descriptor_hash):
+        def worker(role, token):
+            return {
+                "role": role,
+                "command": ("python", "-I", "-B", role),
+                "command_hash": token * 64,
+                "input_hash": ("3" if role == "traced" else "4") * 64,
+                "output_hash": "5" * 64,
+                "record_bytes_hash": "6" * 64,
+                "source_identity_hash": "7" * 64,
+                "interpreter_identity_hash": "8" * 64,
+                "peak_rss_bytes": 1024,
+                "wall_seconds": 0.05,
+            }
+        value = {
+            "schema": execution.REFERENCE_B_RUNTIME_EVIDENCE_SCHEMA,
+            "descriptor_hash": descriptor_hash,
+            "traced_worker": worker("traced", "1"),
+            "source_worker": worker("source_validation", "2"),
+            "coordinator_peak_rss_bytes": 1024,
+            "thread_environment": tuple(
+                (name, "1") for name in execution.REFERENCE_B_THREAD_ENVIRONMENT
+            ),
+            "evidence_hash": "",
+        }
+        value["evidence_hash"] = execution.logical_hash(
+            execution._without_hash(value, "evidence_hash")
+        )
+        return value
 
     def test_scheduler_rejects_wrong_stage_queue_shape_task_and_duplicates(self):
         manifest, _ = self.make_manifest("smoke")
@@ -813,49 +932,23 @@ class TerminalExecutionTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "parallel-environment"):
                 self.create_scheduler(manifest, submissions, root)
 
-    def test_full_scheduler_requires_one_exact_one_slot_array(self):
+    def test_full_scheduler_requires_exact_slot_partitions(self):
         manifest, _ = self.make_manifest("full")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            scheduler_root = root / "scheduler"
-            jobs = scheduler_root / "jobs"
-            raws = scheduler_root / "qsub_raw"
-            jobs.mkdir(parents=True)
-            raws.mkdir(parents=True)
-            full_job_name = f"full_{RUN_TAG}"
-            raw = raws / f"{full_job_name}.txt"
-            raw.write_text("9001.1-90:1\n", encoding="utf-8")
-            status = raws / f"{full_job_name}.status"
-            status.write_text("0\n", encoding="utf-8")
-            job = jobs / f"{full_job_name}.job"
-            project = Path(execution.__file__).resolve().parents[2]
-            job.write_text(
-                f"#!/usr/bin/env bash\n#$ -cwd\n#$ -N {full_job_name}\n#$ -q campus\n"
-                f"#$ -j y\n#$ -o {root}/logs/{full_job_name}.$JOB_ID.$TASK_ID.log\n"
-                "#$ -l h_rt=01:00:00\n#$ -l h_data=2000000000\n"
-                f"#$ -t 1-{manifest['task_count']}\n#$ -tc 32\n"
-                "set -euo pipefail\nexport LANG=C\nexport LC_ALL=C\n"
-                f'cd "{project}"\n'
-                "task_id=${SGE_TASK_ID}\n"
-                '"python" scripts/terminal_validation_array.py run-task \\\n'
-                '  --manifest "m" \\\n'
-                f'  --output-root "{root}" \\\n'
-                '  --task-id "${task_id}"\n',
-                encoding="utf-8",
+            submissions, _ = self.scheduler_fixture(root, manifest)
+            scheduler = self.create_scheduler(manifest, submissions, root)
+            expected = tuple(
+                part for part in execution.partition_manifest_task_ids(manifest) if part
             )
-            submission = {
-                "job_id": "9001", "job_name": full_job_name, "queue": "campus",
-                "array_job": True,
-                "manifest_task_ids": tuple(range(1, manifest["task_count"] + 1)),
-                "qsub_raw_path": raw, "qsub_status_path": status,
-                "job_script_path": job,
-            }
-            scheduler = self.create_scheduler(manifest, (submission,), root)
-            self.assertEqual(len(scheduler["submissions"]), 1)
-            forged = dict(submission)
+            self.assertEqual(
+                tuple(tuple(item["manifest_task_ids"]) for item in scheduler["submissions"]),
+                expected,
+            )
+            forged = dict(submissions[0])
             forged["array_job"] = False
             with self.assertRaisesRegex(RuntimeError, "must be an array"):
-                self.create_scheduler(manifest, (forged,), root)
+                self.create_scheduler(manifest, (forged, *submissions[1:]), root)
 
     def test_task_artifacts_are_strictly_bound_to_scheduler_qacct_and_source(self):
         manifest, _ = self.make_manifest("smoke")
@@ -935,11 +1028,13 @@ class TerminalExecutionTests(unittest.TestCase):
                 execution.audit_qacct(manifest, scheduler, qacct, evidence_root=root)
             raw_qsub.write_text(original_qsub, encoding="utf-8")
             first = next(iter(qacct.values()))
-            first.write_text(first.read_text(encoding="utf-8").replace("slots 1", "slots 8"), encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "one-slot"):
+            first_text = first.read_text(encoding="utf-8")
+            observed_slots = "slots 1" if "slots 1" in first_text else "slots 2"
+            first.write_text(first_text.replace(observed_slots, "slots 8"), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "slot/PE"):
                 execution.audit_qacct(manifest, scheduler, qacct, evidence_root=root)
             missing = submissions[:-1]
-            with self.assertRaisesRegex(RuntimeError, "exactly one array submission"):
+            with self.assertRaisesRegex(RuntimeError, "slot partitions"):
                 self.create_scheduler(manifest, missing, root)
 
     def test_formal_smoke_qacct_enforces_wall_memory_and_qsub_status(self):
@@ -1660,7 +1755,9 @@ class TerminalExecutionTests(unittest.TestCase):
         self.assertLess(authorization, create_output)
         self.assertLess(ceiling, create_output)
         self.assertLess(create_output, qsub)
-        self.assertIn('array_directive="$(printf \'#$ -t 1-%s\\n#$ -tc %s\'', script)
+        self.assertIn('describe-task-partitions', script)
+        self.assertIn('"${shared_two_ids}" "${shared_two_throttle}" "shared_two"', script)
+        self.assertIn("#$ -pe shared 2", script)
         self.assertIn('qsub_status_path', script)
         self.assertIn('rollback left a validation-tagged job', script)
 
