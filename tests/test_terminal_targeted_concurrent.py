@@ -18,7 +18,8 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
                 [sys.executable, str(RUNNER), "--help"],
                 cwd=directory,
                 check=False,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
             )
         self.assertEqual(completed.returncode, 0, completed.stderr)
