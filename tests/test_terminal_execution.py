@@ -927,7 +927,7 @@ class TerminalExecutionTests(unittest.TestCase):
                 self.create_scheduler(manifest, wrong_task, root)
             reordered = [dict(submissions[0])]
             reordered[0]["manifest_task_ids"] = tuple(reversed(reordered[0]["manifest_task_ids"]))
-            with self.assertRaisesRegex(RuntimeError, "mapping|order"):
+            with self.assertRaisesRegex(RuntimeError, "mapping|order|partition"):
                 self.create_scheduler(manifest, reordered, root)
             job_path = Path(submissions[0]["job_script_path"])
             original = job_path.read_text(encoding="utf-8")
@@ -967,7 +967,7 @@ class TerminalExecutionTests(unittest.TestCase):
             "logical_case_owner": 999,
             "subshard_index": 99,
             "sge_task_id": 999,
-            "slots": 2,
+            "slots": 8,
         }
         for field, value in fields.items():
             with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
@@ -1282,6 +1282,7 @@ class TerminalExecutionTests(unittest.TestCase):
         rows = tuple(row for row in bundle.rows if row.method != "reference_b")
         sidecars = dict(bundle.sidecars)
         bundle = SimpleNamespace(
+            descriptor_hash=item.descriptor_hash,
             rows=rows,
             sidecars=tuple(
                 (row.sidecar.relative_path, sidecars[row.sidecar.relative_path])

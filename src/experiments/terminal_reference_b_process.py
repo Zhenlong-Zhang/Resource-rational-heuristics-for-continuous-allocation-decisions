@@ -781,20 +781,29 @@ def _validate_complete_trace(
         raise ValueError("Reference-B trace objective count differs from its record")
     allocations = []
     for item in cache:
-        numeric = tuple(float(value) for value in item) if (
+        allocation = None
+        if isinstance(item, tuple) and len(item) == 4 and type(item[0]) is str:
+            try:
+                parsed = float.fromhex(item[0])
+                if math.isfinite(parsed) and parsed.hex() == item[0]:
+                    allocation = parsed
+            except ValueError:
+                pass
+        interval = tuple(float(value) for value in item[1:]) if (
             isinstance(item, tuple)
             and len(item) == 4
-            and all(type(value) in (int, float) for value in item)
+            and all(type(value) in (int, float) for value in item[1:])
         ) else ()
         if (
-            len(numeric) != 4
-            or any(not math.isfinite(value) for value in numeric)
-            or not 0.0 <= numeric[0] <= 1.0
-            or numeric[1] > numeric[2]
-            or not numeric[1] <= numeric[3] <= numeric[2]
+            allocation is None
+            or len(interval) != 3
+            or any(not math.isfinite(value) for value in interval)
+            or not 0.0 <= allocation <= 1.0
+            or interval[0] > interval[1]
+            or not interval[0] <= interval[2] <= interval[1]
         ):
             raise ValueError("Reference-B trace objective cache is malformed")
-        allocations.append(numeric[0].hex())
+        allocations.append(item[0])
     if len(set(allocations)) != len(allocations):
         raise ValueError("Reference-B trace objective cache contains duplicate allocations")
     if record.production_allocation.hex() not in allocations:
