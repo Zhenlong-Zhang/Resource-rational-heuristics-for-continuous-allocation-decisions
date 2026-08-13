@@ -48,8 +48,10 @@ _REFERENCE_B_ALLOWED_FROM_IMPORTS = {
     "typing": {"Any", "Dict", "List", "Mapping", "Optional", "Sequence", "Tuple"},
     "terminal": {"StructuralSymmetry", "prove_recipient_swap_symmetry"},
     "terminal_reference": {
+        "_SOURCE_VALIDATION_PROOF_SEAL",
         "CandidateIsolationEvidence",
         "TerminalReferenceRecord",
+        "TerminalReferenceSourceValidationProof",
         "terminal_belief_identity_hash",
         "terminal_mdp_identity_hash",
         "terminal_reference_certificate_hash",
