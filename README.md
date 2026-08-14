@@ -110,7 +110,7 @@ For frozen, resumable evaluations, use the manifest workflows in `scripts/`:
 - `strategy_mapping_workflow.py`
 - `terminal_validation_array.py`
 
-These workflows separate manifest creation, shard execution, progress inspection, strict collection, and read-back validation. Cluster submitters are provided as wrappers, but cluster credentials and login instructions are intentionally not stored in this repository.
+These workflows separate manifest creation, shard execution, progress inspection, strict collection, and read-back validation. Cluster submitters are provided as command wrappers that can be configured in your local environment.
 
 ## Tests
 

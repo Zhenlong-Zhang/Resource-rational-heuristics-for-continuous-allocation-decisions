@@ -63,8 +63,6 @@ python3 scripts/active_search_evaluation_workflow.py collect --help
 
 Files beginning with `submit_hoffman2_` prepare and submit Hoffman2 jobs for the corresponding workflow. They expose scientific and concurrency settings through environment variables and delegate result validation to the Python workflow.
 
-The repository does not store usernames, passwords, private paths, or login instructions. Submit from a clean checkout after validating a small configuration. Do not compute on a login node.
-
 ## Terminal Validation
 
 The terminal-validation scripts implement a stricter evidence path for the finite-support terminal allocation problem:
