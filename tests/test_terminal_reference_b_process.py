@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import fields, replace
 import json
 import os
+from pathlib import Path
 import struct
 import unittest
 from unittest.mock import Mock, patch
@@ -204,6 +205,7 @@ class TerminalReferenceBProcessTests(unittest.TestCase):
         self.assertNotIn("PYTHONPATH", kwargs["env"])
         self.assertEqual(kwargs["env"]["PYTHONDONTWRITEBYTECODE"], "1")
         self.assertIn("-B", command)
+        self.assertEqual(command[0], str(Path(process_module.sys.orig_argv[0]).resolve()))
         self.assertTrue(all(kwargs["env"][name] == "1" for name in process_module._THREAD_ENVIRONMENT))
 
     def test_canonical_pipe_rejects_truncation_and_duplicate_payloads(self):
