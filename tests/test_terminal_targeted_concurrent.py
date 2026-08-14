@@ -31,7 +31,11 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
         submitter = SUBMITTER.read_text(encoding="utf-8")
         auditor = AUDITOR.read_text(encoding="utf-8")
         self.assertIn("#$ -l h_rt=24:00:00", submitter)
-        self.assertIn('"#$ -q campus2.q", "#$ -l h_rt=24:00:00"', auditor)
+        self.assertIn('QUEUE="${QUEUE:-campus2.q}"', submitter)
+        self.assertIn("#$ -q ${QUEUE}", submitter)
+        self.assertIn('parser.add_argument("--expected-queue", default="campus2.q")', auditor)
+        self.assertIn('f"#$ -q {args.expected_queue}"', auditor)
+        self.assertIn('record.get("qname") != args.expected_queue', auditor)
         self.assertNotIn("h_rt=06:00:00", submitter)
         self.assertNotIn("h_rt=06:00:00", auditor)
 

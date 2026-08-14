@@ -8,8 +8,14 @@ set -Eeuo pipefail
 
 PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
+QUEUE="${QUEUE:-campus2.q}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd)/$(basename "${OUTPUT_ROOT}")"
+
+if [[ ! "${QUEUE}" =~ ^[A-Za-z0-9_.-]+\.q$ ]]; then
+  echo "Targeted validation queue name is invalid." >&2
+  exit 1
+fi
 
 if [[ -e "${OUTPUT_ROOT}" ]]; then
   echo "Refusing to overwrite targeted validation run: ${OUTPUT_ROOT}" >&2
@@ -30,7 +36,7 @@ cat > "${job_file}" <<EOF
 #!/usr/bin/env bash
 #$ -cwd
 #$ -N tvtargeted
-#$ -q campus2.q
+#$ -q ${QUEUE}
 #$ -j y
 #$ -o ${OUTPUT_ROOT}/logs/targeted.\$JOB_ID.\$TASK_ID.log
 #$ -l h_rt=24:00:00
