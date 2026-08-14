@@ -1,3 +1,5 @@
+"""Test purpose: validate frozen terminal cases, coverage, and aggregate acceptance rules."""
+
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -30,8 +32,8 @@ from src.experiments.terminal_validation_suite import (
     canonical_base_record_hash,
     canonical_hash,
     expected_terminal_numerical_method_config,
-    load_frozen_r6_cases,
-    load_frozen_r6_spec,
+    load_frozen_strategy_mapping_cases,
+    load_frozen_strategy_mapping_spec,
     load_terminal_numerical_method_config,
     load_terminal_validation_identities,
     make_canonical_base_provider,
@@ -94,8 +96,8 @@ def _self_rehash_suite(suite, descriptors=None, **manifest_changes):
 
 class TerminalValidationIdentityTests(unittest.TestCase):
     def test_legacy_scientific_and_numerical_identities_are_separate(self):
-        spec = load_frozen_r6_spec()
-        cases = load_frozen_r6_cases(spec)
+        spec = load_frozen_strategy_mapping_spec()
+        cases = load_frozen_strategy_mapping_cases(spec)
         identities = load_terminal_validation_identities()
 
         self.assertEqual(len(cases), 90)
@@ -228,7 +230,7 @@ class TerminalValidationSuiteTests(unittest.TestCase):
                 "person1_maximum_support": 18,
             },
         )
-        frozen = load_frozen_r6_cases()
+        frozen = load_frozen_strategy_mapping_cases()
         for descriptor, case in zip(self.base.descriptors, frozen):
             self.assertEqual(descriptor.legacy_belief_hash, case["belief_hash"])
             self.assertEqual(

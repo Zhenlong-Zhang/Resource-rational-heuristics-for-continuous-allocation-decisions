@@ -1,276 +1,79 @@
-# Scripts
+# Command-Line Workflows
 
-`generate_results.py` is the main command-line runner.
+The scripts call the implementation in `src/`. They should not contain an independent version of the model.
 
-It can generate:
+## General Experiments
 
-- Step 7 final-choice comparisons
-- information-acquisition comparisons
-- behavioral-profile diagnostics
-- RR approximation-method comparisons
-- one-dimensional sweeps across environment parameters
-- candidate regime tables for near-50/50 and equal-outcome behavior
-- DP sensitivity diagnostics
-- Gauss-Hermite diagnostics
-- simple SVG heatmaps and a run summary
-- Round 3 true-state equal-outcome diagnostics in behavior/final-choice tables
-- Round 4 diagnostic active-search manual-baseline comparisons
-
-Example:
-
-```bash
-python3 scripts/generate_results.py --preset smoke --sections all --output-dir results/round2_smoke
-```
-
-Scale-up example:
+`generate_results.py` is the main serial runner. It can generate final-choice comparisons, information-acquisition comparisons, behavioral profiles, parameter sweeps, targeted regime grids, DP diagnostics, Gauss-Hermite diagnostics, and SVG summaries.
 
 ```bash
 python3 scripts/generate_results.py \
-  --preset server \
-  --episodes 1200 \
-  --voi-samples 500 \
-  --common-observations on \
-  --sections step7,sweeps,dp,gh \
-  --output-dir results/round2_server
+  --preset smoke \
+  --sections step7 \
+  --output-dir results/smoke
 ```
 
-Generated outputs are written under `results/`, which is ignored by Git.
-
-`run_parallel_r2.py` is the preferred runner for larger Round 2 jobs. It splits the run into section/environment or section/feature shards, runs shards in parallel, writes one stdout/stderr log per shard, and combines successful shard outputs.
-
-Example:
+`run_parallel_experiments.py` runs the same sections as resumable local shards and combines successful outputs.
 
 ```bash
-python3 scripts/run_parallel_r2.py \
+python3 scripts/run_parallel_experiments.py \
   --preset serious \
-  --sections all \
-  --max-workers 7 \
-  --output-dir results/r2_parallel_serious
-```
-
-If a task fails, inspect `parallel_run_status.csv`, `parallel_summary.md`, and the corresponding file under `logs/`.
-
-`summarize_round2_results.py` reads one or more existing result folders and writes a compact Markdown summary. It does not rerun simulations.
-
-Example:
-
-```bash
-python3 scripts/summarize_round2_results.py \
-  results/r2_full_near_50_50_serious \
-  results/r2_confirm_equal_outcome_distinct_1200 \
-  --output results/round2_summary.md
-```
-
-## Round 3 Checks
-
-`check_observation_streams.py` verifies that common observation streams are tied to the same hidden true state used for realized utility. It also reports the correlation between true needs and observation-stream averages.
-
-Example:
-
-```bash
-python3 scripts/check_observation_streams.py \
-  --episodes 80 \
-  --observations-per-person 80 \
-  --output-json results/r3_observation_stream_check.json
-```
-
-To smoke-test Falk's active-information-search equal-outcome search path:
-
-```bash
-python3 scripts/generate_results.py \
-  --preset smoke \
   --sections regime_grid \
   --regime-grid active_search_equal_outcome_focused \
-  --max-regime-grid-points 4 \
+  --regime-grid-chunks 8 \
   --common-observations on \
-  --output-dir results/r3_smoke_active_search
+  --max-workers 4 \
+  --output-dir results/active_search_grid
 ```
 
-The relevant Round 3 fields include `true_equal_outcome_rate`, `mean_realized_outcome_gap`, `mean_outcome_distance_to_true_equal`, and `closer_to_true_equal_outcome_than_equal_split_rate`.
+`summarize_results.py` creates a compact Markdown summary from existing result folders without rerunning simulations.
 
-Interpretation notes:
+## Scientific Diagnostics
 
-- `true_equal_outcome_rate` is true-state based. It counts episodes where the final choice is close to the best feasible realized equal-outcome/maximin outcome, measured by realized outcome gap rather than only by allocation distance.
-- `mean_realized_outcome_gap` is the average absolute difference between the two realized outcome-minus-need values.
-- `mean_outcome_distance_to_true_equal` is the excess realized outcome gap above the best feasible true-state equal-outcome gap.
-- `true_equal_outcome_allocation_close_rate` is the allocation-distance analogue: it counts episodes where the chosen allocation is close to the true-state equal-outcome allocation.
-- `closer_to_true_equal_outcome_than_equal_split_rate` compares whether the policy's realized outcome gap is closer to the feasible true-state equal-outcome gap than a 50/50 allocation would be.
+- `check_observation_streams.py`: verifies that observations and realized utility use the same episode-specific hidden state
+- `analyze_approximation_active_search.py`: analyzes paired approximation-method results and the constructed active-search benchmark
+- `analyze_active_search.py`: builds objective, information-value, confirmation, and solver-comparison analyses
+- `generate_active_search_report.py`: validates collected inputs and creates the corresponding HTML report package
+- `combine_method_comparison_results.py`: strictly combines episode-level method-comparison tasks
 
-For a larger Round 3 local or cluster run, increase both grid size and episodes, for example:
+Expected average utility is the performance measure. True-outcome, allocation-distance, and information-acquisition fields are behavioral diagnostics.
+
+## Frozen And Resumable Workflows
+
+The following scripts use manifests and atomic task outputs so large runs can be inspected, resumed, and collected without silently rerunning failed shards:
+
+- `active_search_evaluation_workflow.py`: oracle, active-search discovery, fixed-budget, confirmation, and held-out solver families
+- `diagnostic_active_search_workflow.py`: manual active-search versus equal-split benchmark
+- `method_comparison_episode_workflow.py`: paired approximation-method episodes
+- `positive_need_workflow.py`: finite-support positive-need analyses and quadrature diagnostics
+- `quadrature_validation_array.py`: task-level quadrature validation
+- `strategy_mapping_workflow.py`: held-out strategy comparison and controlled boundary diagnostics
+- `terminal_validation_array.py`: frozen terminal evidence execution and read-back validation
+
+Each workflow exposes its operations through `--help`. A typical pattern is:
 
 ```bash
-python3 scripts/run_parallel_r2.py \
-  --preset server \
-  --sections regime_grid \
-  --regime-grid active_search_equal_outcome_focused \
-  --episodes 1200 \
-  --voi-samples 500 \
-  --common-observations on \
-  --max-workers 7 \
-  --output-dir results/r3_active_search_equal_outcome_server
+python3 scripts/active_search_evaluation_workflow.py create --help
+python3 scripts/active_search_evaluation_workflow.py run-task --help
+python3 scripts/active_search_evaluation_workflow.py progress --help
+python3 scripts/active_search_evaluation_workflow.py collect --help
 ```
 
-On Hoffman2, the original broad active-search array can be submitted with:
+## Cluster Wrappers
 
-```bash
-bash scripts/submit_hoffman2_round3_array.sh
-```
+Files beginning with `submit_hoffman2_` prepare and submit Hoffman2 jobs for the corresponding workflow. They expose scientific and concurrency settings through environment variables and delegate result validation to the Python workflow.
 
-For the Round 3 follow-up, use:
+The repository does not store usernames, passwords, private paths, or login instructions. Submit from a clean checkout after validating a small configuration. Do not compute on a login node.
 
-```bash
-bash scripts/submit_hoffman2_round3_followup.sh
-```
+## Terminal Validation
 
-By default this submits two jobs: a high-parallelism array for `active_search_equal_outcome_narrow_followup`, and a separate 1200-episode Step 7 approximation-method comparison.
+The terminal-validation scripts implement a stricter evidence path for the finite-support terminal allocation problem:
 
-If the approximation-method comparison queues for too long as a shared/PE job, prefer the dedicated array submitter:
+- `audit_terminal_manifest_setup.py` and related audit scripts validate plans without scientific execution
+- `run_terminal_targeted_concurrent.py` runs targeted concurrent checks
+- `terminal_validation_array.py` freezes manifests, executes tasks, records scheduler evidence, and performs independent read-back
+- `export_terminal_base_migration.py` and its companion shell files preserve a historical one-time migration trust boundary
 
-```bash
-bash scripts/submit_hoffman2_round3_methods_array.sh
-```
+The accepted migration artifact is already tracked under `configs/`. The historical migration is intentionally non-rerunnable after its approved tool hashes change.
 
-This submits one Step 7 environment per array task and then runs a dependent combine/package job. It is the preferred workflow for the Round 3 1200-episode approximation-method comparison.
-
-## Round 4 Diagnostic Active-Search Checks
-
-The `r4_diagnostics` section is for Falk's 07/01 diagnostic request. It compares:
-
-- `myopic_voi`: current RR approximation
-- `manual_active_search_equal_outcome`: hand-coded active-search baseline that samples both recipients and then uses the terminal belief to choose an equal-outcome allocation
-- `manual_equal_split`: no-search 50/50 baseline
-
-Tiny wiring smoke:
-
-```bash
-python3 scripts/generate_results.py \
-  --preset smoke \
-  --sections r4_diagnostics \
-  --regime-grid r4_diagnostic_active_search \
-  --max-regime-grid-points 1 \
-  --episodes 2 \
-  --voi-samples 2 \
-  --common-observations on \
-  --observations-per-person 10 \
-  --allocation-grid-size 5 \
-  --expected-utility-draws 5 \
-  --manual-active-samples-per-person 1 \
-  --output-dir results/r4_diagnostic_smoke
-```
-
-For the full Hoffman2 run, use the one-slot array submitter:
-
-```bash
-bash scripts/submit_hoffman2_round4_array.sh
-```
-
-The submitter maps the 972-environment grid to 486 independent one-core SGE
-array tasks, preserving the established two-environment modulo shards. It limits
-the number running at once with `MAX_CONCURRENT_TASKS`
-(default: 160). It preserves the full scientific settings: 1200 episodes, 500
-VOI samples, common observation streams, and 500 pre-generated observations per
-recipient. A dependent collector validates every shard and its provenance before
-combining outputs; it never reruns missing simulations.
-
-To inspect progress without starting computation:
-
-```bash
-python3 scripts/r4_array_workflow.py progress \
-  --manifest results/r4_diagnostic_active_search_server/r4_array_manifest.json
-```
-
-For a small Hoffman2 wiring test, override the submission settings without
-changing the full-run defaults:
-
-```bash
-OUTPUT_DIR=results/r4_array_smoke \
-MAX_GRID_POINTS=2 \
-EPISODES=3 \
-VOI_SAMPLES=4 \
-OBSERVATIONS_PER_PERSON=20 \
-MANUAL_ACTIVE_SAMPLES_PER_PERSON=1 \
-MAX_CONCURRENT_TASKS=2 \
-bash scripts/submit_hoffman2_round4_array.sh
-```
-
-Main outputs:
-
-- `r4_diagnostic_policy_profiles.csv`: policy-level RR/manual/equal-split behavior and true-state metrics
-- `r4_diagnostic_environment_summary.csv`: environment-level manual-vs-equal-split and RR-vs-manual contrasts
-- `r4_diagnostic_manual_advantage_candidates.csv`: environments where the manual active-search baseline clearly beats equal split under the current thresholds
-
-Interpretation note: the current utility family can approximate "quickly flattening after needs are met" through stronger concavity, but it does not implement a literal post-threshold plateau.
-
-## Round 3/4 Analysis Report
-
-After the validated R3 and R4 result directories are available locally, create
-the paired method analysis, diagnostic-policy summary, and professor-facing HTML:
-
-```bash
-python3 scripts/analyze_round3_round4.py \
-  --r3-dir results/r3_approximation_methods_checkpointed_1200ep_20260713 \
-  --r4-dir results/r4_diagnostic_active_search_server_20260714_array486 \
-  --output-dir results/round3_round4_report
-```
-
-The R3 input must include both the 700-row method summary and the 840,000-row
-episode file. The script retains only the canonical myopic VOI, blinkered, and
-DP episodes in memory, verifies common-randomness fingerprints, and computes
-paired utility and sample-count confidence intervals. The R4 analysis uses the
-validated environment summary and policy-profile tables. It does not rerun any
-policy simulation.
-
-## Round 5 Frozen Array Workflow
-
-`r5_array_workflow.py` provides four operations:
-
-- `create`: freeze a manifest containing environments, seeds, commit, thresholds, and solver settings
-- `run-task`: evaluate exactly one independent episode block
-- `progress`: count atomic task status files and report completed, failed, and remaining shards
-- `collect`: reject missing, duplicated, non-finite, hash-mismatched, or provenance-mismatched rows before writing combined tables
-
-`submit_hoffman2_round5_array.sh` creates the manifest, submits a one-core SGE
-array, and holds a strict collector on the array. The main families are:
-
-- `oracle`: deterministic full-information utility benchmark
-- `six_sample`: broad active-search discovery grid
-- `custom_rr`: frozen confirmation or held-out solver environments supplied through `CONFIGS_JSON`
-- `fixed_budget`: paired manual policies with fixed balanced observation budgets
-
-Example independent confirmation:
-
-```bash
-FAMILY=custom_rr \
-CONFIGS_JSON=results/r5_discovery/r5_confirmation_configs.json \
-OUTPUT_DIR=results/r5_confirmation_1200 \
-EPISODES=1200 \
-EPISODES_PER_TASK=10 \
-OBSERVATION_DRAWS=500 \
-SEED_NAMESPACE_OFFSET=1000000 \
-MAX_CONCURRENT=300 \
-bash scripts/submit_hoffman2_round5_array.sh
-```
-
-If an interrupted array must be resumed, first quiesce the old array and then
-use `submit_hoffman2_r5_resume_lanes.sh`. It audits existing shards and assigns
-only missing task indices to mutually exclusive lanes.
-
-## Round 5 Analysis Report
-
-`analyze_r5.py` contains the scientific analysis commands used to select frozen
-anchors, create controlled sweeps, select confirmation environments, and compare
-paired held-out solvers. `analyze_round5.py` is the final read-only report layer.
-
-```bash
-python3 scripts/analyze_round5.py \
-  --oracle-dir results/r5_oracle_full \
-  --oracle-analysis-dir results/r5_oracle_analysis \
-  --formal-dir results/r5_formal_summaries \
-  --discovery-dir results/r5_six_sample_discovery \
-  --confirmation-dir results/r5_six_sample_confirmation \
-  --solver-dir results/r5_solver_comparison \
-  --output-dir results/round5_report
-```
-
-The output contains `index.html`, relative SVG figures, a compact report summary,
-and supporting CSVs. It never reads individual array shards or reruns a policy.
+Generated outputs belong under `results/` and are ignored by Git.

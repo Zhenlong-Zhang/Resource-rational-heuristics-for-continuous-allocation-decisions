@@ -1,3 +1,5 @@
+"""Test purpose: ensure observation streams and realized utility share the same episode-specific hidden state."""
+
 from __future__ import annotations
 
 import math

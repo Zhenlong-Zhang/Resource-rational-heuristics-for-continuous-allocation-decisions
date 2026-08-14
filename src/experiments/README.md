@@ -1,31 +1,46 @@
 # Experiments
 
-`experiments/` contains structured comparisons and result-generation helpers.
+This package contains reusable experiment logic. Command-line parsing, cluster submission, and report packaging remain in `scripts/`.
 
-Main modules:
+## General Comparisons
 
-- `compare.py`: earlier environment presets and basic strategy comparisons
-- `regimes.py`: Step 7 comparisons for final choice, information acquisition, behavioral profiles, and RR approximation methods
+- `compare.py`: basic environment presets and strategy comparisons
 - `randomization.py`: common true states and optional common observation streams
-- `settings.py`: smoke, serious local, and server-scale evaluation presets
-- `sweeps.py`: one-dimensional parameter sweeps and targeted candidate-regime searches, including focused near-50/50, symmetric equal-outcome, and distinct equal-outcome grids
-- `dp_diagnostics.py`: DP sensitivity analysis for investigating discretized DP underperformance
-- `r5.py`: true-state equal-outcome metrics, the full-information oracle, fixed-budget information-value curves, and frozen R5 RR evaluation
+- `regimes.py`: final-choice, information-acquisition, behavior-profile, and approximation-method comparisons
+- `sweeps.py`: one-dimensional sweeps, utility-regime builders, and targeted regime grids
+- `settings.py`: smoke, serious, and server evaluation settings
+- `dp_diagnostics.py`: DP resolution and horizon sensitivity checks
+- `diagnostics.py`: manual active-search and equal-split benchmark comparisons
 
-Important functions:
+Important functions include:
 
-- `compare_rr_to_heuristics_by_final_choice(...)`: compares RR final allocation against final-choice heuristics
-- `compare_rr_information_acquisition_to_heuristics(...)`: compares sampling behavior and utility against heuristic policies
-- `compare_policy_behavior_profiles(...)`: reports diagnostic behavior rates such as immediate termination, near-50/50 choices, equal-outcome choices, and sample counts
-- `compare_rr_approximation_methods(...)`: compares myopic VOI, blinkered policy, and discretized DP
-- `run_one_dimensional_final_choice_sweeps(...)`: varies one environment feature at a time
-- `run_targeted_regime_final_choice_grid(...)`: evaluates a targeted multidimensional regime grid
-- `run_targeted_regime_behavior_grid(...)`: records RR behavior diagnostics for a targeted multidimensional regime grid
-- `identify_final_choice_regime_candidates(...)`: finds candidate conditions where RR resembles known heuristics
-- `full_information_oracle_metrics(...)`: compares the utilitarian full-information allocation with true equal outcome and equal split
-- `evaluate_r5_rr_environment(...)`: evaluates a frozen RR approximation one episode at a time with common true-state and observation provenance
-- `summarize_r5_rr_environments(...)`: reports rates, one-sided Wilson lower bounds, online sample counts, and active-search diagnostics
-- `evaluate_r5_fixed_sampling_budgets(...)`: compares fixed balanced observation budgets on paired episodes
+- `compare_rr_to_heuristics_by_final_choice(...)`
+- `compare_rr_information_acquisition_to_heuristics(...)`
+- `compare_policy_behavior_profiles(...)`
+- `compare_rr_approximation_methods(...)`
+- `run_one_dimensional_final_choice_sweeps(...)`
+- `run_target_regime_search(...)`
+- `run_active_search_diagnostic_policy_grid(...)`
 
-Use `scripts/generate_results.py` for the earlier interactive pipeline and
-`scripts/r5_array_workflow.py` for frozen Hoffman2 R5 runs.
+## Controlled Active-Search Analyses
+
+- `active_search_evaluation.py`: full-information oracle, fixed-budget information value, frozen RR evaluation, Wilson intervals, and active-search summaries
+- `positive_need.py`: finite-support positive-need environments and policy evaluations
+- `strategy_mapping.py`: four-way held-out comparisons, controlled `sigma_need` sweeps, and fixed-total-need mechanism diagnostics
+
+These modules keep final-choice metrics separate from information-acquisition metrics and support common-random evaluation episodes.
+
+## Terminal Evidence
+
+The `terminal_*` modules implement independently checked terminal allocation and its evidence pipeline:
+
+- `terminal_validation_suite.py`: frozen validation cases and identities
+- `terminal_canonical_provider.py`: accepted canonical base-belief provider
+- `terminal_evidence_rows.py`: evidence rows, sidecars, and hashes
+- `terminal_execution.py`: task state, leases, and atomic completion
+- `terminal_plan_diagnostics.py`: non-scientific plan validation
+- `terminal_setup_diagnostics.py`: setup and environment diagnostics
+- `terminal_reference_b_process.py`: isolated reference-solver process support
+- `terminal_base_migration.py`: historical base-belief migration validation
+
+Reference JSON files under `configs/reference/` are immutable provenance inputs. Historical labels inside those files are part of their accepted hashes and must not be renamed.

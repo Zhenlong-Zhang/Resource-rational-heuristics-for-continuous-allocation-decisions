@@ -1,13 +1,23 @@
 # Source Package
 
-`src/` is the main Python package for the project.
+`src/` is the source of truth for model and analysis logic.
 
-The package is organized by responsibility:
+- `mdp/`: continuous-allocation and finite-support metalevel MDPs
+- `simulator/`: episode execution and policy adapters
+- `policies/`: hand-coded heuristics and information-acquisition approximations
+- `solvers/`: DP, Gauss-Hermite, and terminal allocation solvers
+- `experiments/`: randomization, metrics, sweeps, comparisons, and strict evidence workflows
 
-- `mdp/`: defines the allocation task and metalevel MDP
-- `simulator/`: provides episode-level execution helpers
-- `policies/`: contains hand-coded heuristics and VOI-style policies
-- `solvers/`: contains approximation methods such as discretized DP and Gauss-Hermite integration
-- `experiments/`: contains result-generation logic, sweeps, diagnostics, and reproducibility helpers
+Use the scripts or notebooks for complete analyses. Import modules directly when developing a new policy, solver, metric, or experiment.
 
-Most users should call the project through `scripts/generate_results.py` or `notebooks/run_round2_pipeline.ipynb` instead of importing each module manually.
+```python
+from src.mdp.meta_mdp import EnvironmentConfig
+from src.policies.heuristic import EqualDivisionPolicy
+from src.simulator.simulator import run_single_episode
+
+config = EnvironmentConfig(random_seed=7)
+result = run_single_episode(config, EqualDivisionPolicy())
+print(result.realized_utility)
+```
+
+Subdirectory READMEs describe the public classes and functions in more detail.

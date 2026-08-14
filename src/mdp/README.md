@@ -1,21 +1,18 @@
-# MDP Model
+# MDP Models
 
-`meta_mdp.py` defines the core allocation model.
+`meta_mdp.py` defines the Gaussian-belief continuous-allocation problem.
 
-Key objects:
+- `EnvironmentConfig`: environmental, utility, timing, information, and numerical settings
+- `TrueState`: latent needs and remaining time
+- `BeliefState`: posterior means, variances, deliberation time, and observation history
+- `ContinuousAllocationMetaMDP`: Bayesian updates, metalevel transitions, terminal allocation, and episode execution
+- `utility(...)`: asymmetric utility for outcomes above or below need
 
-- `EnvironmentConfig`: all environment parameters, including need distribution, sampling noise, total time, utility exponent, prior knowledge, learning efficiency, and terminal integration method
-- `TrueState`: hidden true needs of the two recipients
-- `BeliefState`: current posterior means, variances, deliberation time, and sampling history
-- `EpisodeResult`: realized trajectory and final allocation outcome
-- `ContinuousAllocationMetaMDP`: state transitions, Gaussian belief updates, sampling, terminal allocation, and realized utility
+`finite_support.py` provides a controlled alternative to Gaussian priors.
 
-Important methods:
+- `FiniteSupportAtom`: one latent need configuration
+- `FiniteSupportPrior`: weighted finite support with deterministic identity hashes
+- `FiniteSupportBeliefState`: posterior weights over atoms
+- `FiniteSupportMetaMDP`: exact finite-support Bayesian updates with the shared allocation model
 
-- `initial_belief(...)`: creates the starting belief from environment parameters; during full episode runs, prior sample counts are implemented as pre-deliberation observations from the true state
-- `transition(...)`: applies a sampling action and updates the belief
-- `solve_terminal_allocation(...)`: chooses the terminal allocation according to the current belief
-- `resolve_final_allocation(...)`: uses a policy-specific final-choice heuristic when available, otherwise solves the terminal allocation
-- `run_episode(...)`: executes a metalevel policy until termination
-
-The model supports optional pre-generated observation streams so different policies can be evaluated on the same true states and information-gathering noise. When prior samples are used, those streams are also used for pre-deliberation prior observations before normal metalevel sampling starts.
+Sampling changes beliefs and consumes time. It does not receive a separate utility penalty in the current model.

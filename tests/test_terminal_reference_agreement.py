@@ -1,3 +1,5 @@
+"""Test purpose: validate agreement rules and tolerances between independent terminal references."""
+
 from __future__ import annotations
 
 from dataclasses import replace

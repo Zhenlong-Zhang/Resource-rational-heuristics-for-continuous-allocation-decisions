@@ -1,217 +1,137 @@
 # Resource-Rational Heuristics for Continuous Allocation Decisions
 
-This repository contains a modular simulator for studying when simple fairness heuristics are resource-rational in continuous allocation decisions. The motivating task is a two-recipient allocation problem, such as deciding how to divide a limited amount of tutoring time between two students whose needs are uncertain.
+This repository studies when simple allocation heuristics can be resource-rational. The motivating problem is how to divide a continuous resource, such as tutoring time, between two recipients whose needs are uncertain.
 
-## Research Goal
+The decision-maker may gather information before allocating the resource. Each observation improves a belief about one recipient's need, but consumes time that could otherwise be allocated. The code evaluates the resulting tradeoff between expected utility and the opportunity cost of deliberation.
 
-The project asks when resource-rational utilitarian decision-making produces behavior that resembles:
+## Scientific Questions
 
-- equal division, or 50/50 splits
+The project asks when a resource-rational strategy resembles:
+
+- equal division, or a 50/50 split
 - equal outcome / maximin allocation
-- helping the poorest or greatest-need recipient
+- helping the recipient in greatest need
 - proportional allocation to estimated need
-- information-acquisition strategies such as one-and-done, threshold stopping, myopic VOI, blinkered policy, and small-horizon dynamic programming
+- intermediate or information-dependent strategies
 
-The current code distinguishes two behaviors that should not be conflated:
+Two kinds of behavior are analyzed separately:
 
-- final choice: the allocation selected after deliberation stops
-- information acquisition: whether, how long, and whom the policy samples before choosing
+- **Final choice:** the allocation made after deliberation stops.
+- **Information acquisition:** whether to sample, whom to sample, and when to stop.
 
-Expected average utility is the performance criterion. Allocation distance, sample count, and behavioral-profile metrics are diagnostics.
+Expected average utility is the performance criterion. Allocation distance, realized outcome gaps, sample counts, and policy-behavior rates are diagnostic measures.
 
-## Repository Structure
+## Model
 
-- `src/mdp/`: object-level allocation model and metalevel MDP state/action dynamics
-- `src/simulator/`: episode execution helpers and belief-action dictionary policy support
-- `src/policies/`: hand-coded final-choice and information-acquisition heuristics plus VOI approximations
-- `src/solvers/`: small discretized DP and Gauss-Hermite integration utilities
-- `src/experiments/`: comparison, sweep, regime-search, randomization, and DP diagnostic code
-- `scripts/`: command-line result generation entrypoints
-- `notebooks/`: notebook wrapper for running the same result-generation pipeline interactively
-- `results/`: generated output folder, ignored by Git by default
+The object-level action is an allocation fraction `a` in `[0, 1]`. Person 1 receives `a * remaining_time`; person 2 receives the rest. Utility is the sum of the recipients' utilities after accounting for latent need, learning efficiency, and asymmetric penalties for unmet need.
+
+The metalevel state contains beliefs about both needs and remaining time. Available metalevel actions are to sample person 1, sample person 2, or terminate and allocate. Sampling cost is represented through elapsed time rather than an additional utility penalty.
+
+The repository supports both Gaussian beliefs and finite-support priors. Gaussian experiments are used for broad heuristic comparisons and parameter sweeps. Finite-support experiments support controlled active-search analyses and independently checked terminal optimization.
+
+## Installation
+
+```bash
+git clone https://github.com/Zhenlong-Zhang/Resource-rational-heuristics-for-continuous-allocation-decisions.git
+cd Resource-rational-heuristics-for-continuous-allocation-decisions
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -e .
+```
+
+Python 3.10 or newer is required.
 
 ## Quick Start
 
-Run a small smoke test:
+Run a small comparison without launching a large parameter sweep:
 
 ```bash
 python3 scripts/generate_results.py \
   --preset smoke \
-  --sections all \
-  --output-dir results/round2_smoke
+  --sections step7 \
+  --output-dir results/smoke
 ```
 
-Run a more serious local configuration:
+Run a targeted grid in parallel:
 
 ```bash
-python3 scripts/generate_results.py \
-  --preset serious \
-  --sections step7,sweeps,dp,gh \
-  --output-dir results/round2_serious
-```
-
-Run a server-scale configuration:
-
-```bash
-python3 scripts/generate_results.py \
-  --preset server \
-  --sections step7,sweeps,dp,gh \
-  --output-dir results/round2_server
-```
-
-Run a targeted regime grid, such as the current distinct equal-outcome search:
-
-```bash
-python3 scripts/generate_results.py \
-  --preset serious \
-  --sections regime_grid \
-  --regime-grid equal_outcome_distinct_focused \
-  --common-observations on \
-  --output-dir results/equal_outcome_distinct_serious
-```
-
-For larger grids, use the parallel runner:
-
-```bash
-python3 scripts/run_parallel_r2.py \
+python3 scripts/run_parallel_experiments.py \
   --preset serious \
   --sections regime_grid \
   --regime-grid equal_outcome_distinct_focused \
   --regime-grid-chunks 8 \
   --common-observations on \
   --max-workers 4 \
-  --output-dir results/equal_outcome_distinct_parallel
+  --output-dir results/equal_outcome_distinct
 ```
 
-After downloading or generating result folders, summarize them without rerunning simulations:
+The main computational settings are command-line options, including episode count, VOI sample count, observation-stream length, allocation-grid size, integration backend, and DP resolution. Use `--help` on any runner to inspect its full interface.
 
-```bash
-python3 scripts/summarize_round2_results.py \
-  results/equal_outcome_distinct_parallel \
-  --output results/equal_outcome_distinct_summary.md
-```
+## Reproducibility Notebooks
 
-Create the reproducible Round 3/4 paired analysis and professor-facing report:
+Professor-facing analyses are reproduced by notebooks under `notebooks/`. Each notebook calls the shared source code and exposes its main settings near the top; model logic is not duplicated in notebook cells.
 
-```bash
-python3 scripts/analyze_round3_round4.py \
-  --r3-dir results/r3_approximation_methods_checkpointed_1200ep_20260713 \
-  --r4-dir results/r4_diagnostic_active_search_server_20260714_array486 \
-  --output-dir results/round3_round4_report
-```
+See `notebooks/README.md` for the analysis index. Full configurations are intentionally gated by `RUN = False`, so opening a notebook does not start a large computation.
 
-This analysis uses episode-level pairing for the canonical R3 approximation
-methods and aggregate diagnostic comparisons for R4. It writes a self-contained
-HTML report and a `supporting_data/` folder without rerunning simulations.
+## Repository Structure
 
-## Round 5 Workflow
+- `src/mdp/`: environment configuration, beliefs, utility, Bayesian updates, and metalevel dynamics
+- `src/simulator/`: episode execution and dictionary-driven policies
+- `src/policies/`: allocation heuristics, information-acquisition policies, myopic VOI, and blinkered policies
+- `src/solvers/`: discretized DP, Gauss-Hermite integration, and terminal allocation solvers
+- `src/experiments/`: comparisons, common randomization, sweeps, regime searches, metrics, and strict evidence workflows
+- `scripts/`: command-line runners, resumable array workflows, report generation, and validation tools
+- `configs/`: scientific configurations and frozen reference evidence
+- `notebooks/`: interactive reproduction interfaces
+- `tests/`: regression, scientific-invariant, workflow, and evidence-validation tests
 
-Round 5 separates four questions that should not be collapsed into one result:
+Generated outputs are written under `results/`, which is ignored by Git. The repository tracks code, prespecified configurations, notebooks, tests, and small immutable reference artifacts rather than generated simulation tables.
 
-- whether the full-information utilitarian objective favors true equal outcome
-- whether repeated observations are useful enough to justify active search
-- whether an RR approximation discovers that active-search behavior
-- whether a prespecified non-myopic DP changes the conclusion
+## Experiment Workflows
 
-On Hoffman2, submit a frozen array workflow from a clean commit. For example:
+The general experiment runner supports:
 
-```bash
-FAMILY=six_sample \
-OUTPUT_DIR=results/r5_six_sample_discovery \
-EPISODES=120 \
-EPISODES_PER_TASK=5 \
-OBSERVATION_DRAWS=500 \
-SEED_NAMESPACE_OFFSET=0 \
-MAX_CONCURRENT=300 \
-bash scripts/submit_hoffman2_round5_array.sh
-```
+- final-choice and information-acquisition comparisons
+- continuous allocation-distance metrics
+- common true states and optional common observation streams
+- one-dimensional parameter sweeps
+- targeted 50/50 and equal-outcome regime searches
+- positive and near-zero utility environments
+- myopic VOI, blinkered, discretized-DP, and Gauss-Hermite diagnostics
+- manual active-search and equal-split benchmarks
 
-The submitter writes a manifest containing the commit, environment grid, seeds,
-metrics, and computational settings. A held collector validates all shards before
-writing combined episode and summary tables. Inspect progress without rerunning
-any simulation:
+For frozen, resumable evaluations, use the manifest workflows in `scripts/`:
 
-```bash
-python3 scripts/r5_array_workflow.py progress \
-  --manifest results/r5_six_sample_discovery/r5_manifest.json
-```
+- `active_search_evaluation_workflow.py`
+- `diagnostic_active_search_workflow.py`
+- `method_comparison_episode_workflow.py`
+- `positive_need_workflow.py`
+- `strategy_mapping_workflow.py`
+- `terminal_validation_array.py`
 
-After the validated oracle, discovery, independent confirmation, and held-out
-solver outputs are available locally, generate the Round 5 report:
-
-```bash
-python3 scripts/analyze_round5.py \
-  --oracle-dir results/r5_oracle_full \
-  --oracle-analysis-dir results/r5_oracle_analysis \
-  --formal-dir results/r5_formal_summaries \
-  --discovery-dir results/r5_six_sample_discovery \
-  --confirmation-dir results/r5_six_sample_confirmation \
-  --solver-dir results/r5_solver_comparison \
-  --output-dir results/round5_report
-```
-
-The report generator does not simulate. It rejects incomplete result folders,
-requires independent discovery and confirmation seed namespaces, checks the
-1,200-episode/500-VOI confirmation settings, and reports point-estimate discovery
-separately from the one-sided Wilson confirmation criterion. The generated
-professor-facing package also includes a short README and a copy of the Round 5
-notebook that calls this same source-controlled workflow.
-
-You can override the main computational knobs:
-
-```bash
-python3 scripts/generate_results.py \
-  --preset serious \
-  --episodes 120 \
-  --voi-samples 500 \
-  --common-observations on \
-  --observations-per-person 200 \
-  --sweep-feature total_time \
-  --sweep-feature mu_need \
-  --terminal-integration gauss_hermite
-```
-
-## Notebook Runner
-
-Open `notebooks/run_round2_pipeline.ipynb`. The notebook installs common Python packages in the first cell, exposes the main knobs as variables, and then calls `scripts/generate_results.py`.
-
-For Round 5, open `notebooks/run_round5_pipeline.ipynb`. It exposes the array
-settings, prints or submits the Hoffman2 command, checks manifest progress, and
-calls the validated report generator after result folders have been collected.
-
-Use the notebook when you want to inspect outputs interactively. Use the script directly when running on a server.
+These workflows separate manifest creation, shard execution, progress inspection, strict collection, and read-back validation. Cluster submitters are provided as wrappers, but cluster credentials and login instructions are intentionally not stored in this repository.
 
 ## Tests
 
-Run the lightweight regression tests with the Python standard library:
+Run the full test suite from the repository root:
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
-The current test suite includes an observation-stream regression check. It verifies that common observation streams are tied to the same hidden true state used for realized utility, and that stream averages are highly correlated with the corresponding true needs.
+Some terminal-validation tests are computationally heavier than the basic model and workflow tests. See `tests/README.md` for the purpose of each test group.
 
-## Earlier Round 2 Coverage
+## Interpretation
 
-The current pipeline implements the main items from Falk's second-round feedback:
+Smoke runs verify wiring only and should not be treated as scientific evidence. Comparisons should use sufficiently many episodes, common random inputs when possible, and uncertainty intervals appropriate to the claim. Similar utility does not imply similar behavior, and a tolerance-based allocation match should be interpreted alongside continuous allocation and realized-outcome distances.
 
-- continuous final-choice distance metrics: tolerance match rate, mean absolute allocation gap, and RMSE allocation gap
-- common true initial states across policies
-- optional common observation streams for information-gathering operations
-- larger configurable VOI sample counts and episode counts
-- positive and near-zero average utility environments
-- one-dimensional parameter sweeps from low to high values
-- candidate searches for near-always 50/50 and near-always equal-outcome regimes
-- focused targeted grids for near-50/50, symmetric equal-outcome, and distinct equal-outcome regimes
-- DP sensitivity diagnostics over `max_samples`, `mean_grid_size`, and `observation_branches`
-- Gauss-Hermite integration utilities and diagnostics
+The RR methods implemented here are approximations unless explicitly identified as independently validated terminal optimization. Results should not be described as exact continuous-state optimal policies without additional proof.
 
-Prior knowledge is represented as pre-deliberation samples in full episode runs. These samples update the initial belief means and variances before metalevel actions begin, but they do not count as deliberation actions or consume deliberation time.
+## Documentation
 
-## Interpretation Notes
-
-Smoke runs are for checking that the code path works. Do not interpret them as evidence.
-
-Local serious runs are useful for preliminary inspection. If confidence intervals overlap substantially, do not claim one policy is better.
-
-Server runs should be used for final claims, especially for approximation-method comparisons and parameter sweeps.
+- `src/README.md`: package map
+- `scripts/README.md`: command-line workflow map
+- `configs/README.md`: configuration and reference-artifact policy
+- `notebooks/README.md`: notebook index
+- `tests/README.md`: test-purpose index

@@ -15,10 +15,10 @@ PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QDEL_BIN="${QDEL_BIN:-qdel}"
 QSTAT_BIN="${QSTAT_BIN:-qstat}"
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 SCHEDULER_USER="$(id -un)"
-MANIFEST="$(cd "$(dirname "${MANIFEST}")" && pwd)/$(basename "${MANIFEST}")"
-OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd)/$(basename "${OUTPUT_ROOT}")"
+MANIFEST="$(cd "$(dirname "${MANIFEST}")" && pwd -P)/$(basename "${MANIFEST}")"
+OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd -P)/$(basename "${OUTPUT_ROOT}")"
 
 if [[ -e "${OUTPUT_ROOT}" ]]; then
   echo "Refusing to overwrite terminal validation run: ${OUTPUT_ROOT}" >&2
@@ -31,7 +31,7 @@ if [[ "${actual_verdict_hash}" != "${APPROVED_REVIEW_VERDICT_HASH}" ]]; then
   exit 1
 fi
 
-read -r stage task_count queue h_rt memory throttle manifest_hash < <(
+manifest_fields="$(
   "${PYTHON_BIN}" - "${MANIFEST}" <<'PY'
 import json, sys
 raw = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -45,8 +45,10 @@ r = m["resources"]
 print(m["stage"], m["task_count"], r["queue"], r["h_rt_seconds"],
       r["memory_bytes"], r["throttle"], m["manifest_hash"])
 PY
-)
-mapfile -t partition_values < <(
+)"
+read -r stage task_count queue h_rt memory throttle manifest_hash <<< "${manifest_fields}"
+
+partition_output="$(
   "${PYTHON_BIN}" scripts/terminal_validation_array.py describe-task-partitions \
     --manifest "${MANIFEST}" | "${PYTHON_BIN}" -c '
 import json,sys
@@ -57,7 +59,11 @@ for key in ("one_slot_task_ids","shared_two_task_ids"):
 print(p["one_slot_throttle"])
 print(p["shared_two_throttle"])
 '
-)
+)"
+partition_values=()
+while IFS= read -r value; do
+  partition_values+=("${value}")
+done <<< "${partition_output}"
 if [[ "${#partition_values[@]}" -ne 4 ]]; then
   echo "Unable to derive exact terminal task partitions." >&2
   exit 1
@@ -308,7 +314,8 @@ import sys
 from src.experiments.terminal_execution import validate_qstat_snapshot_text
 validate_qstat_snapshot_text(Path(sys.argv[1]).read_text(encoding="utf-8"), 0)
 PY
-  mapfile -t preexisting_tagged_jobs < <("${PYTHON_BIN}" - "${before}" "${RUN_TAG}" <<'PY'
+  preexisting_output="$(
+    "${PYTHON_BIN}" - "${before}" "${RUN_TAG}" <<'PY'
 from pathlib import Path
 import sys
 from xml.etree import ElementTree
@@ -321,7 +328,11 @@ for job in root.iter():
     if values.get("JB_name", "").endswith("_" + sys.argv[2]) and values.get("JB_job_number", "").isdigit():
         print(values["JB_job_number"])
 PY
-)
+  )"
+  preexisting_tagged_jobs=()
+  while IFS= read -r value; do
+    [[ -n "${value}" ]] && preexisting_tagged_jobs+=("${value}")
+  done <<< "${preexisting_output}"
   declare -a unexpected_tagged_jobs=()
   for preexisting_id in ${preexisting_tagged_jobs[@]+"${preexisting_tagged_jobs[@]}"}; do
     if [[ "${submitted_job_set}" != *" ${preexisting_id} "* ]]; then
@@ -344,7 +355,8 @@ PY
   job_id="$(printf '%s' "${raw}" | sed -E 's/^([0-9]+).*/\1/')"
   if [[ "${qsub_status}" -ne 0 || ! "${job_id}" =~ ^[0-9]+$ ]]; then
     "${QSTAT_BIN}" -xml -u "${SCHEDULER_USER}" > "${after}"
-    mapfile -t recovered < <("${PYTHON_BIN}" - "${before}" "${after}" "${job_name}" <<'PY'
+    recovered_output="$(
+      "${PYTHON_BIN}" - "${before}" "${after}" "${job_name}" <<'PY'
 from pathlib import Path
 import sys
 from xml.etree import ElementTree
@@ -362,7 +374,11 @@ def matching(path, name):
 for item in sorted(matching(sys.argv[2], sys.argv[3]) - matching(sys.argv[1], sys.argv[3]), key=int):
     print(item)
 PY
-)
+    )"
+    recovered=()
+    while IFS= read -r value; do
+      [[ -n "${value}" ]] && recovered+=("${value}")
+    done <<< "${recovered_output}"
     if [[ "${#recovered[@]}" -gt 0 ]]; then
       submitted_jobs+=("${recovered[@]}")
       for recovered_id in "${recovered[@]}"; do
@@ -435,11 +451,20 @@ while [[ "${remaining}" -gt 0 ]]; do
   fi
 done
 
-declare -A partition_parts=()
+partition_part_1=0
+partition_part_2=0
 for index in "${!group_specs[@]}"; do
   label="${group_labels[index]}"
-  partition_parts[${label}]=$((${partition_parts[${label}]:-0} + 1))
-  part="${partition_parts[${label}]}"
+  if [[ "${label}" == "1" ]]; then
+    partition_part_1=$((partition_part_1 + 1))
+    part="${partition_part_1}"
+  elif [[ "${label}" == "2" ]]; then
+    partition_part_2=$((partition_part_2 + 1))
+    part="${partition_part_2}"
+  else
+    echo "Unknown terminal slot partition label: ${label}" >&2
+    exit 1
+  fi
   job_name="tv${stage}${label}p${part}_${token}"
   job_file="${OUTPUT_ROOT}/scheduler/jobs/${job_name}.job"
   write_job "${job_file}" "${job_name}" "${group_specs[index]}" \

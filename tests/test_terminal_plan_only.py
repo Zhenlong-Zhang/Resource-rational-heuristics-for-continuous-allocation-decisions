@@ -1,3 +1,5 @@
+"""Test purpose: validate terminal planning diagnostics without executing scientific tasks."""
+
 from __future__ import annotations
 
 import ast
@@ -214,7 +216,11 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             ),
             patch.object(evidence, "validate_structural_symmetry_proof", return_value=True),
             patch.object(evidence, "solve_terminal_reference_a", return_value=reference_a),
-            patch.object(evidence, "validate_terminal_reference_record", side_effect=forbidden),
+            patch.object(
+                evidence,
+                "source_validate_terminal_reference_record",
+                side_effect=forbidden,
+            ),
             patch.object(evidence, "validate_production_against_reference_a", side_effect=forbidden),
             patch.object(
                 evidence,
@@ -260,7 +266,7 @@ class TerminalPlanOnlyTests(unittest.TestCase):
             "optimize_terminal_allocation_with_trace",
             "solve_terminal_reference_a_with_trace",
             "solve_terminal_reference_b_with_trace",
-            "validate_terminal_reference_record",
+            "source_validate_terminal_reference_record",
             "validate_production_against_reference_a",
             "validate_terminal_reference_agreement",
         }

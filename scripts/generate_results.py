@@ -14,9 +14,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.experiments.compare import ENVIRONMENT_LIBRARY  # noqa: E402
 from src.experiments.diagnostics import (  # noqa: E402
-    identify_r4_manual_advantage_candidates,
-    run_r4_diagnostic_policy_grid,
-    summarize_r4_diagnostic_policies,
+    identify_active_search_manual_advantage_candidates,
+    run_active_search_diagnostic_policy_grid,
+    summarize_active_search_diagnostic_policies,
 )
 from src.experiments.dp_diagnostics import run_dp_sensitivity_analysis  # noqa: E402
 from src.experiments.randomization import build_evaluation_episodes  # noqa: E402
@@ -68,7 +68,7 @@ def parse_sections(value: str) -> set[str]:
     sections = {part.strip() for part in value.split(",") if part.strip()}
     if not sections or "all" in sections:
         return {"step7", "sweeps", "regimes", "dp", "gh"}
-    allowed = {"step7", "sweeps", "regimes", "regime_grid", "r4_diagnostics", "dp", "gh"}
+    allowed = {"step7", "sweeps", "regimes", "regime_grid", "active_search_diagnostic", "dp", "gh"}
     unknown = sorted(sections - allowed)
     if unknown:
         raise ValueError(f"Unknown sections: {unknown}")
@@ -80,11 +80,11 @@ def parse_args() -> argparse.Namespace:
         description="Generate resource-rational allocation results and diagnostic grids."
     )
     parser.add_argument("--preset", choices=sorted(PRESETS), default="smoke")
-    parser.add_argument("--output-dir", default="results/round2_current")
+    parser.add_argument("--output-dir", default="results/baseline_experiments_current")
     parser.add_argument(
         "--sections",
         default="all",
-        help="Comma-separated: step7,sweeps,regimes,regime_grid,r4_diagnostics,dp,gh or all.",
+        help="Comma-separated: step7,sweeps,regimes,regime_grid,active_search_diagnostic,dp,gh or all.",
     )
     parser.add_argument("--episodes", type=int, default=None)
     parser.add_argument("--voi-samples", type=int, default=None)
@@ -444,30 +444,30 @@ def run_targeted_regime_outputs(
     }
 
 
-def run_r4_diagnostic_outputs(
+def run_active_search_diagnostic_outputs(
     output_dir: Path,
     regime_configs: List[tuple[str, int, str, Dict[str, float], EnvironmentConfig]],
     settings: EvaluationSettings,
     manual_active_samples_per_person: int,
 ) -> Dict[str, List[Dict[str, object]]]:
-    behavior_rows = run_r4_diagnostic_policy_grid(
+    behavior_rows = run_active_search_diagnostic_policy_grid(
         regime_configs=regime_configs,
         settings=settings,
         manual_samples_per_person=manual_active_samples_per_person,
     )
-    summary_rows = summarize_r4_diagnostic_policies(behavior_rows)
-    candidate_rows = identify_r4_manual_advantage_candidates(behavior_rows)
-    write_csv(output_dir / "r4_diagnostic_policy_profiles.csv", behavior_rows)
-    write_csv(output_dir / "r4_diagnostic_environment_summary.csv", summary_rows)
+    summary_rows = summarize_active_search_diagnostic_policies(behavior_rows)
+    candidate_rows = identify_active_search_manual_advantage_candidates(behavior_rows)
+    write_csv(output_dir / "active_search_diagnostic_policy_profiles.csv", behavior_rows)
+    write_csv(output_dir / "active_search_diagnostic_environment_summary.csv", summary_rows)
     write_csv(
-        output_dir / "r4_diagnostic_manual_advantage_candidates.csv",
+        output_dir / "active_search_diagnostic_manual_advantage_candidates.csv",
         candidate_rows,
         fieldnames=candidate_fieldnames(summary_rows or behavior_rows),
     )
     return {
-        "r4_diagnostic_policy_profiles": behavior_rows,
-        "r4_diagnostic_environment_summary": summary_rows,
-        "r4_diagnostic_manual_advantage_candidates": candidate_rows,
+        "active_search_diagnostic_policy_profiles": behavior_rows,
+        "active_search_diagnostic_environment_summary": summary_rows,
+        "active_search_diagnostic_manual_advantage_candidates": candidate_rows,
     }
 
 
@@ -683,30 +683,30 @@ def write_figures(output_dir: Path, result_sets: Dict[str, List[Dict[str, object
             title="Targeted regime mean realized true-outcome gap",
             max_labels=80,
         )
-    if "r4_diagnostic_policy_profiles" in result_sets:
-        rows = result_sets["r4_diagnostic_policy_profiles"]
+    if "active_search_diagnostic_policy_profiles" in result_sets:
+        rows = result_sets["active_search_diagnostic_policy_profiles"]
         write_heatmap_svg(
-            figures_dir / "r4_diagnostic_true_equal_outcome_rate.svg",
+            figures_dir / "active_search_diagnostic_true_equal_outcome_rate.svg",
             rows,
             x_key="grid_index",
             y_key="policy",
             value_key="true_equal_outcome_rate",
-            title="R4 diagnostic true-state equal-outcome rate",
+            title="Active-search diagnostic true-state equal-outcome rate",
             max_labels=80,
         )
         write_heatmap_svg(
-            figures_dir / "r4_diagnostic_mean_sample_count.svg",
+            figures_dir / "active_search_diagnostic_mean_sample_count.svg",
             rows,
             x_key="grid_index",
             y_key="policy",
             value_key="mean_sample_count",
-            title="R4 diagnostic mean sample count",
+            title="Active-search diagnostic mean sample count",
             max_labels=80,
         )
-    if "r4_diagnostic_environment_summary" in result_sets:
-        rows = result_sets["r4_diagnostic_environment_summary"]
+    if "active_search_diagnostic_environment_summary" in result_sets:
+        rows = result_sets["active_search_diagnostic_environment_summary"]
         write_heatmap_svg(
-            figures_dir / "r4_diagnostic_manual_utility_advantage.svg",
+            figures_dir / "active_search_diagnostic_manual_utility_advantage.svg",
             rows,
             x_key="grid_index",
             y_key="regime_grid",
@@ -774,12 +774,12 @@ def main() -> None:
     if "regime_grid" in sections:
         regime_configs = build_targeted_regime_configs_for_args(args)
         result_sets.update(run_targeted_regime_outputs(output_dir, regime_configs, settings))
-    if "r4_diagnostics" in sections:
+    if "active_search_diagnostic" in sections:
         if not args.regime_grid:
-            args.regime_grid = ["r4_diagnostic_active_search"]
+            args.regime_grid = ["active_search_benchmark"]
         regime_configs = build_targeted_regime_configs_for_args(args)
         result_sets.update(
-            run_r4_diagnostic_outputs(
+            run_active_search_diagnostic_outputs(
                 output_dir,
                 regime_configs,
                 settings,

@@ -72,7 +72,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "total_time": [80.0, 120.0],
         "learning_per_unit_of_tutoring": [1.0, 1.5],
     },
-    # Designed for Falk's Round 3 request: start from symmetric or very
+    # Designed for Falk's method comparison request: start from symmetric or very
     # limited prior knowledge, actively collect information, choose unequal
     # allocations, and approximate equal outcomes in the hidden true state.
     "active_search_equal_outcome_focused": {
@@ -84,7 +84,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "sample_time_cost": [0.25, 0.5, 1.0],
         "prior_sample_count": [0.0],
     },
-    # Narrow follow-up to the first 486-environment Round 3 active-search run.
+    # Narrow follow-up to the first 486-environment method comparison active-search run.
     # It keeps no prior samples and concentrates around the strongest previous
     # active/unequal regions, with lower observation noise and lower positive
     # sampling time costs. Costs are kept positive so common-observation stream
@@ -98,7 +98,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "sample_time_cost": [0.05, 0.1, 0.25],
         "prior_sample_count": [0.0],
     },
-    # R4 diagnostic grid from Falk's 07/01 comments. This grid is not meant to
+    # Active-search diagnostic grid from Falk's 07/01 comments. This grid is not meant to
     # be an exhaustive ecological sweep. It deliberately creates larger need
     # separation, reliable/cheap information, no prior samples, and near
     # just-enough-time conditions so manual active-search equal-outcome behavior
@@ -106,7 +106,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
     #
     # `utility_exponent < 0.5` approximates "quickly flattens after needs are
     # met" with the current concave utility family. It is not a true plateau.
-    "r4_diagnostic_active_search": {
+    "active_search_benchmark": {
         "mu_need": [35.0, 45.0, 55.0],
         "total_time": [80.0, 100.0, 120.0],
         "learning_per_unit_of_tutoring": [1.0, 1.25],
@@ -139,7 +139,7 @@ SERVER_SWEEP_EPISODES = 200
 DEFAULT_MAX_GRID_POINTS = 36
 SERVER_MAX_GRID_POINTS = 2000
 
-R5_SAMPLING_COST_PERCENTAGES: Sequence[float] = (
+ACTIVE_SEARCH_SAMPLING_COST_PERCENTAGES: Sequence[float] = (
     0.0,
     0.001,
     0.005,
@@ -152,7 +152,7 @@ R5_SAMPLING_COST_PERCENTAGES: Sequence[float] = (
     1.0,
 )
 
-R5_ORACLE_GRID_VALUES: Dict[str, Sequence[float]] = {
+ACTIVE_SEARCH_ORACLE_GRID_VALUES: Dict[str, Sequence[float]] = {
     "mu_need": [40.0, 60.0, 80.0],
     "sigma_need": [10.0, 20.0, 30.0],
     "total_time": [80.0, 120.0, 160.0],
@@ -176,12 +176,12 @@ def build_environment(name: str = "baseline") -> EnvironmentConfig:
     )
 
 
-def build_r5_oracle_map_configs(
+def build_active_search_oracle_map_configs(
     grid_values: Mapping[str, Sequence[float]] | None = None,
 ) -> List[tuple[str, EnvironmentConfig]]:
     """Build the prespecified unchanged-objective oracle discovery grid."""
 
-    values = dict(grid_values or R5_ORACLE_GRID_VALUES)
+    values = dict(grid_values or ACTIVE_SEARCH_ORACLE_GRID_VALUES)
     keys = list(values)
     configs: List[tuple[str, EnvironmentConfig]] = []
     for index, combo in enumerate(product(*(values[key] for key in keys))):
@@ -196,16 +196,16 @@ def build_r5_oracle_map_configs(
         )
         for key, value in zip(keys, combo):
             config = replace(config, **{key: value})
-        label = f"r5_oracle_{index:04d}_" + "_".join(
+        label = f"active_search_oracle_{index:04d}_" + "_".join(
             f"{key}={value:g}" for key, value in zip(keys, combo)
         )
         configs.append((label, config))
     return configs
 
 
-def build_r5_sampling_cost_configs(
+def build_active_search_sampling_cost_configs(
     anchors: Sequence[tuple[str, EnvironmentConfig]],
-    percentages: Sequence[float] = R5_SAMPLING_COST_PERCENTAGES,
+    percentages: Sequence[float] = ACTIVE_SEARCH_SAMPLING_COST_PERCENTAGES,
     zero_cost_cap: int = 12,
     positive_cost_cap: int = 40,
 ) -> List[tuple[str, EnvironmentConfig]]:
@@ -232,7 +232,7 @@ def build_r5_sampling_cost_configs(
     return configs
 
 
-def build_r5_oat_configs(
+def build_active_search_oat_configs(
     anchor_name: str,
     anchor: EnvironmentConfig,
     feature_values: Mapping[str, Sequence[float]],
@@ -261,12 +261,12 @@ def build_r5_oat_configs(
     return configs
 
 
-def build_r5_six_sample_configs() -> List[tuple[str, EnvironmentConfig]]:
+def build_active_search_six_sample_configs() -> List[tuple[str, EnvironmentConfig]]:
     """Discovery grid where repeated observations can remain decision-relevant."""
 
     values: Dict[str, Sequence[float]] = {
         # Center the discovery grid on the strongest high-separation oracle
-        # region from the R5 full-information map (mu=60, T=160).
+        # region from the ActiveSearch full-information map (mu=60, T=160).
         "sigma_need": [20.0, 30.0, 40.0],
         "sigma_sample": [10.0, 20.0, 30.0],
         "total_time": [140.0, 160.0, 180.0],
@@ -294,7 +294,7 @@ def build_r5_six_sample_configs() -> List[tuple[str, EnvironmentConfig]]:
             expected_utility_draws=500,
             **parameters,
         )
-        label = f"r5_six_{index:04d}_" + "_".join(
+        label = f"active_search_six_{index:04d}_" + "_".join(
             f"{key}={value:g}" for key, value in zip(keys, combo)
         )
         configs.append((label, config))
@@ -431,7 +431,7 @@ def _targeted_regime_base_environment(grid_name: str) -> EnvironmentConfig:
         "equal_outcome_distinct_focused",
         "active_search_equal_outcome_focused",
         "active_search_equal_outcome_narrow_followup",
-        "r4_diagnostic_active_search",
+        "active_search_benchmark",
     }:
         return replace(
             base,

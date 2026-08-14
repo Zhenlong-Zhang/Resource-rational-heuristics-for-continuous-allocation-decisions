@@ -1,3 +1,5 @@
+"""Test purpose: validate isolated reference-process IPC, evidence, and failure handling."""
+
 from __future__ import annotations
 
 from dataclasses import fields, replace

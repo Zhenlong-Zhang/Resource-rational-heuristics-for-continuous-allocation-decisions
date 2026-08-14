@@ -56,7 +56,7 @@ from ..solvers.terminal_reference_b import (
     source_validate_terminal_reference_b_record,
     terminal_reference_b_numerical_method_config_hash,
 )
-from .r6_prefeedback_positive_need import (
+from .positive_need import (
     build_development_environments,
 )
 from .terminal_reference_b_process import solve_terminal_reference_b_concurrently
@@ -68,7 +68,7 @@ from .terminal_validation_suite import (
     TerminalValidationSuite,
     build_local_diagnostic_base_provider,
     canonical_hash,
-    load_frozen_r6_spec,
+    load_frozen_strategy_mapping_spec,
     load_terminal_validation_identities,
     reconstruct_canonical_base_record,
     terminal_scientific_spec_hash as terminal_suite_scientific_spec_hash,
@@ -427,7 +427,7 @@ def reconstruct_terminal_evidence_source(
 ) -> Tuple[Any, Any]:
     environments = {
         environment.name: environment
-        for environment in build_development_environments(load_frozen_r6_spec())
+        for environment in build_development_environments(load_frozen_strategy_mapping_spec())
     }
     environment = environments.get(descriptor.environment)
     if environment is None or environment.environment_hash != descriptor.environment_hash:

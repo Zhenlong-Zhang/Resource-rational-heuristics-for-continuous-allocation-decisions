@@ -1,3 +1,5 @@
+"""Test purpose: validate selection and loading of the accepted canonical terminal provider."""
+
 from __future__ import annotations
 
 from dataclasses import replace

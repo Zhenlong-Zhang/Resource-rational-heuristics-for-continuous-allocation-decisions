@@ -27,18 +27,18 @@ class EqualDivisionPolicy:
 
 
 class EqualSplitBaselinePolicy(EqualDivisionPolicy):
-    """R4 diagnostic alias for the equal-split baseline.
+    """Active-search diagnostic alias for the equal-split baseline.
 
     This policy is behaviorally identical to equal division: it terminates
     without acquiring new information and allocates the remaining resource 50/50.
-    The separate name keeps the R4 manual-baseline comparison readable.
+    The separate name keeps the manual-baseline comparison readable.
     """
 
     name = "manual_equal_split"
 
 
 class ManualActiveSearchEqualOutcomePolicy:
-    """Transparent hand-coded active-search benchmark for R4 diagnostics.
+    """Transparent hand-coded active-search benchmark for active-search diagnostics.
 
     The policy deliberately avoids hidden true-state information. It gathers a
     fixed, balanced number of ordinary observations from both recipients, then

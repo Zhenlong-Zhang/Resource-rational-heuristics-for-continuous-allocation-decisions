@@ -26,7 +26,7 @@ from ..solvers.terminal_reference_agreement import (
 from ..solvers.terminal_reference_b import (
     terminal_reference_b_numerical_method_config_hash,
 )
-from .r6_prefeedback_positive_need import (
+from .positive_need import (
     DEFAULT_SPEC_PATH,
     PositiveNeedEnvironment,
     _belief_hash as legacy_belief_hash,
@@ -78,6 +78,7 @@ FROZEN_LEGACY_BELIEF_HASH_OVERRIDES = {
     83: "8ca8c15263c58e15be8208376ec7ef11b2642aa1fb4ca13745a2923d75a8f795",
     88: "8ca8c15263c58e15be8208376ec7ef11b2642aa1fb4ca13745a2923d75a8f795",
 }
+# This value is part of the frozen evidence schema and must remain byte-compatible.
 BASE_CONSTRUCTION_RULE = "unchanged_original_r6_numerical_case"
 ONE_STEP_CONSTRUCTION_RULE = "component_need_plus_z_sigma_actual_time"
 REACHABLE_CONSTRUCTION_RULE = "median_total_largest_gap_frozen_history"
@@ -193,28 +194,28 @@ def _file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def load_frozen_r6_spec() -> Dict[str, object]:
+def load_frozen_strategy_mapping_spec() -> Dict[str, object]:
     if _file_hash(DEFAULT_SPEC_PATH) != LEGACY_SPEC_HASH:
-        raise RuntimeError("the immutable original R6 spec hash changed")
+        raise RuntimeError("the immutable original StrategyMapping spec hash changed")
     return load_positive_need_spec(DEFAULT_SPEC_PATH)
 
 
-def load_frozen_r6_cases(spec: Optional[Mapping[str, object]] = None) -> Tuple[Dict[str, object], ...]:
+def load_frozen_strategy_mapping_cases(spec: Optional[Mapping[str, object]] = None) -> Tuple[Dict[str, object], ...]:
     generated = [dict(case) for case in build_numerical_validation_cases(spec)]
     by_id = {int(case["case_id"]): case for case in generated}
     if sorted(by_id) != list(range(90)) or len(generated) != 90:
-        raise RuntimeError("the original R6 case IDs must be exactly 0..89")
+        raise RuntimeError("the original StrategyMapping case IDs must be exactly 0..89")
     for case_id, belief_hash in FROZEN_LEGACY_BELIEF_HASH_OVERRIDES.items():
         by_id[case_id]["belief_hash"] = belief_hash
     frozen = tuple(by_id[index] for index in range(90))
     if _legacy_hash(frozen) != LEGACY_NUMERICAL_CASE_HASH:
-        raise RuntimeError("the immutable original R6 case hash changed")
+        raise RuntimeError("the immutable original StrategyMapping case hash changed")
     return frozen
 
 
 def build_terminal_scientific_projection(spec: Optional[Mapping[str, object]] = None) -> Dict[str, object]:
-    frozen_spec = dict(spec or load_frozen_r6_spec())
-    cases = load_frozen_r6_cases(frozen_spec)
+    frozen_spec = dict(spec or load_frozen_strategy_mapping_spec())
+    cases = load_frozen_strategy_mapping_cases(frozen_spec)
     environments = build_development_environments(frozen_spec)
     numerical = dict(frozen_spec["numerical_settings"])
     grid = dict(frozen_spec["environment_grid"])
@@ -450,8 +451,8 @@ class TerminalValidationIdentities:
 
 
 def load_terminal_validation_identities() -> TerminalValidationIdentities:
-    spec = load_frozen_r6_spec()
-    load_frozen_r6_cases(spec)
+    spec = load_frozen_strategy_mapping_spec()
+    load_frozen_strategy_mapping_cases(spec)
     identities = TerminalValidationIdentities(
         LEGACY_SPEC_HASH, LEGACY_NUMERICAL_CASE_HASH,
         terminal_scientific_spec_hash(spec), NUMERICAL_METHOD_CONFIG_NAME,
@@ -707,10 +708,10 @@ def canonical_base_provider_failures(
         failures.append("provider_record_count")
     if tuple(record.case_id for record in provider.records) != tuple(range(90)):
         failures.append("provider_case_order")
-    cases = load_frozen_r6_cases()
+    cases = load_frozen_strategy_mapping_cases()
     environments = {
         environment.name: environment
-        for environment in build_development_environments(load_frozen_r6_spec())
+        for environment in build_development_environments(load_frozen_strategy_mapping_spec())
     }
     for index, record in enumerate(provider.records):
         if index >= len(cases):
@@ -757,13 +758,13 @@ def canonical_base_provider_failures(
 def build_local_diagnostic_base_provider() -> CanonicalBaseProvider:
     """Rebuild local cases for diagnostics without claiming authoritative identity."""
 
-    spec = load_frozen_r6_spec()
+    spec = load_frozen_strategy_mapping_spec()
     environments = {
         environment.name: environment
         for environment in build_development_environments(spec)
     }
     records = []
-    for case in load_frozen_r6_cases(spec):
+    for case in load_frozen_strategy_mapping_cases(spec):
         environment = environments[str(case["environment"])]
         belief = _numerical_belief(environment, str(case["belief_kind"]))
         records.append(_make_canonical_base_record(case, environment, belief))
@@ -868,7 +869,7 @@ def _runtime_base_cases(
         )
     environments = {
         env.name: env
-        for env in build_development_environments(load_frozen_r6_spec())
+        for env in build_development_environments(load_frozen_strategy_mapping_spec())
     }
     result = []
     for record in provider.records:
@@ -988,7 +989,7 @@ def _apply_history(mdp, anchor, actions, offsets):
 def build_terminal_reachable_core_suite(identities: Optional[TerminalValidationIdentities] = None):
     identities = identities or load_terminal_validation_identities()
     descriptors = []
-    for env in build_development_environments(load_frozen_r6_spec()):
+    for env in build_development_environments(load_frozen_strategy_mapping_spec()):
         mdp = FiniteSupportMetaMDP(env.config, env.prior)
         for profile, orientation, anchor_orientation, actions, offsets in _profiles(mdp):
             belief = _apply_history(mdp, _anchor_atom(env, anchor_orientation), actions, offsets)
@@ -1004,8 +1005,8 @@ def build_terminal_reachable_core_suite(identities: Optional[TerminalValidationI
                                       "anchor_orientation": anchor_orientation,
                                       "action_sequence": actions, "offset_sequence": offsets}))
     names = tuple(item[0] for item in _profiles(FiniteSupportMetaMDP(
-        build_development_environments(load_frozen_r6_spec())[0].config,
-        build_development_environments(load_frozen_r6_spec())[0].prior)))
+        build_development_environments(load_frozen_strategy_mapping_spec())[0].config,
+        build_development_environments(load_frozen_strategy_mapping_spec())[0].prior)))
     return _make_suite("reachable_core", REACHABLE_CORE_SUITE_VERSION, True,
                        REACHABLE_MANIFEST_RULE, descriptors,
                        names, identities)
@@ -1365,8 +1366,8 @@ __all__ = [name for name in globals() if name.startswith(("build_terminal_", "lo
     "canonical_base_provider_hash",
     "canonical_base_record_hash",
     "canonical_hash",
-    "load_frozen_r6_cases",
-    "load_frozen_r6_spec",
+    "load_frozen_strategy_mapping_cases",
+    "load_frozen_strategy_mapping_spec",
     "make_canonical_base_provider",
     "reconstruct_canonical_base_record",
     "reconstruct_terminal_validation_descriptor",

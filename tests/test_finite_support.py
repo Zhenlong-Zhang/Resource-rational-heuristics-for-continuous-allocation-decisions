@@ -1,3 +1,5 @@
+"""Test purpose: validate finite-support beliefs, utility, sampling, and myopic VOI semantics."""
+
 from __future__ import annotations
 
 import math

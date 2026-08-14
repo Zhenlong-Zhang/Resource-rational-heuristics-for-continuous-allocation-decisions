@@ -1,17 +1,14 @@
-# Notebooks
+# Reproducibility Notebooks
 
-`run_round2_pipeline.ipynb` is an interactive wrapper around `scripts/generate_results.py`.
+The notebooks are organized by the research update in which an analysis was reported. They call the shared implementation in `src/` and `scripts/`; they do not duplicate model logic.
 
-Use it when you want to:
+| Update | Notebook | Purpose |
+| --- | --- | --- |
+| Round 2 | `round_02/reproduce_round_02.ipynb` | Reproduce the Step 7 comparisons, parameter sweeps, targeted regime searches, and approximation diagnostics. |
+| Round 3 | `round_03/reproduce_round_03.ipynb` | Verify the observation-stream invariant and reproduce the active-search true-outcome searches. |
+| Round 4 | `round_04/reproduce_round_04.ipynb` | Reproduce the deliberately constructed active-search benchmark comparison. |
+| Round 5 | `round_05/reproduce_round_05.ipynb` | Reproduce the objective, information-value, confirmation, and non-myopic solver analyses. |
 
-- change episodes, VOI samples, sweep features, DP grids, or integration settings in notebook cells
-- run the same pipeline as the command-line script
-- inspect generated CSV outputs quickly with pandas
+Each notebook exposes the main episode, VOI-sampling, grid, seed, and output settings near the top. Large configurations are shown explicitly but are not started until `RUN = True` is set in the notebook.
 
-The notebook does not duplicate model code. It builds a command and executes the shared runner, so results remain aligned with the repository code.
-
-`run_round5_pipeline.ipynb` is the equivalent wrapper for the frozen Round 5
-Hoffman2 array and report workflow. Submission is disabled by default. The
-notebook can print the exact command, submit it when running on Hoffman2, inspect
-manifest progress, and generate the final report from strictly collected result
-folders without duplicating simulation or analysis code.
+Generated tables and figures are written under `results/`, which is ignored by Git.

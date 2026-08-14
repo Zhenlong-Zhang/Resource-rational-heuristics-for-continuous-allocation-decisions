@@ -1,3 +1,5 @@
+"""Test purpose: validate pre-execution terminal setup and scheduler diagnostics."""
+
 from __future__ import annotations
 
 import json

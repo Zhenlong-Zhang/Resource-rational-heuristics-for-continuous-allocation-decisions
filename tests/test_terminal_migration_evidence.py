@@ -1,3 +1,5 @@
+"""Test purpose: validate terminal migration evidence construction and source-code provenance."""
+
 from __future__ import annotations
 
 import ast

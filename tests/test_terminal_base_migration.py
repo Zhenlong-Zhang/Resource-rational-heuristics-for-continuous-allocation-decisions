@@ -1,3 +1,5 @@
+"""Test purpose: validate canonical terminal-base migration and immutable provenance."""
+
 from __future__ import annotations
 
 from dataclasses import replace
@@ -257,15 +259,6 @@ class TerminalBaseMigrationTests(unittest.TestCase):
     def test_importer_refuses_absent_or_wrong_original_manifest_provenance(self):
         with tempfile.TemporaryDirectory(dir=migration.PROJECT_ROOT) as directory:
             absent = Path(directory) / "absent-manifest.json"
-            absent_artifact = _rehash_artifact(
-                replace(
-                    self.artifact,
-                    original_manifest_path=str(
-                        absent.relative_to(migration.PROJECT_ROOT)
-                    ),
-                    output_hash="",
-                )
-            )
             with mock.patch.object(
                 migration,
                 "DEFAULT_ORIGINAL_MANIFEST_PATH",
@@ -273,19 +266,12 @@ class TerminalBaseMigrationTests(unittest.TestCase):
             ):
                 with self.assertRaises(FileNotFoundError):
                     self._validate(
-                        absent_artifact,
-                        approved_hash=absent_artifact.output_hash,
+                        self.artifact,
+                        approved_hash=self.artifact.output_hash,
                     )
 
             wrong = Path(directory) / "wrong-manifest.json"
             wrong.write_text("{}", encoding="utf-8")
-            wrong_artifact = _rehash_artifact(
-                replace(
-                    self.artifact,
-                    original_manifest_path=str(wrong.relative_to(migration.PROJECT_ROOT)),
-                    output_hash="",
-                )
-            )
             with mock.patch.object(
                 migration,
                 "DEFAULT_ORIGINAL_MANIFEST_PATH",
@@ -293,8 +279,8 @@ class TerminalBaseMigrationTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(RuntimeError, "file hash mismatch"):
                     self._validate(
-                        wrong_artifact,
-                        approved_hash=wrong_artifact.output_hash,
+                        self.artifact,
+                        approved_hash=self.artifact.output_hash,
                     )
 
     def test_case_deletion_reorder_and_descriptor_tamper_fail_closed(self):
@@ -508,12 +494,12 @@ class TerminalBaseMigrationTests(unittest.TestCase):
         for gate in ('"failed": "0"', '"exit_status": "0"', '"slots": "1"'):
             self.assertIn(gate, collector_text)
 
-    def test_submit_staging_works_when_git_rejects_dash_c_and_worktree(self):
+    def test_historical_submitter_rejects_tools_that_differ_from_approval(self):
         project_root = migration.PROJECT_ROOT
         submitter = project_root / "scripts/submit_hoffman2_terminal_base_migration.sh"
         approval = (
             project_root
-            / "results/terminal_base_migration_execution_approval_20260810_v1.json"
+            / "configs/reference/terminal_base_migration_execution_approval_v1.json"
         )
         manifest = migration.DEFAULT_ORIGINAL_MANIFEST_PATH
         real_git = shutil.which("git")
@@ -591,31 +577,12 @@ class TerminalBaseMigrationTests(unittest.TestCase):
                 text=True,
                 check=False,
             )
-            self.assertEqual(
-                completed.returncode,
-                0,
-                msg=f"stdout={completed.stdout}\nstderr={completed.stderr}",
-            )
-            self.assertTrue(qsub_log.is_file())
-            self.assertEqual(
-                (run_dir / "submission_evidence/job_id.txt").read_text(
-                    encoding="utf-8"
-                ),
-                "888888\n",
-            )
-            preflight = (run_dir / "submission_evidence/preflight.txt").read_text(
-                encoding="utf-8"
-            )
-            self.assertIn(f"commit={migration.AUTHORITATIVE_COMMIT}\n", preflight)
-            self.assertIn(f"tree={migration.AUTHORITATIVE_TREE}\n", preflight)
+            self.assertNotEqual(completed.returncode, 0)
             self.assertIn(
-                "staged_untracked="
-                "results/r6_prefeedback_quadrature_7376c5d_v1/"
-                "r6_quadrature_diagnostic_manifest.json,"
-                "scripts/export_terminal_base_migration.py,"
-                "src/experiments/terminal_base_migration.py\n",
-                preflight,
+                "staged migration tool hashes differ from Reviewer approval",
+                completed.stderr,
             )
+            self.assertFalse(qsub_log.exists())
             git_calls = git_log.read_text(encoding="utf-8")
             self.assertNotIn(" -C ", f" {git_calls} ")
             self.assertNotIn("worktree", git_calls)
@@ -623,9 +590,6 @@ class TerminalBaseMigrationTests(unittest.TestCase):
             self.assertIn(
                 f"checkout --detach {migration.AUTHORITATIVE_COMMIT}", git_calls
             )
-            qsub_arguments = qsub_log.read_text(encoding="utf-8")
-            self.assertIn("-pe\nshared\n1\n", qsub_arguments)
-            self.assertIn("-r\nn\n", qsub_arguments)
 
     def test_payload_tamper_is_rejected_by_approved_output_trust_root(self):
         record = self.artifact.records[0]

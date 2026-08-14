@@ -1,3 +1,5 @@
+"""Test purpose: validate terminal execution leases, timeouts, status transitions, and atomic outputs."""
+
 from __future__ import annotations
 
 from dataclasses import replace

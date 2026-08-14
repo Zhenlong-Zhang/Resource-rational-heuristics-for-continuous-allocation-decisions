@@ -1,13 +1,11 @@
-# Simulator Helpers
+# Simulator
 
-`simulator.py` contains lightweight wrappers around the MDP.
+`simulator.py` provides small adapters around the MDP episode runner.
 
-Key functions/classes:
+- `run_single_episode(...)`: execute one policy in one sampled environment state
+- `simulate_many_episodes(...)`: repeat episodes and return standardized summaries
+- `episode_to_dict(...)`: serialize an `EpisodeResult`
+- `BeliefActionDictionaryPolicy`: execute an arbitrary rounded belief-state-to-action dictionary
+- `rounded_belief_key(...)`: construct dictionary keys from continuous beliefs
 
-- `run_single_episode(...)`: runs one episode with a selected policy
-- `simulate_many_episodes(...)`: runs repeated episodes and returns summary statistics
-- `episode_to_dict(...)`: converts an `EpisodeResult` to a plain dictionary for display/export
-- `BeliefActionDictionaryPolicy`: executes an arbitrary meta-level policy represented as a belief-state to action dictionary
-- `rounded_belief_key(...)`: default key function for dictionary policies
-
-Use these helpers for quick debugging. Use `src/experiments/` or `scripts/generate_results.py` for structured comparisons and result files.
+The simulator delegates utility, belief updates, action feasibility, and terminal allocation to the MDP classes. Experiment-level common randomization is implemented in `src/experiments/randomization.py`.

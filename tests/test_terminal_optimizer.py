@@ -1,10 +1,12 @@
+"""Test purpose: validate terminal allocation optimization against utility and numerical references."""
+
 from __future__ import annotations
 
 from dataclasses import replace
 import math
 import unittest
 
-from src.experiments.r6_prefeedback_positive_need import (
+from src.experiments.positive_need import (
     _numerical_belief,
     build_development_environments,
     build_numerical_validation_cases,

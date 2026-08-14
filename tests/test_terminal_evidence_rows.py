@@ -1,3 +1,5 @@
+"""Test purpose: validate terminal evidence rows, hashes, certificates, and recomputation."""
+
 from __future__ import annotations
 
 from dataclasses import replace

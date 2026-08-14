@@ -27,8 +27,8 @@ def _mean(values: Sequence[float]) -> float:
     return float(statistics.mean(values)) if values else math.nan
 
 
-def build_r4_manual_baseline_policies(samples_per_person: int = 3) -> List[MetaPolicy]:
-    """Return the manual baselines Falk requested for the R4 diagnostic.
+def build_active_search_manual_baseline_policies(samples_per_person: int = 3) -> List[MetaPolicy]:
+    """Return the manual baselines used by the active-search diagnostic.
 
     `manual_equal_split` is the no-search equality baseline. The active-search
     baseline samples both recipients through the ordinary observation process
@@ -58,7 +58,7 @@ def _diagnostic_environment_metadata(config: EnvironmentConfig) -> Dict[str, flo
     }
 
 
-def run_r4_diagnostic_policy_grid(
+def run_active_search_diagnostic_policy_grid(
     regime_configs: Iterable[tuple[str, int, str, Dict[str, float], EnvironmentConfig]],
     settings: EvaluationSettings = SMOKE_EVALUATION_SETTINGS,
     allocation_tolerance: float = 0.05,
@@ -69,7 +69,7 @@ def run_r4_diagnostic_policy_grid(
 
     rows: List[Dict[str, float | str]] = []
     policy = rr_policy or build_rr_policy_from_settings(settings)
-    manual_policies = build_r4_manual_baseline_policies(
+    manual_policies = build_active_search_manual_baseline_policies(
         samples_per_person=manual_samples_per_person,
     )
 
@@ -103,7 +103,7 @@ def run_r4_diagnostic_policy_grid(
     return rows
 
 
-def identify_r4_manual_advantage_candidates(
+def identify_active_search_manual_advantage_candidates(
     behavior_rows: Sequence[Dict[str, float | str]],
     min_manual_utility_advantage: float = 0.25,
     min_manual_true_gap_reduction: float = 0.25,
@@ -206,7 +206,7 @@ def identify_r4_manual_advantage_candidates(
     return candidates
 
 
-def summarize_r4_diagnostic_policies(
+def summarize_active_search_diagnostic_policies(
     behavior_rows: Sequence[Dict[str, float | str]],
 ) -> List[Dict[str, float | str]]:
     """One-row environment summary for quick inspection and later reports."""

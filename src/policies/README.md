@@ -1,24 +1,20 @@
 # Policies
 
-`policies/` contains decision strategies for the metalevel MDP.
+`heuristic.py` contains hand-coded allocation and sampling strategies.
 
-`heuristic.py` includes final-choice and information-acquisition heuristics:
+Final-choice and simple metalevel policies include:
 
-- `EqualDivisionPolicy`: terminate immediately and split 50/50
-- `GiveAllToGreatestNeedPolicy`: terminate and allocate all remaining help to the greatest estimated need
-- `HelpPoorestImmediatePolicy`: named help-poorest version of greatest-need final choice
-- `HelpPoorestAfterCertaintyPolicy`: sample until sufficiently certain who is neediest, then help that person
-- `FocusAttentionOnNeediestAfterGapPolicy`: sample until a need gap appears, then allocate to the neediest
-- `ProportionalNeedPolicy`: allocate proportional to estimated need
-- `RectifyThenSplitPolicy`: rectify estimated need difference, then split remaining help equally
-- `EqualOutcomePolicy`: choose the allocation that equalizes estimated outcomes in the current two-person model
-- `MaximinPolicy`: current operationalization matches equal outcome in this two-person single-resource setting
-- `OneAndDonePolicy`: draw one sample and then act
-- `BalancedSamplingPolicy`, `Person1FirstPolicy`, `NeediestFirstPolicy`, `ThresholdDifferencePolicy`: information-acquisition baselines
+- equal division and immediate equal split
+- immediate or certainty-based help for the poorest recipient
+- give all help to the estimated greatest need
+- equal outcome / maximin
+- proportional-to-need allocation
+- rectify the estimated need difference, then split
+- one-and-done, balanced sampling, threshold stopping, and related sampling rules
+- manual balanced active search followed by equal-outcome allocation
 
-`voi.py` includes:
+`voi.py` contains `MyopicValueOfInformationPolicy` and `BlinkeredPolicy` for Gaussian beliefs.
 
-- `MyopicValueOfInformationPolicy`: one-step value-of-information approximation
-- `BlinkeredPolicy`: approximation that repeatedly considers sampling one computation type
+`finite_support_voi.py` contains `FiniteSupportMyopicVOIPolicy` for controlled finite-support environments.
 
-Policy classes implement `choose_action(mdp, belief)`. Some final-choice heuristics also implement `choose_final_allocation(mdp, belief)`.
+Policies implement `choose_action(mdp, belief)`. Final-choice equivalence can also be evaluated by applying allocation heuristics to the same terminal belief reached by an RR approximation, without treating every heuristic as a full metalevel policy.

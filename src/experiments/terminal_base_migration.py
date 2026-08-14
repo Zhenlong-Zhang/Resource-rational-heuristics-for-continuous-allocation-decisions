@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Reviewed one-time migration of the 90 authoritative R6 base beliefs.
+"""Reviewed one-time migration of the 90 authoritative terminal base beliefs.
 
 The exporter is read-only with respect to project sources and refuses to run unless the
 authoritative commit, tree, manifest, spec, cases, and source-file hashes all match. The
@@ -24,7 +24,7 @@ from ..mdp.finite_support import (
     FiniteSupportBeliefState,
     FiniteSupportPrior,
 )
-from .r6_prefeedback_positive_need import (
+from .positive_need import (
     DEFAULT_SPEC_PATH,
     _belief_hash as legacy_belief_hash,
     _numerical_belief,
@@ -36,10 +36,15 @@ from .r6_prefeedback_positive_need import (
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ORIGINAL_MANIFEST_PATH = (
     PROJECT_ROOT
-    / "results"
-    / "r6_prefeedback_quadrature_7376c5d_v1"
-    / "r6_quadrature_diagnostic_manifest.json"
+    / "configs"
+    / "reference"
+    / "terminal_quadrature_manifest_v1.json"
 )
+ORIGINAL_MANIFEST_PROVENANCE_PATH = (
+    "results/r6_prefeedback_quadrature_7376c5d_v1/"
+    "r6_quadrature_diagnostic_manifest.json"
+)
+AUTHORITATIVE_STAGED_MANIFEST_PATH = PROJECT_ROOT / ORIGINAL_MANIFEST_PROVENANCE_PATH
 DEFAULT_MIGRATION_PATH = (
     PROJECT_ROOT / "configs" / "terminal_base_beliefs_7376c5d_v1.json"
 )
@@ -70,8 +75,7 @@ MIGRATION_TOOL_PATHS = tuple(
     sorted((MIGRATION_CLI_PATH, MIGRATION_JOB_PATH, MIGRATION_MODULE_PATH))
 )
 AUTHORITATIVE_UNTRACKED_PATHS = (
-    "results/r6_prefeedback_quadrature_7376c5d_v1/"
-    "r6_quadrature_diagnostic_manifest.json",
+    ORIGINAL_MANIFEST_PROVENANCE_PATH,
     "scripts/export_terminal_base_migration.py",
     "src/experiments/terminal_base_migration.py",
 )
@@ -671,7 +675,7 @@ def _make_artifact(
         migration_status=migration_status,
         source_commit=source_commit,
         source_tree_hash=source_tree_hash,
-        original_manifest_path=str(DEFAULT_ORIGINAL_MANIFEST_PATH.relative_to(PROJECT_ROOT)),
+        original_manifest_path=ORIGINAL_MANIFEST_PROVENANCE_PATH,
         original_manifest_file_hash=ORIGINAL_MANIFEST_FILE_HASH,
         original_manifest_hash=ORIGINAL_MANIFEST_HASH,
         original_spec_hash=ORIGINAL_SPEC_HASH,
@@ -761,7 +765,7 @@ def validate_authoritative_export_context(
 
 def export_authoritative_base_migration(
     output_path: Path,
-    manifest_path: Path = DEFAULT_ORIGINAL_MANIFEST_PATH,
+    manifest_path: Path = AUTHORITATIVE_STAGED_MANIFEST_PATH,
     *,
     execution_approval_path: Path,
     approved_execution_approval_file_hash: str,
@@ -771,7 +775,7 @@ def export_authoritative_base_migration(
 
     if output_path.exists():
         raise FileExistsError(f"migration output already exists: {output_path}")
-    if manifest_path.resolve() != DEFAULT_ORIGINAL_MANIFEST_PATH.resolve():
+    if manifest_path.resolve() != AUTHORITATIVE_STAGED_MANIFEST_PATH.resolve():
         raise RuntimeError("authoritative manifest must use its frozen staged path")
     manifest = _load_original_manifest(manifest_path)
     approval = load_execution_approval(
@@ -1022,8 +1026,7 @@ def validate_migration(
         if artifact.dependency_identity != execution_approval.dependency_identity:
             raise RuntimeError("migration dependency identity differs from execution approval")
     if (
-        artifact.original_manifest_path
-        != str(DEFAULT_ORIGINAL_MANIFEST_PATH.relative_to(PROJECT_ROOT))
+        artifact.original_manifest_path != ORIGINAL_MANIFEST_PROVENANCE_PATH
         or artifact.original_manifest_file_hash != ORIGINAL_MANIFEST_FILE_HASH
         or artifact.original_manifest_hash != ORIGINAL_MANIFEST_HASH
         or artifact.original_spec_hash != ORIGINAL_SPEC_HASH
@@ -1267,10 +1270,12 @@ __all__ = [
     "AUTHORITATIVE_COMMIT",
     "AUTHORITATIVE_STATUS",
     "AUTHORITATIVE_UNTRACKED_PATHS",
+    "AUTHORITATIVE_STAGED_MANIFEST_PATH",
     "BaseBeliefMigration",
     "BeliefPayload",
     "DEFAULT_MIGRATION_PATH",
     "DEFAULT_ORIGINAL_MANIFEST_PATH",
+    "ORIGINAL_MANIFEST_PROVENANCE_PATH",
     "HistoryStepPayload",
     "MIGRATION_SCHEMA",
     "MIGRATION_TOOL_PATHS",

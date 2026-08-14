@@ -1,3 +1,5 @@
+"""Test purpose: validate the first independent terminal reference solver and its certificates."""
+
 from __future__ import annotations
 
 from dataclasses import replace

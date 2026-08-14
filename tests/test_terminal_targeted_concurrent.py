@@ -1,4 +1,4 @@
-"""Tests for the targeted concurrent terminal-validation entrypoint."""
+"""Test purpose: validate the targeted concurrent terminal-validation entrypoint."""
 
 from pathlib import Path
 import subprocess

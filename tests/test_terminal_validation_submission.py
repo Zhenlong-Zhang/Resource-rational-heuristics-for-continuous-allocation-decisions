@@ -1,3 +1,5 @@
+"""Test purpose: validate fail-closed scheduler construction for terminal validation."""
+
 from __future__ import annotations
 
 import hashlib
@@ -197,8 +199,8 @@ class TerminalValidationSubmissionTests(unittest.TestCase):
             text[command_start:],
             (
                 f'"{self.bin_dir / "python"}" scripts/terminal_validation_array.py run-task \\\n'
-                f'  --manifest "{self.manifest}" \\\n'
-                f'  --output-root "{self._output_root("valid")}" \\\n'
+                f'  --manifest "{self.manifest.resolve()}" \\\n'
+                f'  --output-root "{self._output_root("valid").resolve()}" \\\n'
                 '  --task-id "${task_id}"\n'
             ),
         )
