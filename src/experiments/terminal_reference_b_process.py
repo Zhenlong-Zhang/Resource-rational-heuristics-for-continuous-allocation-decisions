@@ -327,7 +327,7 @@ def _worker_command(role: str, input_fd: int, output_fd: int) -> Tuple[str, ...]
     if role not in REFERENCE_B_WORKER_ROLES:
         raise ValueError("unknown Reference-B worker role")
     return (
-        sys.executable,
+        str(Path(sys.executable).resolve()),
         "-I",
         "-B",
         "-c",

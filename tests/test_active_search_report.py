@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from scripts.generate_active_search_report import (
+    REPRODUCIBILITY_NOTEBOOK,
     REPOSITORY_URL,
     confirmation_overview,
     oracle_strata,
@@ -37,6 +38,13 @@ def confirmation_row(
 
 
 class ActiveSearchReportTests(unittest.TestCase):
+    def test_reproducibility_notebook_is_source_controlled(self) -> None:
+        self.assertTrue(REPRODUCIBILITY_NOTEBOOK.is_file())
+        self.assertIn(
+            "%pip install",
+            REPRODUCIBILITY_NOTEBOOK.read_text(encoding="utf-8"),
+        )
+
     def test_confirmation_manifest_requires_independent_zero_prior_episodes(self) -> None:
         discovery = {"seed_namespace_offset": 1}
         confirmation = {

@@ -16,6 +16,9 @@ from typing import Mapping, Sequence
 TRUE_THRESHOLD = 0.80
 CLOSER_THRESHOLD = 0.80
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPRODUCIBILITY_NOTEBOOK = (
+    PROJECT_ROOT / "notebooks" / "round_05" / "reproduce_round_05.ipynb"
+)
 REPOSITORY_URL = (
     "https://github.com/Zhenlong-Zhang/"
     "Resource-rational-heuristics-for-continuous-allocation-decisions"
@@ -509,7 +512,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         report_html(summary), encoding="utf-8"
     )
     copy_if_present(
-        PROJECT_ROOT / "notebooks" / "round_05" / "reproduce_round_05.ipynb",
+        REPRODUCIBILITY_NOTEBOOK,
         reproducibility / "reproduce_round_05.ipynb",
     )
     (args.output_dir / "README.md").write_text(
