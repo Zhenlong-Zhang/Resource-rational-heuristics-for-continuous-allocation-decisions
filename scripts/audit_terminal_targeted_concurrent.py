@@ -46,7 +46,7 @@ def main() -> None:
     parser.add_argument("--expected-commit", required=True)
     parser.add_argument("--expected-queue", default="campus2.q")
     parser.add_argument("--expected-parallel-environment", default="shared")
-    parser.add_argument("--expected-task-concurrency", type=int, default=5)
+    parser.add_argument("--expected-task-concurrency", type=int, default=4)
     args = parser.parse_args()
 
     if re.fullmatch(r"[A-Za-z0-9_.-]+\.q", args.expected_queue) is None:

@@ -33,7 +33,7 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
         self.assertIn("#$ -l h_rt=24:00:00", submitter)
         self.assertIn('QUEUE="${QUEUE:-campus2.q}"', submitter)
         self.assertIn('PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"', submitter)
-        self.assertIn('TASK_CONCURRENCY="${TASK_CONCURRENCY:-5}"', submitter)
+        self.assertIn('TASK_CONCURRENCY="${TASK_CONCURRENCY:-4}"', submitter)
         self.assertIn("#$ -q ${QUEUE}", submitter)
         self.assertIn("#$ -pe ${PARALLEL_ENVIRONMENT} 2", submitter)
         self.assertIn("#$ -tc ${TASK_CONCURRENCY}", submitter)
@@ -43,7 +43,7 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
             auditor,
         )
         self.assertIn(
-            'parser.add_argument("--expected-task-concurrency", type=int, default=5)',
+            'parser.add_argument("--expected-task-concurrency", type=int, default=4)',
             auditor,
         )
         self.assertIn('f"#$ -q {args.expected_queue}"', auditor)

@@ -10,7 +10,7 @@ PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QUEUE="${QUEUE:-campus2.q}"
 PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"
-TASK_CONCURRENCY="${TASK_CONCURRENCY:-5}"
+TASK_CONCURRENCY="${TASK_CONCURRENCY:-4}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd)/$(basename "${OUTPUT_ROOT}")"
 
