@@ -50,10 +50,17 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--project-root", type=Path, required=True)
     parser.add_argument("--expected-commit", required=True)
+    parser.add_argument("--expected-parallel-environment", default="shared")
     args = parser.parse_args()
 
+    if not args.expected_parallel_environment or any(
+        character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
+        for character in args.expected_parallel_environment
+    ):
+        raise ValueError("expected parallel environment name is invalid")
+
     if os.environ.get("NSLOTS") != "2" or not os.environ.get("PE_HOSTFILE"):
-        raise RuntimeError("targeted validation requires a shared two-slot scheduler task")
+        raise RuntimeError("targeted validation requires a two-slot scheduler task")
     if not os.environ.get("JOB_ID", "").isdigit():
         raise RuntimeError("targeted validation requires a scheduler job ID")
     root = args.project_root.resolve()
@@ -137,7 +144,7 @@ def main() -> None:
             "sge_task_id": os.environ.get("SGE_TASK_ID"),
             "hostname": hostname,
             "slots": 2,
-            "parallel_environment": "shared",
+            "parallel_environment": args.expected_parallel_environment,
             "pe_hostfile_sha256": execution.sha256_file(pe_hostfile),
             "pe_host_slots": pe_rows,
             "thread_environment": tuple((name, "1") for name in thread_names),

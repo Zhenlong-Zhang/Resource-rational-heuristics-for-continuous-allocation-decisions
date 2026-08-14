@@ -9,11 +9,16 @@ set -Eeuo pipefail
 PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QUEUE="${QUEUE:-campus2.q}"
+PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd)/$(basename "${OUTPUT_ROOT}")"
 
 if [[ ! "${QUEUE}" =~ ^[A-Za-z0-9_.-]+\.q$ ]]; then
   echo "Targeted validation queue name is invalid." >&2
+  exit 1
+fi
+if [[ ! "${PARALLEL_ENVIRONMENT}" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+  echo "Targeted validation parallel environment name is invalid." >&2
   exit 1
 fi
 
@@ -43,7 +48,7 @@ cat > "${job_file}" <<EOF
 #$ -l h_data=8589934592
 #$ -t 1-6
 #$ -tc 6
-#$ -pe shared 2
+#$ -pe ${PARALLEL_ENVIRONMENT} 2
 set -euo pipefail
 export LANG=C
 export LC_ALL=C
@@ -68,7 +73,8 @@ esac
   --repeat "\${repeat}" \
   --output-root "${OUTPUT_ROOT}/tasks" \
   --project-root "${PROJECT_ROOT}" \
-  --expected-commit "${EXPECTED_COMMIT}"
+  --expected-commit "${EXPECTED_COMMIT}" \
+  --expected-parallel-environment "${PARALLEL_ENVIRONMENT}"
 EOF
 chmod 500 "${job_file}"
 

@@ -45,10 +45,13 @@ def main() -> None:
     parser.add_argument("--requested-memory-bytes", type=int, required=True)
     parser.add_argument("--expected-commit", required=True)
     parser.add_argument("--expected-queue", default="campus2.q")
+    parser.add_argument("--expected-parallel-environment", default="shared")
     args = parser.parse_args()
 
     if re.fullmatch(r"[A-Za-z0-9_.-]+\.q", args.expected_queue) is None:
         raise ValueError("expected queue name is invalid")
+    if re.fullmatch(r"[A-Za-z0-9_.-]+", args.expected_parallel_environment) is None:
+        raise ValueError("expected parallel environment name is invalid")
 
     qsub_raw = args.scheduler_root / "qsub.raw"
     qsub_status = args.scheduler_root / "qsub.status"
@@ -67,7 +70,8 @@ def main() -> None:
     required_job_lines = (
         f"#$ -q {args.expected_queue}", "#$ -l h_rt=24:00:00",
         "#$ -l h_data=8589934592",
-        "#$ -t 1-6", "#$ -tc 6", "#$ -pe shared 2",
+        "#$ -t 1-6", "#$ -tc 6",
+        f"#$ -pe {args.expected_parallel_environment} 2",
         "scripts/run_terminal_targeted_concurrent.py",
     )
     if any(line not in job_text for line in required_job_lines):
@@ -113,8 +117,11 @@ def main() -> None:
             if any((
                 record.get("failed") != "0", record.get("exit_status") != "0",
                 record.get("qname") != args.expected_queue,
-                record.get("slots") != "2", record.get("granted_pe") != "shared",
-                runtime.get("slots") != 2, runtime.get("parallel_environment") != "shared",
+                record.get("slots") != "2",
+                record.get("granted_pe") != args.expected_parallel_environment,
+                runtime.get("slots") != 2,
+                runtime.get("parallel_environment")
+                    != args.expected_parallel_environment,
                 tuple(tuple(item) for item in runtime.get("pe_host_slots", ()))
                     != ((runtime.get("hostname"), 2),),
                 runtime.get("sge_task_id") != str(task_id),
@@ -147,6 +154,7 @@ def main() -> None:
         "job_id": job_id,
         "expected_commit": args.expected_commit,
         "expected_queue": args.expected_queue,
+        "expected_parallel_environment": args.expected_parallel_environment,
         "findings": findings,
         "targets": targets,
         "pass": not findings,

@@ -32,10 +32,20 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
         auditor = AUDITOR.read_text(encoding="utf-8")
         self.assertIn("#$ -l h_rt=24:00:00", submitter)
         self.assertIn('QUEUE="${QUEUE:-campus2.q}"', submitter)
+        self.assertIn('PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"', submitter)
         self.assertIn("#$ -q ${QUEUE}", submitter)
+        self.assertIn("#$ -pe ${PARALLEL_ENVIRONMENT} 2", submitter)
         self.assertIn('parser.add_argument("--expected-queue", default="campus2.q")', auditor)
+        self.assertIn(
+            'parser.add_argument("--expected-parallel-environment", default="shared")',
+            auditor,
+        )
         self.assertIn('f"#$ -q {args.expected_queue}"', auditor)
+        self.assertIn('f"#$ -pe {args.expected_parallel_environment} 2"', auditor)
         self.assertIn('record.get("qname") != args.expected_queue', auditor)
+        self.assertIn(
+            'record.get("granted_pe") != args.expected_parallel_environment', auditor
+        )
         self.assertNotIn("h_rt=06:00:00", submitter)
         self.assertNotIn("h_rt=06:00:00", auditor)
 
