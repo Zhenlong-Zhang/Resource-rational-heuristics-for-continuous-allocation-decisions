@@ -537,6 +537,7 @@ class _BObjective:
         self.lambda_shortfall = Fraction.from_float(float(config.lambda_shortfall))
         self.evaluation_cap = int(evaluation_cap)
         self.cache: Dict[str, _BPointValue] = {}
+        self.upper_bound_cache: Dict[Tuple[str, str], float] = {}
 
     def _stored_float_value(self, allocation: float) -> float:
         """Independently reproduce the stored fixed-allocation binary64 objective."""
@@ -724,9 +725,15 @@ class _BObjective:
     def upper_bound(self, lower: float, upper: float) -> float:
         """Bound both the ideal objective and the actual stored operation sequence."""
 
+        key = (float(lower).hex(), float(upper).hex())
+        cached = self.upper_bound_cache.get(key)
+        if cached is not None:
+            return cached
         stored_upper = self.stored_objective_interval(lower, upper)[1]
         ideal_upper = self._ideal_separable_upper_bound(lower, upper)
-        return max(stored_upper, ideal_upper)
+        result = max(stored_upper, ideal_upper)
+        self.upper_bound_cache[key] = result
+        return result
 
     def derivative_bounds(
         self,
