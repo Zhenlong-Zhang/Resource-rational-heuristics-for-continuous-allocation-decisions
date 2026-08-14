@@ -50,10 +50,17 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--project-root", type=Path, required=True)
     parser.add_argument("--expected-commit", required=True)
+    parser.add_argument("--expected-parallel-environment", default="shared")
     args = parser.parse_args()
 
+    if not args.expected_parallel_environment or any(
+        character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
+        for character in args.expected_parallel_environment
+    ):
+        raise ValueError("expected parallel environment name is invalid")
+
     if os.environ.get("NSLOTS") != "2" or not os.environ.get("PE_HOSTFILE"):
-        raise RuntimeError("targeted validation requires a shared two-slot scheduler task")
+        raise RuntimeError("targeted validation requires a two-slot scheduler task")
     if not os.environ.get("JOB_ID", "").isdigit():
         raise RuntimeError("targeted validation requires a scheduler job ID")
     root = args.project_root.resolve()
@@ -67,10 +74,14 @@ def main() -> None:
     )
     hostname = platform.node().split(".", 1)[0].lower()
     if pe_rows != ((hostname, 2),):
-        raise RuntimeError("targeted validation requires exactly two slots on one host")
+        raise RuntimeError(
+            "targeted validation requires exactly two slots on the execution host; "
+            f"hostname={hostname!r}, pe_rows={pe_rows!r}"
+        )
     thread_names = execution.REFERENCE_B_THREAD_ENVIRONMENT
     if any(os.environ.get(name) != "1" for name in thread_names):
         raise RuntimeError("targeted validation numerical thread controls must equal one")
+    thread_environment = tuple((name, "1") for name in thread_names)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     if commit != args.expected_commit:
         raise RuntimeError("targeted source commit mismatch")
@@ -107,6 +118,11 @@ def main() -> None:
         failures = validate_terminal_evidence_bundle_structure(bundle, descriptor)
         if failures:
             raise RuntimeError("targeted bundle failed: " + ",".join(failures))
+        runtime_payload = execution._reference_b_runtime_payload(
+            descriptor_hash,
+            runtime_evidence,
+            thread_environment,
+        )
 
         rows = [execution._row_to_payload(row) for row in bundle.rows]
         rows_bytes = _canonical_bytes(rows)
@@ -137,13 +153,13 @@ def main() -> None:
             "sge_task_id": os.environ.get("SGE_TASK_ID"),
             "hostname": hostname,
             "slots": 2,
-            "parallel_environment": "shared",
+            "parallel_environment": args.expected_parallel_environment,
             "pe_hostfile_sha256": execution.sha256_file(pe_hostfile),
             "pe_host_slots": pe_rows,
-            "thread_environment": tuple((name, "1") for name in thread_names),
+            "thread_environment": thread_environment,
             "wall_seconds": time.perf_counter() - started,
             "comparable_sha256": _sha256_bytes(comparable_bytes),
-            "reference_b_runtime_evidence": runtime_evidence,
+            "reference_b_runtime_evidence": runtime_payload,
         }
         (temporary / "runtime.json").write_bytes(_canonical_bytes(runtime))
         (temporary / "COMPLETE").write_text("complete\n", encoding="ascii")

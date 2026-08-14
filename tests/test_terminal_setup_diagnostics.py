@@ -429,6 +429,7 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
                 "QSUB_BIN": str(bin_dir / "qsub"),
                 "QSTAT_BIN": str(bin_dir / "qstat"),
                 "FAKE_STATE": str(state),
+                "QUEUE": "campus2.q",
                 "LANG": "C",
                 "LC_ALL": "C",
             })
