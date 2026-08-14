@@ -11,6 +11,7 @@ QSUB_BIN="${QSUB_BIN:-qsub}"
 QUEUE="${QUEUE:-campus2.q}"
 PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"
 TASK_CONCURRENCY="${TASK_CONCURRENCY:-4}"
+EXECUTION_HOST="${EXECUTION_HOST:-}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd)/$(basename "${OUTPUT_ROOT}")"
 
@@ -25,6 +26,14 @@ fi
 if [[ ! "${TASK_CONCURRENCY}" =~ ^[1-6]$ ]]; then
   echo "Targeted validation task concurrency must be between 1 and 6." >&2
   exit 1
+fi
+if [[ -n "${EXECUTION_HOST}" && ! "${EXECUTION_HOST}" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+  echo "Targeted validation execution host is invalid." >&2
+  exit 1
+fi
+QUEUE_SELECTOR="${QUEUE}"
+if [[ -n "${EXECUTION_HOST}" ]]; then
+  QUEUE_SELECTOR="${QUEUE}@${EXECUTION_HOST}"
 fi
 
 if [[ -e "${OUTPUT_ROOT}" ]]; then
@@ -46,7 +55,7 @@ cat > "${job_file}" <<EOF
 #!/usr/bin/env bash
 #$ -cwd
 #$ -N tvtargeted
-#$ -q ${QUEUE}
+#$ -q ${QUEUE_SELECTOR}
 #$ -j y
 #$ -o ${OUTPUT_ROOT}/logs/targeted.\$JOB_ID.\$TASK_ID.log
 #$ -l h_rt=24:00:00

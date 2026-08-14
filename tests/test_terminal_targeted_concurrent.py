@@ -34,7 +34,8 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
         self.assertIn('QUEUE="${QUEUE:-campus2.q}"', submitter)
         self.assertIn('PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"', submitter)
         self.assertIn('TASK_CONCURRENCY="${TASK_CONCURRENCY:-4}"', submitter)
-        self.assertIn("#$ -q ${QUEUE}", submitter)
+        self.assertIn('EXECUTION_HOST="${EXECUTION_HOST:-}"', submitter)
+        self.assertIn("#$ -q ${QUEUE_SELECTOR}", submitter)
         self.assertIn("#$ -pe ${PARALLEL_ENVIRONMENT} 2", submitter)
         self.assertIn("#$ -tc ${TASK_CONCURRENCY}", submitter)
         self.assertIn('parser.add_argument("--expected-queue", default="campus2.q")', auditor)
@@ -46,9 +47,14 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
             'parser.add_argument("--expected-task-concurrency", type=int, default=4)',
             auditor,
         )
-        self.assertIn('f"#$ -q {args.expected_queue}"', auditor)
+        self.assertIn(
+            'parser.add_argument("--expected-execution-host", default="")',
+            auditor,
+        )
+        self.assertIn('f"#$ -q {queue_selector}"', auditor)
         self.assertIn('f"#$ -pe {args.expected_parallel_environment} 2"', auditor)
         self.assertIn('record.get("qname") != args.expected_queue', auditor)
+        self.assertIn("bool(args.expected_execution_host)", auditor)
         self.assertIn(
             'record.get("granted_pe") != args.expected_parallel_environment', auditor
         )

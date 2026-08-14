@@ -47,6 +47,7 @@ def main() -> None:
     parser.add_argument("--expected-queue", default="campus2.q")
     parser.add_argument("--expected-parallel-environment", default="shared")
     parser.add_argument("--expected-task-concurrency", type=int, default=4)
+    parser.add_argument("--expected-execution-host", default="")
     args = parser.parse_args()
 
     if re.fullmatch(r"[A-Za-z0-9_.-]+\.q", args.expected_queue) is None:
@@ -55,6 +56,10 @@ def main() -> None:
         raise ValueError("expected parallel environment name is invalid")
     if args.expected_task_concurrency not in range(1, 7):
         raise ValueError("expected task concurrency must be between 1 and 6")
+    if args.expected_execution_host and re.fullmatch(
+        r"[A-Za-z0-9_.-]+", args.expected_execution_host
+    ) is None:
+        raise ValueError("expected execution host is invalid")
 
     qsub_raw = args.scheduler_root / "qsub.raw"
     qsub_status = args.scheduler_root / "qsub.status"
@@ -70,8 +75,11 @@ def main() -> None:
     if match is None or match.group(1) != job_id:
         raise RuntimeError("targeted qsub output and job identity disagree")
     job_text = job_script.read_text(encoding="utf-8")
+    queue_selector = args.expected_queue + (
+        f"@{args.expected_execution_host}" if args.expected_execution_host else ""
+    )
     required_job_lines = (
-        f"#$ -q {args.expected_queue}", "#$ -l h_rt=24:00:00",
+        f"#$ -q {queue_selector}", "#$ -l h_rt=24:00:00",
         "#$ -l h_data=8589934592",
         "#$ -t 1-6", f"#$ -tc {args.expected_task_concurrency}",
         f"#$ -pe {args.expected_parallel_environment} 2",
@@ -131,6 +139,10 @@ def main() -> None:
                 runtime.get("job_id") != record.get("jobnumber"),
                 runtime.get("job_id") != job_id,
                 runtime.get("hostname") != record.get("hostname", "").split(".", 1)[0].lower(),
+                bool(args.expected_execution_host) and (
+                    runtime.get("hostname")
+                    != args.expected_execution_host.split(".", 1)[0].lower()
+                ),
                 wall > 21600.0, memory > 6 * 1024**3,
                 memory > 0.75 * args.requested_memory_bytes,
             )):
@@ -159,6 +171,7 @@ def main() -> None:
         "expected_queue": args.expected_queue,
         "expected_parallel_environment": args.expected_parallel_environment,
         "expected_task_concurrency": args.expected_task_concurrency,
+        "expected_execution_host": args.expected_execution_host,
         "findings": findings,
         "targets": targets,
         "pass": not findings,
