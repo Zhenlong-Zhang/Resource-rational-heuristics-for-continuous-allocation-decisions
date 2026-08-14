@@ -254,7 +254,7 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
         )
         self.assertIn('fragment_h_rt="00:10:00"', submitter)
         self.assertIn('merge_h_rt="00:05:00"', submitter)
-        self.assertIn('formal_h_rt_seconds=21600', submitter)
+        self.assertIn('formal_h_rt_seconds=28800', submitter)
         self.assertIn('formal_h_rt_seconds=86400', submitter)
         self.assertIn('export LANG=C LC_ALL=C', submitter)
         self.assertIn('${submitted_jobs[@]+"${submitted_jobs[@]}"}', submitter)
