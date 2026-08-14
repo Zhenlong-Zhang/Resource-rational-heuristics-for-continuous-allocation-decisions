@@ -35,7 +35,7 @@ if [[ "${STAGE}" == "smoke" ]]; then
   shard_count="${MANIFEST_PLAN_SHARDS:-16}"
   segment_size="${MANIFEST_PLAN_SEGMENT_SIZE:-16}"
   formal_throttle=16
-  formal_h_rt_seconds=28800
+  formal_h_rt_seconds=86400
   fragment_h_rt="00:10:00"
   merge_h_rt="00:05:00"
 else

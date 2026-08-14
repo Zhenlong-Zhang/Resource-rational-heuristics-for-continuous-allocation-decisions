@@ -33,7 +33,7 @@ cat > "${job_file}" <<EOF
 #$ -q campus2.q
 #$ -j y
 #$ -o ${OUTPUT_ROOT}/logs/targeted.\$JOB_ID.\$TASK_ID.log
-#$ -l h_rt=08:00:00
+#$ -l h_rt=24:00:00
 #$ -l h_data=8589934592
 #$ -t 1-6
 #$ -tc 6

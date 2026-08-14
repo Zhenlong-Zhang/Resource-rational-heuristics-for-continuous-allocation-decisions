@@ -56,9 +56,9 @@ REFERENCE_B_TRACED_OUTPUT_SCHEMA = "terminal_reference_b_traced_worker_output_v1
 REFERENCE_B_SOURCE_OUTPUT_SCHEMA = "terminal_reference_b_source_worker_output_v1"
 REFERENCE_B_WORKER_ERROR_SCHEMA = "terminal_reference_b_worker_error_v1"
 REFERENCE_B_WORKER_ROLES = ("traced", "source_validation")
-# The two isolated base-case workers run sequentially. Keep their combined
-# timeout below the eight-hour scheduler limit so validation can still publish.
-REFERENCE_B_WORKER_TIMEOUT_SECONDS = 21_600.0
+# The two isolated base-case workers run sequentially. Use the Hoffman2 daily
+# ceiling while reserving two hours for validation and atomic publication.
+REFERENCE_B_WORKER_TIMEOUT_SECONDS = 79_200.0
 REFERENCE_B_MAX_FRAME_BYTES = 2 * 1024**3
 _FRAME_HEADER = struct.Struct(">Q")
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
