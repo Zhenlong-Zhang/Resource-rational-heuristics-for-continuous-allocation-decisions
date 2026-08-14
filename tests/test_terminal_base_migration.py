@@ -15,6 +15,9 @@ import unittest
 from unittest import mock
 
 from src.experiments import terminal_base_migration as migration
+from src.experiments.terminal_validation_suite import (
+    FROZEN_LEGACY_BELIEF_HASH_OVERRIDES,
+)
 from src.mdp.finite_support import FiniteSupportBeliefState
 
 
@@ -80,9 +83,25 @@ class TerminalBaseMigrationTests(unittest.TestCase):
         )
         self.assertEqual(len(artifact.records), 90)
         self.assertEqual(
-            sum(record.original_belief_hash_matches_payload for record in artifact.records),
-            86,
+            set(FROZEN_LEGACY_BELIEF_HASH_OVERRIDES),
+            {24, 29, 83, 88},
         )
+
+        mismatch_ids = {
+            record.case.case_id
+            for record in artifact.records
+            if not record.original_belief_hash_matches_payload
+        }
+        self.assertLessEqual(
+            mismatch_ids,
+            set(FROZEN_LEGACY_BELIEF_HASH_OVERRIDES),
+        )
+        for record in artifact.records:
+            _, belief = migration.reconstruct_exact_belief(record.belief)
+            self.assertEqual(
+                record.original_belief_hash_matches_payload,
+                migration.legacy_belief_hash(belief) == record.case.belief_hash,
+            )
 
     def test_every_base_belief_reconstructs_exact_binary64_payload(self):
         for record in self.artifact.records:
