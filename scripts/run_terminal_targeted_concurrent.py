@@ -81,6 +81,7 @@ def main() -> None:
     thread_names = execution.REFERENCE_B_THREAD_ENVIRONMENT
     if any(os.environ.get(name) != "1" for name in thread_names):
         raise RuntimeError("targeted validation numerical thread controls must equal one")
+    thread_environment = tuple((name, "1") for name in thread_names)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     if commit != args.expected_commit:
         raise RuntimeError("targeted source commit mismatch")
@@ -117,6 +118,11 @@ def main() -> None:
         failures = validate_terminal_evidence_bundle_structure(bundle, descriptor)
         if failures:
             raise RuntimeError("targeted bundle failed: " + ",".join(failures))
+        runtime_payload = execution._reference_b_runtime_payload(
+            descriptor_hash,
+            runtime_evidence,
+            thread_environment,
+        )
 
         rows = [execution._row_to_payload(row) for row in bundle.rows]
         rows_bytes = _canonical_bytes(rows)
@@ -150,10 +156,10 @@ def main() -> None:
             "parallel_environment": args.expected_parallel_environment,
             "pe_hostfile_sha256": execution.sha256_file(pe_hostfile),
             "pe_host_slots": pe_rows,
-            "thread_environment": tuple((name, "1") for name in thread_names),
+            "thread_environment": thread_environment,
             "wall_seconds": time.perf_counter() - started,
             "comparable_sha256": _sha256_bytes(comparable_bytes),
-            "reference_b_runtime_evidence": runtime_evidence,
+            "reference_b_runtime_evidence": runtime_payload,
         }
         (temporary / "runtime.json").write_bytes(_canonical_bytes(runtime))
         (temporary / "COMPLETE").write_text("complete\n", encoding="ascii")

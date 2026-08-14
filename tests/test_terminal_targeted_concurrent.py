@@ -55,6 +55,11 @@ class TerminalTargetedConcurrentEntrypointTests(unittest.TestCase):
         self.assertNotIn("h_rt=06:00:00", submitter)
         self.assertNotIn("h_rt=06:00:00", auditor)
 
+    def test_runner_canonicalizes_reference_b_runtime_evidence(self):
+        runner = RUNNER.read_text(encoding="utf-8")
+        self.assertIn("execution._reference_b_runtime_payload(", runner)
+        self.assertIn('"reference_b_runtime_evidence": runtime_payload', runner)
+
 
 if __name__ == "__main__":
     unittest.main()
