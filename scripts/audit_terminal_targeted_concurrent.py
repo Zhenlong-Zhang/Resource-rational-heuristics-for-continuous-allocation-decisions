@@ -46,12 +46,15 @@ def main() -> None:
     parser.add_argument("--expected-commit", required=True)
     parser.add_argument("--expected-queue", default="campus2.q")
     parser.add_argument("--expected-parallel-environment", default="shared")
+    parser.add_argument("--expected-task-concurrency", type=int, default=5)
     args = parser.parse_args()
 
     if re.fullmatch(r"[A-Za-z0-9_.-]+\.q", args.expected_queue) is None:
         raise ValueError("expected queue name is invalid")
     if re.fullmatch(r"[A-Za-z0-9_.-]+", args.expected_parallel_environment) is None:
         raise ValueError("expected parallel environment name is invalid")
+    if args.expected_task_concurrency not in range(1, 7):
+        raise ValueError("expected task concurrency must be between 1 and 6")
 
     qsub_raw = args.scheduler_root / "qsub.raw"
     qsub_status = args.scheduler_root / "qsub.status"
@@ -70,7 +73,7 @@ def main() -> None:
     required_job_lines = (
         f"#$ -q {args.expected_queue}", "#$ -l h_rt=24:00:00",
         "#$ -l h_data=8589934592",
-        "#$ -t 1-6", "#$ -tc 6",
+        "#$ -t 1-6", f"#$ -tc {args.expected_task_concurrency}",
         f"#$ -pe {args.expected_parallel_environment} 2",
         "scripts/run_terminal_targeted_concurrent.py",
     )
@@ -155,6 +158,7 @@ def main() -> None:
         "expected_commit": args.expected_commit,
         "expected_queue": args.expected_queue,
         "expected_parallel_environment": args.expected_parallel_environment,
+        "expected_task_concurrency": args.expected_task_concurrency,
         "findings": findings,
         "targets": targets,
         "pass": not findings,

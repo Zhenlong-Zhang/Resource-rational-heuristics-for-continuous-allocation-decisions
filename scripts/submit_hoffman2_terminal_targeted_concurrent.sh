@@ -10,6 +10,7 @@ PYTHON_BIN="${PYTHON_BIN:-/u/home/z/zzl/.conda/envs/rr-allocation/bin/python}"
 QSUB_BIN="${QSUB_BIN:-qsub}"
 QUEUE="${QUEUE:-campus2.q}"
 PARALLEL_ENVIRONMENT="${PARALLEL_ENVIRONMENT:-shared}"
+TASK_CONCURRENCY="${TASK_CONCURRENCY:-5}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ROOT="$(cd "$(dirname "${OUTPUT_ROOT}")" && pwd)/$(basename "${OUTPUT_ROOT}")"
 
@@ -19,6 +20,10 @@ if [[ ! "${QUEUE}" =~ ^[A-Za-z0-9_.-]+\.q$ ]]; then
 fi
 if [[ ! "${PARALLEL_ENVIRONMENT}" =~ ^[A-Za-z0-9_.-]+$ ]]; then
   echo "Targeted validation parallel environment name is invalid." >&2
+  exit 1
+fi
+if [[ ! "${TASK_CONCURRENCY}" =~ ^[1-6]$ ]]; then
+  echo "Targeted validation task concurrency must be between 1 and 6." >&2
   exit 1
 fi
 
@@ -47,7 +52,7 @@ cat > "${job_file}" <<EOF
 #$ -l h_rt=24:00:00
 #$ -l h_data=8589934592
 #$ -t 1-6
-#$ -tc 6
+#$ -tc ${TASK_CONCURRENCY}
 #$ -pe ${PARALLEL_ENVIRONMENT} 2
 set -euo pipefail
 export LANG=C

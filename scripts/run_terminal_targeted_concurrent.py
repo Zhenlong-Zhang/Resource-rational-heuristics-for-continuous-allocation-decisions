@@ -74,7 +74,10 @@ def main() -> None:
     )
     hostname = platform.node().split(".", 1)[0].lower()
     if pe_rows != ((hostname, 2),):
-        raise RuntimeError("targeted validation requires exactly two slots on one host")
+        raise RuntimeError(
+            "targeted validation requires exactly two slots on the execution host; "
+            f"hostname={hostname!r}, pe_rows={pe_rows!r}"
+        )
     thread_names = execution.REFERENCE_B_THREAD_ENVIRONMENT
     if any(os.environ.get(name) != "1" for name in thread_names):
         raise RuntimeError("targeted validation numerical thread controls must equal one")
