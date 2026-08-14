@@ -213,7 +213,7 @@ class TerminalExecutionTests(unittest.TestCase):
         suites = self.smoke_suites() if stage == "smoke" else self.full_suites()
         stage_resources = resources()
         if stage == "smoke":
-            stage_resources["h_rt_seconds"] = 21600
+            stage_resources["h_rt_seconds"] = 86400
             stage_resources["throttle"] = 16
         identities = SimpleNamespace(
             scientific_spec_hash="a" * 64,
@@ -1445,7 +1445,7 @@ class TerminalExecutionTests(unittest.TestCase):
         value = {
             "schema": execution.COMPUTE_CEILING_SCHEMA,
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),
-            "max_walltime_seconds": 21600,
+            "max_walltime_seconds": 86400,
             "max_array_tasks": 1000,
             "max_throttle": 100,
             "max_memory_bytes": 4_000_000_000,

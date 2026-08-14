@@ -269,7 +269,7 @@ def _validate_outputs(
     execution.validate_compute_ceiling_binding(manifest, ceiling)
     if manifest.get("resources") != {
         "queue": "campus2.q",
-        "h_rt_seconds": 21600,
+        "h_rt_seconds": 86400,
         "memory_bytes": 8589934592,
         "throttle": 16,
     }:
@@ -367,7 +367,7 @@ def _validate_job_script(
             f'  --replicate-b-dir "{root}/plan_b" --shard-count "16" \\\n'
             f'  --output "{root}/terminal_smoke_manifest.json" --assembly-output "{root}/manifest_plan_assembly.json" \\\n'
             f'  --compute-ceiling "{compute_ceiling_path.resolve()}" --max-descriptors-per-subshard 450 \\\n'
-            '  --queue "campus2.q" --h-rt-seconds "21600" --memory-bytes 8589934592 \\\n'
+            '  --queue "campus2.q" --h-rt-seconds "86400" --memory-bytes 8589934592 \\\n'
             '  --throttle "16" \\\n'
             f'  --profile-output "{root}/profiles_merge/merge.json"\n'
         )

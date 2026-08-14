@@ -61,7 +61,7 @@ def main() -> None:
         raise RuntimeError("targeted qsub output and job identity disagree")
     job_text = job_script.read_text(encoding="utf-8")
     required_job_lines = (
-        "#$ -q campus2.q", "#$ -l h_rt=06:00:00", "#$ -l h_data=8589934592",
+        "#$ -q campus2.q", "#$ -l h_rt=24:00:00", "#$ -l h_data=8589934592",
         "#$ -t 1-6", "#$ -tc 6", "#$ -pe shared 2",
         "scripts/run_terminal_targeted_concurrent.py",
     )

@@ -102,7 +102,7 @@ class TerminalSetupDiagnosticTests(unittest.TestCase):
                 ),
                 "resources": {
                     "queue": "campus2.q",
-                    "h_rt_seconds": 21600,
+                    "h_rt_seconds": 86400,
                     "memory_bytes": 8589934592,
                     "throttle": 16,
                 },
