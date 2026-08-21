@@ -25,7 +25,7 @@ DEFAULT_SPEC_PATH = PROJECT_ROOT / "configs" / "positive_need_spec.json"
 
 ANALYSIS_LABEL = "positive_need_exploration"
 # The renamed public module still reads the byte-frozen historical specification.
-FROZEN_SPEC_CLASSIFICATION = "r6_pre_feedback_exploration"
+FROZEN_SPEC_CLASSIFICATION = "positive_need_exploration"
 POLICY_RR = "matched_prior_myopic_rr"
 POLICY_MANUAL = "manual_active_search_equal_outcome"
 POLICY_SPLIT = "equal_split"
@@ -119,7 +119,7 @@ def _rate_fields(values: Sequence[float], prefix: str) -> Dict[str, float]:
 
 def load_positive_need_spec(path: Path = DEFAULT_SPEC_PATH) -> Dict[str, object]:
     value = json.loads(path.read_text(encoding="utf-8"))
-    if value.get("round_classification") != FROZEN_SPEC_CLASSIFICATION:
+    if value.get("analysis_classification") != FROZEN_SPEC_CLASSIFICATION:
         raise ValueError("positive-need spec has the wrong frozen classification")
     return value
 

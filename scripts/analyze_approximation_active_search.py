@@ -413,7 +413,7 @@ def render_report(method_comparison: Mapping[str, object], diagnostic_active_sea
   <header>
     <h1>Resource-Rational Allocation</h1>
     <p class="muted">method comparison approximation precision and active-search diagnostic active-search results.</p>
-    <div class="pills"><span class="pill">Hoffman2</span><span class="pill">1,200 episodes per condition</span><span class="pill">Common true states</span><span class="pill">Common observation streams</span><span class="pill">Validated complete runs</span></div>
+    <div class="pills"><span class="pill">1,200 episodes per condition</span><span class="pill">Common true states</span><span class="pill">Common observation streams</span><span class="pill">Validated complete runs</span></div>
   </header>
 
   <h2>Key Results</h2>

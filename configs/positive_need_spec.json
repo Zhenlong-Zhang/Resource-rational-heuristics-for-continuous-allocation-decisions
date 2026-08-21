@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "round_classification": "r6_pre_feedback_exploration",
+  "analysis_classification": "positive_need_exploration",
   "scientific_status": "development_grid_frozen_before_execution",
   "generator": {
     "family": "finite_support_total_gap",

@@ -46,7 +46,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "sigma_need": [5.0, 10.0, 15.0, 20.0],
     },
     # Smaller first-pass grid for the same theoretical target as near_50_50.
-    # Use this before the larger grid when cluster feedback needs to be fast.
+    # Use this before the larger grid when a fast first-pass result is needed.
     "near_50_50_focused": {
         "sample_time_cost": [8.0, 16.0, 32.0],
         "sigma_sample": [60.0, 100.0],
@@ -133,7 +133,7 @@ ONE_DIMENSIONAL_SWEEP_VALUES: Dict[str, Sequence[float]] = {
 }
 
 
-# Manual scale-up markers for later server runs.
+# Manual scale-up markers for later large runs.
 DEFAULT_SWEEP_EPISODES = 6
 SERVER_SWEEP_EPISODES = 200
 DEFAULT_MAX_GRID_POINTS = 36

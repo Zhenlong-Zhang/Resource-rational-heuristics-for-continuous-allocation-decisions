@@ -70,26 +70,21 @@ The main computational settings are command-line options, including episode coun
 
 ## Reproducibility Notebooks
 
-Professor-facing analyses are reproduced by notebooks under `notebooks/`. Each notebook calls the shared source code and exposes its main settings near the top; model logic is not duplicated in notebook cells.
+Analyses are reproduced by notebooks under `notebooks/`. Each notebook calls the shared source code and exposes its main settings near the top; model logic is not duplicated in notebook cells.
 
 See `notebooks/README.md` for the analysis index. Full configurations are intentionally gated by `RUN = False`, so opening a notebook does not start a large computation.
 
-## Round 6 scarcity analysis
+## Scarcity Analysis
 
-Round 6 adds a fourth heuristic row for scarcity: prioritizing the recipient with lower
+The scarcity analysis adds a fourth heuristic row: prioritizing the recipient with lower
 effort-to-goal (the operational lower-need / closer-to-goal rule). The public implementation
 keeps the allocation definitions, kink-aware oracle, paired metrics, frozen thresholds, and
 pure heuristic-map builders in `src/experiments/`; the corresponding regression tests are
 in `tests/`. Start with
 `notebooks/round_06/reproduce_round_06.ipynb` for a portable reproduction entry point. The
-scheduler-free `scripts/run_scarcity_public.py` runner writes object, development, and
+`scripts/run_scarcity_public.py` runner writes object, development, and
 confirmation summaries under `results/`; use `--mode smoke` for a small wiring check or
 `--mode serious` for the frozen public episode configuration.
-
-The serious held-out evidence, historical R5 aggregate audit, generated report, and server
-provenance are not committed as simulation output. They remain in the separately archived
-professor-facing delivery package. No cluster login, qsub wrapper, private path, or credential
-is needed to inspect or use this repository.
 
 ## Repository Structure
 
@@ -97,13 +92,13 @@ is needed to inspect or use this repository.
 - `src/simulator/`: episode execution and dictionary-driven policies
 - `src/policies/`: allocation heuristics, information-acquisition policies, myopic VOI, and blinkered policies
 - `src/solvers/`: discretized DP, Gauss-Hermite integration, and terminal allocation solvers
-- `src/experiments/`: comparisons, common randomization, sweeps, regime searches, metrics, and strict evidence workflows
-- `scripts/`: command-line runners, resumable array workflows, report generation, and validation tools
-- `configs/`: scientific configurations and frozen reference evidence
+- `src/experiments/`: comparisons, common randomization, sweeps, regime searches, metrics, and controlled analyses
+- `scripts/`: portable command-line runners, report generation, and validation tools
+- `configs/`: scientific configurations and output schemas
 - `notebooks/`: interactive reproduction interfaces
-- `tests/`: regression, scientific-invariant, workflow, and evidence-validation tests
+- `tests/`: regression, scientific-invariant, workflow, and command-line tests
 
-Generated outputs are written under `results/`, which is ignored by Git. The repository tracks code, prespecified configurations, notebooks, tests, and small immutable reference artifacts rather than generated simulation tables.
+Generated outputs are written under `results/`, which is ignored by Git. The repository tracks code, prespecified configurations, notebooks, tests, and small scientific input artifacts rather than generated simulation tables.
 
 ## Experiment Workflows
 
@@ -118,16 +113,11 @@ The general experiment runner supports:
 - myopic VOI, blinkered, discretized-DP, and Gauss-Hermite diagnostics
 - manual active-search and equal-split benchmarks
 
-For frozen, resumable evaluations, use the manifest workflows in `scripts/`:
-
-- `active_search_evaluation_workflow.py`
-- `diagnostic_active_search_workflow.py`
-- `method_comparison_episode_workflow.py`
-- `positive_need_workflow.py`
-- `strategy_mapping_workflow.py`
-- `terminal_validation_array.py`
-
-These workflows separate manifest creation, shard execution, progress inspection, strict collection, and read-back validation. Cluster submitters are provided as command wrappers that can be configured in your local environment.
+For structured active-search evaluations, use
+`scripts/active_search_evaluation_workflow.py`. Portable one-task method comparisons are
+available through `scripts/run_method_comparison_task.py`, and the scarcity analysis uses
+`scripts/run_scarcity_public.py`. These runners reuse the scientific implementation in
+`src/` and write generated artifacts under the ignored `results/` directory.
 
 ## Tests
 
@@ -137,7 +127,7 @@ Run the full test suite from the repository root:
 python3 -m unittest discover -s tests
 ```
 
-Some terminal-validation tests are computationally heavier than the basic model and workflow tests. See `tests/README.md` for the purpose of each test group.
+Some terminal-solver tests are computationally heavier than the basic model and workflow tests. See `tests/README.md` for the purpose of each test group.
 
 ## Interpretation
 

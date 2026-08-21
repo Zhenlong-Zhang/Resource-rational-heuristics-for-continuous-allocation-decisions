@@ -27,7 +27,7 @@ ALLOWED_BOUNDARY_LABELS = {
     "confounded",
     "unresolved",
 }
-R5_AGGREGATE_REFERENCE = "historical aggregate package provided separately"
+HISTORICAL_AGGREGATE_REFERENCE = "historical aggregate package provided separately"
 
 
 class HeuristicMapReportError(RuntimeError):
@@ -123,17 +123,18 @@ def build_heuristic_map(
 ) -> List[Dict[str, str]]:
     _require(evidence_audit.get("audit_pass") is True, "Historical evidence audit did not pass")
     _require(
-        evidence_audit.get("no_episode_simulation_or_new_R5_inference") is True,
-        "R5 aggregate scope guard is absent",
+        evidence_audit.get("no_episode_simulation_or_new_historical_inference") is True,
+        "Historical aggregate scope guard is absent",
     )
     prototypes = _prototype_map(evidence_audit)
-    r5 = evidence_audit["round_audits"]["R5"]  # type: ignore[index]
-    r6 = evidence_audit["round_audits"]["R6"]  # type: ignore[index]
-    _require(int(r5["point_joint_count"]) == 11, "R5 point count changed")
-    _require(int(r5["strict_joint_count"]) == 0, "R5 strict count changed")
+    active_search = evidence_audit["analysis_audits"]["active_search_confirmation"]  # type: ignore[index]
+    scarcity_behavior = evidence_audit["analysis_audits"]["scarcity_behavior"]  # type: ignore[index]
+    _require(int(active_search["point_joint_count"]) == 11, "Active-search point count changed")
+    _require(int(active_search["strict_joint_count"]) == 0, "Active-search strict count changed")
     _require(
-        r6["recovery_classification"] == "higher_utility_behaviorally_different_strategy",
-        "R6 classification changed",
+        scarcity_behavior["recovery_classification"]
+        == "higher_utility_behaviorally_different_strategy",
+        "Scarcity-behavior classification changed",
     )
     class_map = _classification_by_class(classifications)
     scarcity_conditions = (
@@ -180,8 +181,8 @@ def build_heuristic_map(
                 "Acquire information from both recipients, then choose a final allocation close to equal outcome and closer to equal outcome than to 50/50."
             ),
             "qualitative_environmental_conditions": (
-                "11 of 12 frozen R5 confirmation points replicated the two point-estimate rule; 0 of 12 passed the strict two-lower-bound rule. R6's three related noise conditions gave higher RR utility but behavioral difference, not three independent replications. Raw sigma_need is confounded by negative needs and feasibility; fixed-total separation is a constructed mechanism diagnostic. [supported_qualitative for existence; unresolved strict boundary; confounded; grid_edge_open]"
-                f" The {R5_AGGREGATE_REFERENCE} is aggregate-only, with no raw episode archive and no new R5 inference."
+                "11 of 12 frozen active-search confirmation points replicated the two point-estimate rule; 0 of 12 passed the strict two-lower-bound rule. Three related scarcity noise conditions gave higher RR utility but behavioral difference, not three independent replications. Raw sigma_need is confounded by negative needs and feasibility; fixed-total separation is a constructed mechanism diagnostic. [supported_qualitative for existence; unresolved strict boundary; confounded; grid_edge_open]"
+                f" The {HISTORICAL_AGGREGATE_REFERENCE} is aggregate-only, with no raw episode archive and no new historical inference."
             ),
             "most_prototypical_evaluated_environment": str(
                 prototypes["active_search_equal_outcome"]["environment"]
@@ -215,7 +216,7 @@ def build_claim_ledger(
 ) -> List[Dict[str, str]]:
     claims: List[Dict[str, str]] = [
         {
-            "claim_id": "R6-D01",
+            "claim_id": "MAP-D01",
             "claim_type": "decision",
             "statement": "Utility is primary; information acquisition and final choice are reported separately.",
             "source_artifact": "scarcity_frozen_settings.json",
@@ -224,25 +225,25 @@ def build_claim_ledger(
             "limitations": "This is a design decision, not an empirical result.",
         },
         {
-            "claim_id": "R6-R01",
+            "claim_id": "MAP-R01",
             "claim_type": "result",
-            "statement": "R5 reproduced the joint point rule at 11 of 12 frozen points and the strict two-lower-bound rule at 0 of 12 points.",
-            "source_artifact": "historical_r5_aggregate_summary.json",
-            "source_keys": "round_audits.R5.point_joint_count;round_audits.R5.strict_joint_count",
+            "statement": "The historical active-search analysis reproduced the joint point rule at 11 of 12 frozen points and the strict two-lower-bound rule at 0 of 12 points.",
+            "source_artifact": "historical_active_search_aggregate_summary.json",
+            "source_keys": "analysis_audits.active_search_confirmation.point_joint_count;analysis_audits.active_search_confirmation.strict_joint_count",
             "evidence_status": "hash_bound_aggregate_only",
-            "limitations": "The accepted Drive package is not a raw episode archive and supports no new R5 inference.",
+            "limitations": "The accepted aggregate package is not a raw episode archive and supports no new inference.",
         },
         {
-            "claim_id": "R6-R02",
+            "claim_id": "MAP-R02",
             "claim_type": "result",
-            "statement": "The frozen R6 comparison classified RR as higher utility but behaviorally different from the manual active-search equal-outcome strategy.",
-            "source_artifact": "r6_behavior_summary.json",
-            "source_keys": "round_audits.R6.recovery_classification",
+            "statement": "The frozen scarcity comparison classified RR as higher utility but behaviorally different from the manual active-search equal-outcome strategy.",
+            "source_artifact": "scarcity_behavior_summary.json",
+            "source_keys": "analysis_audits.scarcity_behavior.recovery_classification",
             "evidence_status": "strict_serious_readback",
             "limitations": "The three noise conditions are related conditions, not independent replications.",
         },
         {
-            "claim_id": "R6-S01",
+            "claim_id": "MAP-S01",
             "claim_type": "suggestion",
             "statement": "Falk proposed prioritizing the lower-need or closer-to-goal recipient under scarcity.",
             "source_artifact": "scarcity_frozen_settings.json",
@@ -251,7 +252,7 @@ def build_claim_ledger(
             "limitations": "The suggestion is not treated as a result before the frozen gates pass.",
         },
         {
-            "claim_id": "R6-R03",
+            "claim_id": "MAP-R03",
             "claim_type": "result",
             "statement": f"The frozen object-level scarcity grid classification is {object_gate['object_level_classification']}.",
             "source_artifact": "scarcity_object_gate.json",
@@ -263,7 +264,7 @@ def build_claim_ledger(
     for index, row in enumerate(classifications, start=1):
         claims.append(
             {
-                "claim_id": f"R6-R1{index}",
+                "claim_id": f"MAP-R1{index}",
                 "claim_type": "result",
                 "statement": (
                     f"The held-out {row['acquisition_class']} scarcity target is classified "
@@ -277,7 +278,7 @@ def build_claim_ledger(
         )
     claims.append(
         {
-            "claim_id": "R6-I01",
+            "claim_id": "MAP-I01",
             "claim_type": "interpretation",
             "statement": "The map describes qualitative regions within tested grids and does not establish universal thresholds.",
             "source_artifact": "heuristic_map.csv",
@@ -366,7 +367,7 @@ __all__ = (
     "HeuristicMapReportError",
     "MAP_COLUMNS",
     "MAP_STRATEGIES",
-    "R5_AGGREGATE_REFERENCE",
+    "HISTORICAL_AGGREGATE_REFERENCE",
     "build_claim_ledger",
     "build_heuristic_map",
     "html_table",

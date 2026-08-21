@@ -8,7 +8,7 @@ python3 -m unittest discover -s tests
 
 Each test module begins with a `Test purpose` docstring. The suite is grouped by the scientific or reproducibility property it protects.
 
-Some terminal-solver and evidence tests are intentionally more computationally demanding than the basic model and workflow tests.
+Some solver and evaluation tests are intentionally more computationally demanding than the basic model and workflow tests.
 
 ## Model And Policy Semantics
 
@@ -27,22 +27,9 @@ Some terminal-solver and evidence tests are intentionally more computationally d
 - `test_scarcity.py`: lower-need allocation definitions, oracle gates, paired metrics, and
   frozen scarcity classification rules.
 - `test_heuristic_map_report.py`: four-row map shape, claim-ledger types, prototype costs,
-  and bounded R5/R6 wording.
-- `test_scarcity_public_runner.py`: direct CLI help and tiny scheduler-free smoke outputs.
+  and bounded cross-analysis wording.
 
-## Reproducible Workflows
+## Reproducible Interfaces
 
-- `test_*_workflow.py`: manifest creation, deterministic task identity, strict collection, and failure handling.
-- `test_method_comparison_episode_workflow.py`: episode-level pairing and resumable method-comparison tasks.
-- `test_quadrature_validation_array.py`: quadrature-validation task identity and collection.
-- `test_strategy_mapping_submission.py` and `test_terminal_validation_submission.py`: scheduler command construction and fail-closed submission behavior.
-
-## Terminal Validation Evidence
-
-- `test_terminal_base_migration.py` and `test_terminal_migration_evidence.py`: migration provenance and immutable evidence.
-- `test_terminal_canonical_provider.py`: accepted canonical input selection.
-- `test_terminal_evidence_rows.py`: row hashes, sidecars, and evidence recomputation.
-- `test_terminal_execution.py`: execution state, leases, timeouts, and atomic completion.
-- `test_terminal_plan_only.py` and `test_terminal_setup_diagnostics.py`: planning and setup diagnostics without scientific execution.
-- `test_terminal_validation_suite.py`: frozen validation design, case coverage, and aggregate acceptance rules.
-- `test_terminal_targeted_concurrent.py`: targeted concurrent entrypoint behavior.
+- `test_scarcity_public_runner.py`: direct CLI help and tiny portable smoke outputs.
+- Scientific workflow behavior is also covered through the experiment and analysis tests above.

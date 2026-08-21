@@ -1,21 +1,14 @@
 # Configurations
 
-This directory contains source-controlled scientific settings and small reference artifacts.
+This directory contains source-controlled scientific settings and output schemas.
 
 - `positive_need_spec.json`: frozen finite-support positive-need environment specification
 - `solver_heldout_configs.json`: prespecified held-out solver environments
 - `strategy_mapping_environments.json`: selected strategy-mapping environments
 - `strategy_mapping_output_schemas.json`: required collected-output schemas
-- `scarcity_frozen_settings.json`: public R6 scarcity thresholds, numerical settings, and
+- `scarcity_frozen_settings.json`: scarcity thresholds, numerical settings, and
   episode/stream contracts
 - `scarcity_output_schemas.json`: ordered schemas for portable scarcity summaries and
   paired metrics
-- `terminal_evidence_numerical_method_v2.json`: frozen numerical-method settings for terminal evidence
-- `terminal_base_beliefs_7376c5d_v1.json`: accepted canonical terminal base beliefs
-- `reference/terminal_quadrature_manifest_v1.json`: original quadrature-manifest reference bytes
-- `reference/terminal_base_migration_execution_approval_v1.json`: accepted one-time migration approval bytes
 
-The terminal reference artifacts are hash-checked. Historical file names and labels embedded
-inside them are provenance, not active workflow names, and must remain unchanged. Cluster
-submission wrappers and large generated evidence are intentionally kept outside the public
-source package.
+Generated simulation outputs belong under `results/` and are not source-controlled.

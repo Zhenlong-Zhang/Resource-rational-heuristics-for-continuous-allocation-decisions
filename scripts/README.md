@@ -38,28 +38,23 @@ python3 scripts/run_parallel_experiments.py \
 
 Expected average utility is the performance measure. True-outcome, allocation-distance, and information-acquisition fields are behavioral diagnostics.
 
-## Frozen And Resumable Workflows
+## Structured Evaluation Workflows
 
-The following scripts use manifests and atomic task outputs so large runs can be inspected, resumed, and collected without silently rerunning failed shards:
+The following scripts provide reproducible setup, execution, collection, and validation for larger analyses:
 
 - `active_search_evaluation_workflow.py`: oracle, active-search discovery, fixed-budget, confirmation, and held-out solver families
-- `diagnostic_active_search_workflow.py`: manual active-search versus equal-split benchmark
-- `method_comparison_episode_workflow.py`: paired approximation-method episodes
-- `positive_need_workflow.py`: finite-support positive-need analyses and quadrature diagnostics
-- `quadrature_validation_array.py`: task-level quadrature validation
-- `strategy_mapping_workflow.py`: held-out strategy comparison and controlled boundary diagnostics
-- `terminal_validation_array.py`: frozen terminal evidence execution and read-back validation
+- `run_method_comparison_task.py`: one checkpointed approximation-method comparison task
+- `combine_method_comparison_results.py`: combine completed method-comparison task outputs
+- `run_scarcity_public.py`: portable object-, development-, and confirmation-stage scarcity evaluation
 
-## Public R6 scarcity entry points
+## Scarcity Analysis
 
-The public R6 implementation is in `src/experiments/scarcity.py` and
-`src/experiments/heuristic_map_report.py`. `run_scarcity_public.py` is the scheduler-free
-runner for object, development, and confirmation summaries; the Round 6 notebook exposes
-its smoke and serious/full configurations. Internal manifest collection, report packaging,
-scheduler wrappers, and provenance audits are kept outside this repository's public
-reproduction surface.
+The implementation is in `src/experiments/scarcity.py` and
+`src/experiments/heuristic_map_report.py`. `run_scarcity_public.py` is the portable runner
+for object, development, and confirmation summaries; the corresponding reproduction
+notebook exposes its smoke and serious/full configurations.
 
-Each workflow exposes its operations through `--help`. A typical pattern is:
+The active-search workflow exposes its operations through `--help`. A typical pattern is:
 
 ```bash
 python3 scripts/active_search_evaluation_workflow.py create --help
@@ -67,22 +62,5 @@ python3 scripts/active_search_evaluation_workflow.py run-task --help
 python3 scripts/active_search_evaluation_workflow.py progress --help
 python3 scripts/active_search_evaluation_workflow.py collect --help
 ```
-
-## Local execution boundary
-
-The public repository does not require a cluster wrapper or scheduler account. Any local
-workflow wrapper that is retained for older analyses should be treated as a local execution
-adapter, not as part of the R6 reproduction contract.
-
-## Terminal Validation
-
-The terminal-validation scripts implement a stricter evidence path for the finite-support terminal allocation problem:
-
-- `audit_terminal_manifest_setup.py` and related audit scripts validate plans without scientific execution
-- `run_terminal_targeted_concurrent.py` runs targeted concurrent checks
-- `terminal_validation_array.py` freezes manifests, executes tasks, records scheduler evidence, and performs independent read-back
-- `export_terminal_base_migration.py` and its companion shell files preserve a historical one-time migration trust boundary
-
-The accepted migration artifact is already tracked under `configs/`. The historical migration is intentionally non-rerunnable after its approved tool hashes change.
 
 Generated outputs belong under `results/` and are ignored by Git.

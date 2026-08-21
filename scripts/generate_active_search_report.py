@@ -350,7 +350,7 @@ table{{width:100%;border-collapse:collapse;border-radius:14px;display:block;over
 <p>The full-information objective supports equal outcome in both-positive regimes, and at least six observations can be useful. The broad search found adaptive, unequal-allocation policies, and {confirmation['point_joint_count']}/12 independently retained both point estimates at or above 0.80. However, {confirmation['confirmed_count']}/12 passed the stricter two-lower-bound rule, so the point-level replication and the confirmatory claim must remain distinct.</p>
 <p class="note"><strong>Next decision.</strong> {next_decision}</p>
 <h2>Reproducibility</h2>
-<p>The complete model, simulation pipeline, frozen Hoffman2 workflow, and tests are available in the <a href="{REPOSITORY_URL}">GitHub repository</a>. The included notebook is a lightweight interface to the same source code; it does not duplicate the model implementation.</p>
+<p>The complete model, simulation pipeline, reproducible workflow, and tests are available in the <a href="{REPOSITORY_URL}">GitHub repository</a>. The included notebook is a lightweight interface to the same source code; it does not duplicate the model implementation.</p>
 <h2>Supporting Data</h2><p><a href="supporting_data/active_search_confirmation_comparison.csv">Confirmation table</a> · <a href="supporting_data/active_search_joint_candidates_discovery.csv">Discovery candidates</a> · <a href="supporting_data/active_search_solver_comparison.csv">Solver comparison</a> · <a href="supporting_data/active_search_report_summary.json">Report summary</a></p>
 <footer>Expected average utility remains the performance criterion. Outcome-equality and information-acquisition measures are behavioral diagnostics. RR refers to the evaluated approximation, not an exact continuous-state optimal policy.</footer>
 </main></body></html>"""
@@ -524,7 +524,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         "## Reproduce\n\n"
         f"- Repository: {REPOSITORY_URL}\n"
         "- Notebook: `reproducibility/reproduce_round_05.ipynb`\n"
-        "- The notebook calls the shared source and Hoffman2 scripts; it does not "
+        "- The notebook calls the shared source and workflow scripts; it does not "
         "contain a separate model implementation.\n",
         encoding="utf-8",
     )

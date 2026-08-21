@@ -17,7 +17,7 @@ from src.experiments.heuristic_map_report import (
 def evidence_fixture() -> dict[str, object]:
     return {
         "audit_pass": True,
-        "no_episode_simulation_or_new_R5_inference": True,
+        "no_episode_simulation_or_new_historical_inference": True,
         "heuristic_prototypes": [
             {
                 "strategy": "immediate_equal_split",
@@ -44,9 +44,12 @@ def evidence_fixture() -> dict[str, object]:
                 "sample_time_cost_percent": 0.005,
             },
         ],
-        "round_audits": {
-            "R5": {"point_joint_count": 11, "strict_joint_count": 0},
-            "R6": {
+        "analysis_audits": {
+            "active_search_confirmation": {
+                "point_joint_count": 11,
+                "strict_joint_count": 0,
+            },
+            "scarcity_behavior": {
                 "recovery_classification": (
                     "higher_utility_behaviorally_different_strategy"
                 )
@@ -56,7 +59,7 @@ def evidence_fixture() -> dict[str, object]:
 
 
 class HeuristicMapReportTests(unittest.TestCase):
-    def test_map_is_exactly_four_by_four_and_preserves_r5_r6_limits(self) -> None:
+    def test_map_is_exactly_four_by_four_and_preserves_analysis_limits(self) -> None:
         classifications = [
             {
                 "acquisition_class": "no_search",
@@ -99,7 +102,7 @@ class HeuristicMapReportTests(unittest.TestCase):
         active = rows[2]["qualitative_environmental_conditions"]
         self.assertIn("11 of 12", active)
         self.assertIn("0 of 12", active)
-        self.assertIn("three related noise conditions", active)
+        self.assertIn("Three related scarcity noise conditions", active)
         self.assertIn("not three independent replications", active)
         self.assertIn("aggregate", active.lower())
 
@@ -142,7 +145,7 @@ class HeuristicMapReportTests(unittest.TestCase):
             classifications=[],
         )
         self.assertEqual({row["claim_type"] for row in claims}.difference(ALLOWED_CLAIM_TYPES), set())
-        lower_need = next(row for row in claims if row["claim_id"] == "R6-S01")
+        lower_need = next(row for row in claims if row["claim_id"] == "MAP-S01")
         self.assertEqual(lower_need["claim_type"], "suggestion")
         self.assertIn("not treated as a result", lower_need["limitations"])
 

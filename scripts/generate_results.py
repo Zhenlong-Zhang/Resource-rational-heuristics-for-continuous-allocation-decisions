@@ -725,7 +725,7 @@ def write_summary(
     lines = [
         "# Resource-Rational Allocation Results Summary",
         "",
-        "These outputs are generated from the current codebase. Treat smoke/local runs as preliminary until the server-scale configuration is run.",
+        "These outputs are generated from the current codebase. Treat smoke runs as preliminary until a serious configuration is run.",
         "",
         "## Run Settings",
         "",

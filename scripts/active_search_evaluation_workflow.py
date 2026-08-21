@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run and strictly collect reproducible active-search evaluation Hoffman2 array shards."""
+"""Run and strictly collect reproducible active-search evaluation shards."""
 
 from __future__ import annotations
 
@@ -427,7 +427,7 @@ def collect(args) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Reproducible Hoffman2 workflow for ActiveSearch analyses")
+    parser = argparse.ArgumentParser(description="Reproducible workflow for active-search analyses")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     create = subparsers.add_parser("create")

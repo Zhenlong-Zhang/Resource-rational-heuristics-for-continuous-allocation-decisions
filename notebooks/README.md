@@ -10,10 +10,9 @@ The notebooks are organized by the research update in which an analysis was repo
 | Round 5 | `round_05/reproduce_round_05.ipynb` | Reproduce the objective, information-value, confirmation, and non-myopic solver analyses. |
 | Round 6 | `round_06/reproduce_round_06.ipynb` | Run the portable smoke or serious scarcity workflow, reproduce object/development/confirmation summaries, and inspect lower-need allocation metrics. |
 
-Each notebook exposes the main episode, VOI-sampling, grid, seed, and output settings near the top. Large configurations are shown explicitly but are not started until `RUN = True` is set in the notebook.
+Each notebook exposes the relevant computational settings near the top. Large configurations are shown explicitly but are not started until `RUN = True` is set in the notebook.
 
 Generated tables and figures are written under `results/`, which is ignored by Git.
 
-The Round 6 notebook is intentionally portable: it does not submit jobs, access a cluster,
-or include the generated serious evidence. The accepted professor-facing evidence package
-and its server-side provenance are separate from this public code repository.
+The Round 6 notebook is portable and calls the same public runner used from the command
+line. It exposes both a small smoke configuration and the serious episode configuration.

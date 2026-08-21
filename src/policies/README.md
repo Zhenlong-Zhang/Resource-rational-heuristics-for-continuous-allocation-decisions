@@ -17,7 +17,7 @@ Final-choice and simple metalevel policies include:
 
 `finite_support_voi.py` contains `FiniteSupportMyopicVOIPolicy` for controlled finite-support environments.
 
-The scarcity lower-effort policies in `heuristic.py` are the public R6 comparators. They
+The scarcity lower-effort policies in `heuristic.py` are public allocation comparators. They
 keep `all_to_lower`, `meet_lower_first`, and the weaker `more_to_lower` direction distinct;
 the latter is a diagnostic and is not silently promoted to an exact allocation rule.
 

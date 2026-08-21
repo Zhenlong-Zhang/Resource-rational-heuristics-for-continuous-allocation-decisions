@@ -2,7 +2,7 @@
 
 This helper reads completed or partially completed result folders and writes a
 compact Markdown summary. It is intentionally lightweight: it uses only the
-Python standard library so it can run locally or on Hoffman2 without extra setup.
+Python standard library so it can run without extra dependencies.
 """
 
 from __future__ import annotations

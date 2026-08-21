@@ -1,4 +1,4 @@
-"""Smoke checks for the public scheduler-free scarcity runner."""
+"""Smoke checks for the portable public scarcity runner."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ class PublicScarcityRunnerTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Portable R6 scarcity runner", result.stdout)
+        self.assertIn("Portable scarcity-analysis runner", result.stdout)
 
     def test_tiny_smoke_writes_public_stage_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

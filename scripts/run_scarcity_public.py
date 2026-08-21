@@ -1,9 +1,8 @@
-"""Portable R6 scarcity runner.
+"""Portable scarcity-analysis runner.
 
-This runner calls the shared scientific implementation directly. It has no scheduler,
-cluster, provenance, or server-path layer. ``smoke`` is a wiring check; ``serious`` uses
-the frozen public settings and can be run on an ordinary Python environment with enough
-time and memory.
+This runner calls the shared scientific implementation directly. ``smoke`` is a wiring
+check; ``serious`` uses the frozen public settings and can be run in a Python environment
+with enough time and memory.
 """
 
 from __future__ import annotations
