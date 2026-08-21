@@ -24,6 +24,11 @@ Some terminal-solver and evidence tests are intentionally more computationally d
 - `test_active_search_report.py`: report calculations and strict input validation.
 - `test_diagnostic_active_search.py`: manual active-search versus equal-split diagnostic criteria.
 - `test_strategy_mapping.py`: held-out strategy comparisons, common randomness, and boundary summaries.
+- `test_scarcity.py`: lower-need allocation definitions, oracle gates, paired metrics, and
+  frozen scarcity classification rules.
+- `test_heuristic_map_report.py`: four-row map shape, claim-ledger types, prototype costs,
+  and bounded R5/R6 wording.
+- `test_scarcity_public_runner.py`: direct CLI help and tiny scheduler-free smoke outputs.
 
 ## Reproducible Workflows
 

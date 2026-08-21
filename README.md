@@ -74,6 +74,23 @@ Professor-facing analyses are reproduced by notebooks under `notebooks/`. Each n
 
 See `notebooks/README.md` for the analysis index. Full configurations are intentionally gated by `RUN = False`, so opening a notebook does not start a large computation.
 
+## Round 6 scarcity analysis
+
+Round 6 adds a fourth heuristic row for scarcity: prioritizing the recipient with lower
+effort-to-goal (the operational lower-need / closer-to-goal rule). The public implementation
+keeps the allocation definitions, kink-aware oracle, paired metrics, frozen thresholds, and
+pure heuristic-map builders in `src/experiments/`; the corresponding regression tests are
+in `tests/`. Start with
+`notebooks/round_06/reproduce_round_06.ipynb` for a portable reproduction entry point. The
+scheduler-free `scripts/run_scarcity_public.py` runner writes object, development, and
+confirmation summaries under `results/`; use `--mode smoke` for a small wiring check or
+`--mode serious` for the frozen public episode configuration.
+
+The serious held-out evidence, historical R5 aggregate audit, generated report, and server
+provenance are not committed as simulation output. They remain in the separately archived
+professor-facing delivery package. No cluster login, qsub wrapper, private path, or credential
+is needed to inspect or use this repository.
+
 ## Repository Structure
 
 - `src/mdp/`: environment configuration, beliefs, utility, Bayesian updates, and metalevel dynamics

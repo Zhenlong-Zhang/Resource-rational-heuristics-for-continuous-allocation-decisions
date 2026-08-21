@@ -50,6 +50,15 @@ The following scripts use manifests and atomic task outputs so large runs can be
 - `strategy_mapping_workflow.py`: held-out strategy comparison and controlled boundary diagnostics
 - `terminal_validation_array.py`: frozen terminal evidence execution and read-back validation
 
+## Public R6 scarcity entry points
+
+The public R6 implementation is in `src/experiments/scarcity.py` and
+`src/experiments/heuristic_map_report.py`. `run_scarcity_public.py` is the scheduler-free
+runner for object, development, and confirmation summaries; the Round 6 notebook exposes
+its smoke and serious/full configurations. Internal manifest collection, report packaging,
+scheduler wrappers, and provenance audits are kept outside this repository's public
+reproduction surface.
+
 Each workflow exposes its operations through `--help`. A typical pattern is:
 
 ```bash
@@ -59,9 +68,11 @@ python3 scripts/active_search_evaluation_workflow.py progress --help
 python3 scripts/active_search_evaluation_workflow.py collect --help
 ```
 
-## Cluster Wrappers
+## Local execution boundary
 
-Files beginning with `submit_hoffman2_` prepare and submit Hoffman2 jobs for the corresponding workflow. They expose scientific and concurrency settings through environment variables and delegate result validation to the Python workflow.
+The public repository does not require a cluster wrapper or scheduler account. Any local
+workflow wrapper that is retained for older analyses should be treated as a local execution
+adapter, not as part of the R6 reproduction contract.
 
 ## Terminal Validation
 

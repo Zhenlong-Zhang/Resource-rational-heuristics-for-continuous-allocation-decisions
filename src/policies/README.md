@@ -17,4 +17,8 @@ Final-choice and simple metalevel policies include:
 
 `finite_support_voi.py` contains `FiniteSupportMyopicVOIPolicy` for controlled finite-support environments.
 
+The scarcity lower-effort policies in `heuristic.py` are the public R6 comparators. They
+keep `all_to_lower`, `meet_lower_first`, and the weaker `more_to_lower` direction distinct;
+the latter is a diagnostic and is not silently promoted to an exact allocation rule.
+
 Policies implement `choose_action(mdp, belief)`. Final-choice equivalence can also be evaluated by applying allocation heuristics to the same terminal belief reached by an RR approximation, without treating every heuristic as a full metalevel policy.

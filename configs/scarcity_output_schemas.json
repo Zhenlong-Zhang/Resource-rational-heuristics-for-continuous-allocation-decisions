@@ -1,0 +1,18 @@
+{
+  "schema": "scarcity_output_schema_contract_v1",
+  "schema_version": 1,
+  "builder_contract": "scripts/run_scarcity_public.py writes these ordered public summaries",
+  "description": "The portable runner writes these public tables; stage tables may be empty when the object gate stops metalevel work.",
+  "schemas": {
+    "scarcity_confirmation_episode_rows.csv": "metalevel_rows_v1",
+    "scarcity_confirmation_summary.csv": "metalevel_summary_v1",
+    "scarcity_development_episode_rows.csv": "metalevel_rows_v1",
+    "scarcity_development_summary.csv": "metalevel_summary_v1",
+    "scarcity_oracle_rows.csv": "oracle_rows_v1",
+    "scarcity_oracle_summary.csv": "oracle_summary_v1",
+    "scarcity_object_gate.json": "object_gate_v1",
+    "scarcity_selected_anchors.json": "selected_anchors_v1",
+    "scarcity_confirmation_selection.json": "confirmation_selection_v1",
+    "scarcity_run_metadata.json": "run_metadata_v1"
+  }
+}

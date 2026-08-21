@@ -13,6 +13,176 @@ def _normal_cdf(value: float) -> float:
     return 0.5 * (1.0 + math.erf(value / math.sqrt(2.0)))
 
 
+def effort_to_goal(need_estimate: float, learning_rate: float) -> float:
+    """Return nonnegative tutoring time needed to reach the estimated goal."""
+
+    if learning_rate <= 0.0:
+        raise ValueError("learning_rate must be positive")
+    return max(0.0, float(need_estimate) / float(learning_rate))
+
+
+def lower_effort_identity(
+    effort_1: float,
+    effort_2: float,
+    *,
+    relative_tolerance: float = 1e-9,
+) -> int:
+    """Return 1/2 for the lower effort-to-goal recipient, or 0 for a tie."""
+
+    if effort_1 < 0.0 or effort_2 < 0.0:
+        raise ValueError("effort-to-goal values must be nonnegative")
+    tolerance = relative_tolerance * max(1.0, effort_1, effort_2)
+    if abs(effort_1 - effort_2) <= tolerance:
+        return 0
+    return 1 if effort_1 < effort_2 else 2
+
+
+def all_to_lower_allocation(
+    need_1: float,
+    need_2: float,
+    learning_rate_1: float,
+    learning_rate_2: float,
+) -> float:
+    effort_1 = effort_to_goal(need_1, learning_rate_1)
+    effort_2 = effort_to_goal(need_2, learning_rate_2)
+    identity = lower_effort_identity(effort_1, effort_2)
+    if identity == 1:
+        return 1.0
+    if identity == 2:
+        return 0.0
+    return 0.5
+
+
+def meet_lower_first_allocation(
+    need_1: float,
+    need_2: float,
+    learning_rate_1: float,
+    learning_rate_2: float,
+    remaining_time: float,
+) -> float:
+    if remaining_time <= 0.0:
+        return 0.5
+    effort_1 = effort_to_goal(need_1, learning_rate_1)
+    effort_2 = effort_to_goal(need_2, learning_rate_2)
+    identity = lower_effort_identity(effort_1, effort_2)
+    if identity == 1:
+        return min(remaining_time, effort_1) / remaining_time
+    if identity == 2:
+        return (remaining_time - min(remaining_time, effort_2)) / remaining_time
+    return 0.5
+
+
+def greatest_effort_need_allocation(
+    need_1: float,
+    need_2: float,
+    learning_rate_1: float,
+    learning_rate_2: float,
+) -> float:
+    effort_1 = effort_to_goal(need_1, learning_rate_1)
+    effort_2 = effort_to_goal(need_2, learning_rate_2)
+    lower = lower_effort_identity(effort_1, effort_2)
+    if lower == 1:
+        return 0.0
+    if lower == 2:
+        return 1.0
+    return 0.5
+
+
+class _ImmediateLowerEffortPolicy:
+    allocation_rule = ""
+
+    def termination_time_cost(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> float:
+        return mdp.config.terminate_cost
+
+    def choose_action(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> Action:
+        return mdp.TERMINATE
+
+    def choose_final_allocation(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> float:
+        rate_1, rate_2 = mdp.learning_rates()
+        if self.allocation_rule == "all_to_lower":
+            return all_to_lower_allocation(
+                belief.mean_1,
+                belief.mean_2,
+                rate_1,
+                rate_2,
+            )
+        if self.allocation_rule == "meet_lower_first":
+            return meet_lower_first_allocation(
+                belief.mean_1,
+                belief.mean_2,
+                rate_1,
+                rate_2,
+                mdp.remaining_time_after_termination(belief, self),
+            )
+        raise RuntimeError("Unknown lower-effort allocation rule")
+
+
+class ImmediateAllToLowerPolicy(_ImmediateLowerEffortPolicy):
+    name = "immediate_all_to_lower"
+    allocation_rule = "all_to_lower"
+
+
+class ImmediateMeetLowerFirstPolicy(_ImmediateLowerEffortPolicy):
+    name = "immediate_meet_lower_first"
+    allocation_rule = "meet_lower_first"
+
+
+class ScarcityGreatestNeedPolicy:
+    """Rate-aware greatest-need comparator used only by the scarcity workflow."""
+
+    name = "scarcity_greatest_need"
+
+    def termination_time_cost(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> float:
+        return mdp.config.terminate_cost
+
+    def choose_action(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> Action:
+        return mdp.TERMINATE
+
+    def choose_final_allocation(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> float:
+        rate_1, rate_2 = mdp.learning_rates()
+        return greatest_effort_need_allocation(
+            belief.mean_1,
+            belief.mean_2,
+            rate_1,
+            rate_2,
+        )
+
+
+class _ManualActiveSearchLowerEffortPolicy(_ImmediateLowerEffortPolicy):
+    """Balanced six-sample acquisition with a separately named final-choice rule."""
+
+    def __init__(self, samples_per_person: int = 3):
+        if samples_per_person != 3:
+            raise ValueError("Scarcity active lower-effort policies require exactly three samples per person")
+        self.samples_per_person = samples_per_person
+
+    def choose_action(self, mdp: ContinuousAllocationMetaMDP, belief: BeliefState) -> Action:
+        count_1 = sum(1 for item in belief.history if item["action"] == 1.0)
+        count_2 = sum(1 for item in belief.history if item["action"] == 2.0)
+        if count_1 >= self.samples_per_person and count_2 >= self.samples_per_person:
+            return mdp.TERMINATE
+        if count_1 < count_2:
+            return mdp.SAMPLE_PERSON_1
+        if count_2 < count_1:
+            return mdp.SAMPLE_PERSON_2
+        rate_1, rate_2 = mdp.learning_rates()
+        effort_variance_1 = belief.var_1 / (rate_1 * rate_1)
+        effort_variance_2 = belief.var_2 / (rate_2 * rate_2)
+        if effort_variance_1 >= effort_variance_2:
+            return mdp.SAMPLE_PERSON_1
+        return mdp.SAMPLE_PERSON_2
+
+
+class ManualActiveSearchAllToLowerPolicy(_ManualActiveSearchLowerEffortPolicy):
+    name = "manual_active_search_all_to_lower"
+    allocation_rule = "all_to_lower"
+
+
+class ManualActiveSearchMeetLowerFirstPolicy(_ManualActiveSearchLowerEffortPolicy):
+    name = "manual_active_search_meet_lower_first"
+    allocation_rule = "meet_lower_first"
+
+
 class EqualDivisionPolicy:
     name = "equal_division"
 

@@ -27,8 +27,17 @@ Important functions include:
 - `active_search_evaluation.py`: full-information oracle, fixed-budget information value, frozen RR evaluation, Wilson intervals, and active-search summaries
 - `positive_need.py`: finite-support positive-need environments and policy evaluations
 - `strategy_mapping.py`: four-way held-out comparisons, controlled `sigma_need` sweeps, and fixed-total-need mechanism diagnostics
+- `scarcity.py`: lower-need allocation definitions, the kink-aware full-information oracle,
+  paired metrics, and frozen classification rules for the R6 scarcity analysis
+- `heuristic_map_report.py`: pure four-row heuristic-map and claim-ledger builders
 
 These modules keep final-choice metrics separate from information-acquisition metrics and support common-random evaluation episodes.
+
+## Evidence boundary
+
+The public package contains model and metric logic only. Generated R6 evidence, historical
+aggregate audits, server manifests, and scheduler provenance are not tracked here; the
+professor-facing result package is distributed separately.
 
 ## Terminal Evidence
 

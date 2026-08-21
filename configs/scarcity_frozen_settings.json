@@ -1,0 +1,64 @@
+{
+  "schema": "scarcity_frozen_settings_v1",
+  "schema_version": 1,
+  "scientific_scope": "near_certain_positive_unbounded_gaussian_scarcity",
+  "root_seed": 1820260820,
+  "thresholds": {
+    "allocation_match_absolute_tolerance": 0.05,
+    "effort_tie_relative_tolerance": 1e-09,
+    "more_to_lower_strict_share_threshold": 0.55,
+    "retained_gain_fraction": 0.8,
+    "support_probability_threshold": 0.8
+  },
+  "numerics": {
+    "allocation_grid_size": 401,
+    "dense_oracle_grid_size": 16001,
+    "dense_oracle_utility_tolerance": 1e-06,
+    "dense_oracle_allocation_tolerance": 0.0025,
+    "myopic_voi_draws": 500,
+    "oracle_grid_size": 4001,
+    "oracle_dominance_tolerance": 1e-09
+  },
+  "stream_contract": {
+    "manual_samples_per_person": 3,
+    "max_online_samples": 40,
+    "max_prior_samples_per_person": 20,
+    "observations_per_recipient": 60
+  },
+  "object_screen": {
+    "deterministic_cases_per_task": 61,
+    "episodes_per_configuration": 120,
+    "episodes_per_task": 10,
+    "gaussian_capacity_ratios": [0.25, 0.5, 0.75, 0.95, 1.05],
+    "lambda_shortfall": [1.0, 2.0, 4.0],
+    "mu_need": 100.0,
+    "sigma_need": [5.0, 10.0, 15.0],
+    "utility_exponent": [0.25, 0.5, 0.75]
+  },
+  "development": {
+    "episodes_per_environment": 120,
+    "episodes_per_task": 10,
+    "prior_sample_count": [0, 5, 20],
+    "sample_time_cost_percent": [0.01, 0.1, 1.0],
+    "sigma_sample": [2.0, 10.0, 30.0]
+  },
+  "confirmation": {
+    "episodes_per_condition": 1200,
+    "episodes_per_task": 10,
+    "maximum_two_sided_wilson_half_width": 0.03,
+    "target_count": 2,
+    "maximum_diagnostic_contrast_count": 2
+  },
+  "reporting_family": [
+    "gain_vs_equal_split",
+    "gain_vs_greatest_need",
+    "retained_gain_all_to_lower_vs_equal_split",
+    "retained_gain_all_to_lower_vs_greatest_need",
+    "retained_gain_meet_lower_first_vs_equal_split",
+    "retained_gain_meet_lower_first_vs_greatest_need",
+    "manual_gain_all_to_lower_vs_equal_split",
+    "manual_gain_all_to_lower_vs_greatest_need",
+    "manual_gain_meet_lower_first_vs_equal_split",
+    "manual_gain_meet_lower_first_vs_greatest_need"
+  ]
+}
