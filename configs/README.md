@@ -21,6 +21,13 @@ Generated simulation outputs belong under `results/` and are not source-controll
   checks and rationale. Public hashes bind the scientific-only configuration.
 - `tutoring_identifiability_validation.json`: fixed synthetic response-rule,
   motor-noise, lapse and participant-count assumptions for C2 recovery.
+- `tutoring_paired_horizon.json`: 400 paired episodes per active template, fixed
+  latent/report seed namespaces and the 20-query comparison cap.
+- `tutoring_terminal_time_v01.json`: ten terminal macros, assumed timing profiles,
+  price multipliers and initial/conditional-terminal sensitivity settings.
+- `tutoring_optimality_v01.json`: numerical-envelope tolerances, full affordable
+  horizon and computational refinement limits. A depth limit bounds refinement,
+  not the number of legal information-acquisition actions.
 
 ## Statistical Settings
 

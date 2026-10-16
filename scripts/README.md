@@ -28,6 +28,14 @@ python3 scripts/run_parallel_experiments.py \
 
 `summarize_results.py` creates a compact Markdown summary from existing result folders without rerunning simulations.
 
+`reproduce_gaussian_reference.py` runs the identified historical Gaussian grids
+in an isolated extraction of scientific source from a pinned Git commit. Select
+one of its six `--recipe` values and `--mode smoke|full`; `--prepare-only` extracts
+and prints the command without calculating. Full recipes preserve the original
+120/1200 episodes, 500 VOI draws, common streams and grid-specific partitioning.
+Use a full Git clone and a fresh output directory. This does not replace the
+current Gaussian solver or promise bitwise results across numerical runtimes.
+
 ## Scientific Diagnostics
 
 - `check_observation_streams.py`: verifies that observations and realized utility use the same episode-specific hidden state
@@ -71,6 +79,12 @@ Generated outputs belong under `results/` and are ignored by Git.
 - `validate_tutoring_design_revision.py`: the fixed C3 prior revision, independent confirmation and fixed-initial-rule comparison.
 - `validate_allocation_identifiability.py`: C2 group responsiveness and individual predictive classification under declared synthetic noise.
 - `audit_tutoring_model_bridge.py`: deterministic finite-support, Gaussian-reference and affine-GPA audit.
+- `reproduce_finite_tutoring.py`: paired cap20/budget-only episodes, initial
+  diagnostics, terminal-time sensitivity and full-affordable-horizon numerical
+  bounds. Stages take public scientific settings and regenerate intermediate
+  paired data; no private preparation or approval receipt is required. Terminal
+  sensitivity is conditional on the supplied old-policy terminals, not a newly
+  simulated cost-aware policy. Computational refinement limits are not query caps.
 
 ## Statistical Analyses
 

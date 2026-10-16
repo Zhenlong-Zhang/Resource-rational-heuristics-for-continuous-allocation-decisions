@@ -33,3 +33,27 @@ Generated outputs go to ignored `results/finite_reproduction/`. Use a new output
 directory for each execution. Smoke is only a wiring check. Target matches and
 group responsiveness are not individual cognitive-rule identification or human
 validation; repeated one-step sampling is not a globally optimal adaptive policy.
+
+## Horizon and Terminal Diagnostics
+
+[horizon_terminal_bounds.ipynb](horizon_terminal_bounds.ipynb) calls
+`scripts/reproduce_finite_tutoring.py` for three explicitly separate analyses:
+
+| Route | Full settings | Outputs |
+| --- | --- | --- |
+| Paired horizons | Seed2026100901;400 pairs per six C3/C5 templates | 2400 paired scenarios/4800 paths, capped versus budget-only summaries and27 initial diagnostics |
+| Terminal-time sensitivity | 36 initial states;three timing profiles;price multipliers0,.01,.1,1,10,100 | 1800 initial scenarios, reference rate, orientation/break-even diagnostics,43200 conditional scenarios at2400 old terminals and macro counts |
+| Numerical bounds | Zero terminal cost;full affordable horizon;600s/100000states/depth6 refinement | 27 initial bounds, six root lower/upper envelopes with complete witnesses/checkpoints,2400 fixed-terminal stopping diagnostics |
+
+These routes regenerate the paired input and reject mismatched or incomplete
+panels. Timing profiles are assumptions. Conditional terminal sensitivity is not
+a new duration-aware trajectory distribution; numerical statewise bounds do not
+certify the preceding myopic policy. The default capped task above is unchanged.
+
+The notebook lists its remaining output gaps: ENGAGEMENT schedules/JavaScript
+parity/geometry, separate derived working-stimulus/equal-template summaries and
+the compact historical bound presentation. Raw scientific outputs are available;
+these missing presentation/source-panel routes are not claimed as reproduced.
+The full budget-only cost-aware policy and later primary inference calibration
+are separate and are not included here. No private receipts or cached results
+are required by the included stages.

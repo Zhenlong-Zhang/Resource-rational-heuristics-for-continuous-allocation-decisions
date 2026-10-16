@@ -44,9 +44,11 @@ dependencies. It is not a frozen archive: compatible accepted corrections and
 methods belong in both branches, while incompatible model changes remain separate.
 
 Both branches use the same scientific notebook organization and shared
-implementation where compatible. In this release they share the verified
-20-query finite task and the reproduction workflows described below. Later
-budget-only model and statistical analyses are not included in this release.
+implementation where compatible. The default finite task retains the verified
+20-query model. Explicit horizon-comparison and budget-only diagnostic workflows
+are separately labelled; including them does not change the default or validate
+their conclusions for a different horizon. Later cost-aware adaptive-policy and
+primary statistical-calibration workflows are not included in this release.
 Retained historical calibration methods and negative results are supporting
 diagnostics, not evidence for the validity of a different model or error policy.
 
@@ -103,6 +105,11 @@ intentionally gated by `RUN = False`, so opening a notebook does not start a
 large computation. The objective/solver notebook regenerates its oracle,
 sweep, fixed-budget, independent confirmation and paired solver intermediates
 before the validated report; it does not require cached result folders.
+
+The [historical Gaussian reference](notebooks/heuristic_mapping/historical_gaussian_grids.ipynb)
+preserves the identified source and settings for the earlier 120-episode broad
+grids and 1,200-episode focused confirmations. It is distinct from evaluating
+the current Gaussian solver: source identity, not only episode count, matters.
 
 ## Scarcity Analysis
 
@@ -176,6 +183,16 @@ and conditional power calculations do not establish human validity or select
 a final sample size. See the
 [notebook index](notebooks/README.md) for the exact scope and scientific settings
 of each reported analysis.
+
+The [horizon, terminal-time and bounds notebook](notebooks/finite_tutoring/horizon_terminal_bounds.ipynb)
+adds three separately scoped analyses: 2,400 paired cap20/budget-only scenarios,
+assumed terminal-time sensitivity at initial and fixed old-policy terminal
+beliefs, and numerical Bellman bounds for the zero-terminal-cost affordable
+horizon. It regenerates the paired panel rather than loading private results.
+Root-refinement depth/time limits do not truncate the scientific horizon, and
+the resulting numerical bounds do not certify a globally optimal myopic policy.
+See the notebook's explicit output coverage before treating it as a reproduction
+of every supporting presentation table.
 
 ## Tests
 

@@ -10,14 +10,24 @@ maintained `20-limit` variant use this same thematic layout where compatible.
 | Scientific question / result family | Notebook | Public producer and full settings |
 | --- | --- | --- |
 | Which heuristics emerge across Gaussian regimes? Final-choice/acquisition tables, behavior profiles, parameter sweeps, target candidates, DP sensitivity and Gauss-Hermite diagnostics | [Gaussian regimes](heuristic_mapping/gaussian_regimes.ipynb) | `run_parallel_experiments.py`, sections `step7,sweeps,dp,gh` plus three targeted grids; 1200 episodes, 500 VOI draws and 500 common observations/person; 32 grid chunks |
+| What did the historical Gaussian broad and focused grids compute? Three 120-episode grids and three 1200-episode confirmations | [Historical Gaussian reference](heuristic_mapping/historical_gaussian_grids.ipynb) | `reproduce_gaussian_reference.py`; pinned source commit, serious preset, 500 VOI draws, 200 requested common observations; original grid-specific chunk counts |
 | Does active search approach true-state equal outcome? Observation invariant and focused/narrow-followup regime tables | [Active-search regimes](heuristic_mapping/active_search_regimes.ipynb) | `check_observation_streams.py` (120 episodes, 500 observations/person, correlation threshold .95); parallel runner's two active-search grids (1200/500/500, zero prior samples, 48 chunks) |
 | Can a constructed manual-search baseline outperform equal split, and does RR match it? Three-policy environment/profile/candidate tables | [Constructed benchmark](heuristic_mapping/constructed_benchmark.ipynb) | Parallel runner, `active_search_diagnostic`, 972-environment `active_search_benchmark`; 1200/500/500, three manual samples/person, 81 chunks |
 | How do objectives, repeated information, confirmation and non-myopic solvers differ? Objective strata, fixed-budget/sweep evidence, independent confirmation, paired solver tables and report figures | [Objective and solver diagnostics](allocation_mechanisms/objective_and_solver_diagnostics.ipynb) | `active_search_evaluation_workflow.py` -> `analyze_active_search.py` -> `generate_active_search_report.py`; all eight scientific recipes and generated inputs connected; see [settings and coverage](allocation_mechanisms/README.md) |
 | When does scarcity favor lower effort-to-goal? Object gate, development selection, confirmation, lower-need metrics and non-positive Gaussian probabilities | [Scarcity](heuristic_mapping/scarcity.ipynb) | `run_scarcity_public.py --mode serious`, `scarcity.py` constants and `scarcity_frozen_settings.json`; 120 object/development episodes and 1200 confirmation episodes, unchanged stage-specific seeds |
 | Is the capped finite task numerically sound and are response rules identifiable? Baseline, C3 revision, C2 recovery and finite-prior bridge | [Finite-task validation](finite_tutoring/design_validation.ipynb) | Four validation/audit runners with baseline/revised conditions and fixed stage recipes; [settings and output map](finite_tutoring/README.md) |
+| Does a query cap bind, how do terminal time prices affect choice, and what numerical bounds hold? | [Horizons, terminal time and bounds](finite_tutoring/horizon_terminal_bounds.ipynb) | `reproduce_finite_tutoring.py`: 400 paired episodes per each of six templates (2400 pairs); 36 initial timing states; conditional sensitivity/bounds at the generated old terminals; six zero-terminal-cost root refinements |
 | How do the retained statistical methods calibrate, and what follows under declared planning assumptions? Inference examples, 28 planning scenarios, three calibration routes, failed criteria, C1 non-adoption and cohort bounds | [Calibration and power](statistical_methods/calibration_and_power.ipynb) | Historical Student/Welch 390000 attempts, known-bound 100000, empirical-Bernstein 120000, batch size 250 and unchanged per-cell seeds; [methods and output map](statistical_methods/README.md) |
 
 ## Computational Outputs
+
+The historical reference is a separate identified implementation, not a switch
+back to an obsolete solver in the current package. It regenerates the historical
+comparison/profile/candidate tables and figures under `tables/`, with the source
+identity and execution status in `reference_recipe.json`. A full Git clone or
+an explicit fetch of the documented commit is required. The current Gaussian
+notebook is a current-model analysis; matching episode counts alone does not
+make it a reproduction of historical tables.
 
 The Gaussian notebook produces `step7_final_choice_comparison.csv`,
 `step7_information_acquisition_comparison.csv`, `step7_behavior_profiles.csv`,
@@ -51,6 +61,13 @@ validated report, supporting tables and figures; smoke does not bypass its
 full-count gates or force candidate selection.
 
 ## Running and Interpreting
+
+The finite horizon notebook regenerates paired histories before the two terminal
+consumers. Its initial/root analyses do not need a cached panel. It provides raw
+scenario records, paired summaries, macro counts and numerical bound witnesses;
+the notebook identifies supporting schedule-geometry and derived presentation
+tables that are not yet generated by this route. This is not a new cost-aware
+adaptive-policy calculation or a validation of budget-only results under cap20.
 
 The first code cell installs dependencies. Open from a repository checkout,
 choose the stated smoke/full mode and inspect printed commands before setting

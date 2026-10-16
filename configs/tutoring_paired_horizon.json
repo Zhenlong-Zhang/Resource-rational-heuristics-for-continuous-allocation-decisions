@@ -1,0 +1,11 @@
+{
+  "schema": "finite-tutoring-paired-horizon-v1",
+  "root_seed": 2026100901,
+  "episodes_per_active_template": 400,
+  "active_conditions": ["C3", "C5"],
+  "capped_assessments": 20,
+  "decision_tolerance": 1e-10,
+  "certificate_tolerance": 1e-8,
+  "policy": "repeated_exact_one_step_myopic",
+  "machine_certified_arithmetic": false
+}

@@ -31,6 +31,8 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 ## Reproducible Interfaces
 
+- `test_gaussian_reference.py`: pinned historical recipe settings, explicit smoke
+  scaling, safe scientific-source extraction and refusal to overwrite outputs.
 - `test_scarcity_public_runner.py`: direct CLI help and tiny portable smoke outputs.
 - Scientific workflow behavior is also covered through the experiment and analysis tests above.
 
@@ -40,6 +42,14 @@ Some solver and evaluation tests are intentionally more computationally demandin
 - `test_tutoring_design_revision.py`: single C3 change, fixed stage seeds, configuration/source identity and selection criteria.
 - `test_allocation_identifiability.py`: synthetic response generators, group slope and held-out classification semantics.
 - `test_tutoring_model_bridge.py`: affine GPA identity and matched continuous-reference audit.
+- `test_tutoring_budget_horizon.py`: native arithmetic, paired shared streams,
+  scientific budget limits and capped comparison semantics.
+- `test_tutoring_terminal_time.py`: terminal-macro costs, reference rate,
+  zero-price/exhausted-budget behavior and expected-outcome allocation.
+- `test_tutoring_optimality.py`: rational toy-oracle containment, full branching,
+  feasible lower bounds and computational-cutoff versus horizon separation.
+- `test_finite_reproduction.py`: small real CLI producer-to-consumer chains,
+  incompatible or incomplete panel rejection, input guards and checkpoint integrity.
 
 ## Statistical Methods
 
