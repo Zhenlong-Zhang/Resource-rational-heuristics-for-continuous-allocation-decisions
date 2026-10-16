@@ -12,3 +12,23 @@ This directory contains source-controlled scientific settings and output schemas
   paired metrics
 
 Generated simulation outputs belong under `results/` and are not source-controlled.
+
+## Finite Tutoring Settings
+
+- `tutoring_conditions_baseline.json` and `tutoring_conditions.json`: baseline
+  and revised finite task; the revised C3 centres are [50, 70] rather than [60, 60].
+- `tutoring_design_revision_v02.json`: C3-only change, input/source integrity
+  checks and rationale. Public hashes bind the scientific-only configuration.
+- `tutoring_identifiability_validation.json`: fixed synthetic response-rule,
+  motor-noise, lapse and participant-count assumptions for C2 recovery.
+
+## Statistical Settings
+
+- `tutoring_calibration_v01.json`: 30 cells, fixed seeds, historical error
+  policies and 390,000 simulation attempts.
+- `tutoring_bounded_robustness_v01.json`: ten bounded-generator cells; six
+  supported means and three unavailable slopes remain in nine test slots.
+- `tutoring_identifiability_robustness_v01.json`: 30-state C1 audit, deterministic
+  projection schedules and twelve variance-adaptive calibration cells.
+- `tutoring_power_sensitivity_v01.json`: 28 conditional moment/power scenarios,
+  not a final recruitment recommendation.

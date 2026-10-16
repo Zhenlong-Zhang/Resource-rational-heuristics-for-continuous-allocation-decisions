@@ -1,0 +1,39 @@
+{
+  "schema": "tutoring_identifiability_validation_v1",
+  "status": "prospectively_frozen_synthetic_assumptions_not_human_sample_size",
+  "strategies": ["fixed_share", "equal_outcome", "fixed_share_drift", "learn_equal_outcome"],
+  "motor_noise_sd": [0.01, 0.04, 0.08],
+  "lapse_probability": [0.0, 0.1, 0.2],
+  "participant_bias_sd": 0.04,
+  "fixed_lower_share": 0.4,
+  "fixed_share_total_drift": 0.1,
+  "learning_start_weight": 0.0,
+  "learning_end_weight": 1.0,
+  "lapse_response": "uniform_integer_share_index_0_through_1000",
+  "trial_order": "uniform_permutation_conditioned_on_at_most_three_consecutive_same_scale",
+  "folds": "three_gap_stratified_folds_carried_with_template_slots",
+  "prediction_models": "EO_plus_intercept_and_time_vs_fixed_share_plus_intercept_and_time",
+  "scoring": "heldout_squared_error_not_likelihood",
+  "nominal_alpha": 0.05,
+  "family_size_for_conservative_threshold": 6,
+  "group_test": "one_sided_one_sample_student_t_of_participant_slopes",
+  "false_positive_wilson_upper_gate": 0.08,
+  "designated_sensitivity": {"motor_noise_sd": 0.04, "lapse_probability": 0.1},
+  "power_wilson_lower_gate": 0.8,
+  "individual_recovery_wilson_lower_gate": 0.8,
+  "loss_tie_tolerance": 1e-12,
+  "stages": {
+    "smoke": {"groups": 3, "participants_per_group": 10, "root_seed": 2026091730},
+    "screening": {"groups": 50, "participants_per_group": 80, "root_seed": 2026091731},
+    "confirmation": {"groups": 1000, "participants_per_group": 80, "root_seed": 2026091732}
+  },
+  "groups_per_chunk": 25,
+  "claims": [
+    "no_search_C2_synthetic_recovery_only",
+    "assigned_initial_targets_not_endogenous_terminal_targets",
+    "group_detection_distinct_from_individual_predictive_recovery",
+    "nominal_and_conservative_thresholds_not_complete_Holm_family_power",
+    "positive_slope_not_unique_identification_of_equal_outcome",
+    "no_C2_stimulus_parameter_change"
+  ]
+}

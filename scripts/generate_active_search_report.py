@@ -17,7 +17,7 @@ TRUE_THRESHOLD = 0.80
 CLOSER_THRESHOLD = 0.80
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPRODUCIBILITY_NOTEBOOK = (
-    PROJECT_ROOT / "notebooks" / "round_05" / "reproduce_round_05.ipynb"
+    PROJECT_ROOT / "notebooks" / "allocation_mechanisms" / "objective_and_solver_diagnostics.ipynb"
 )
 REPOSITORY_URL = (
     "https://github.com/Zhenlong-Zhang/"
@@ -513,17 +513,17 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     )
     copy_if_present(
         REPRODUCIBILITY_NOTEBOOK,
-        reproducibility / "reproduce_round_05.ipynb",
+        reproducibility / REPRODUCIBILITY_NOTEBOOK.name,
     )
     (args.output_dir / "README.md").write_text(
         "# Active-Search Evaluation Results\n\n"
         "Open `index.html` for the concise results summary. The `supporting_data/` "
         "folder contains the corresponding aggregate evidence and completion "
         "metadata. Full episode-level archives are intentionally not duplicated "
-        "in this professor-facing package.\n\n"
+        "in this summary package.\n\n"
         "## Reproduce\n\n"
         f"- Repository: {REPOSITORY_URL}\n"
-        "- Notebook: `reproducibility/reproduce_round_05.ipynb`\n"
+        f"- Notebook: `reproducibility/{REPRODUCIBILITY_NOTEBOOK.name}`\n"
         "- The notebook calls the shared source and workflow scripts; it does not "
         "contain a separate model implementation.\n",
         encoding="utf-8",

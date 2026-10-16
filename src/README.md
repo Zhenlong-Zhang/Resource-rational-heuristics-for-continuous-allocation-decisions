@@ -7,6 +7,8 @@
 - `policies/`: hand-coded heuristics and information-acquisition approximations
 - `solvers/`: DP, Gauss-Hermite, and terminal allocation solvers
 - `experiments/`: randomization, metrics, sweeps, comparisons, and strict evidence workflows
+- `design_validation/`: exact finite tutoring task, fixed prior revision and rule identifiability
+- `tutoring_analysis/`: participant-level statistics, synthetic calibration, conditional planning and bounded sensitivity analyses
 
 Use the scripts or notebooks for complete analyses. Import modules directly when developing a new policy, solver, metric, or experiment.
 

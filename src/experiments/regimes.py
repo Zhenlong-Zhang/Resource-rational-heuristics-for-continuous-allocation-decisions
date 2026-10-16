@@ -128,9 +128,8 @@ def true_outcome_metrics_for_allocation(
     amount_1, amount_2, remaining_time, _ = mdp.realized_utility(true_state, allocation, belief)
     realized_gap = _realized_outcome_gap(true_state, amount_1, amount_2)
 
-    # Equal split is the main alternative Falk asked us to separate from
-    # equity/maximin. It is evaluated with the same true state and remaining time
-    # as the policy's chosen allocation.
+    # Compare equal split against equity/maximin using the same true state and
+    # remaining time as the policy's chosen allocation.
     equal_split_amount_1, equal_split_amount_2, _, _ = mdp.realized_utility(true_state, 0.5, belief)
     equal_split_gap = _realized_outcome_gap(true_state, equal_split_amount_1, equal_split_amount_2)
 
@@ -177,8 +176,7 @@ def true_outcome_metrics_for_allocation(
         outcome_distance_to_true_equal - equal_split_outcome_distance_to_true_equal
     )
 
-    # This classifier implements Falk's requested logical comparison: is the
-    # chosen allocation closer to the feasible true equal-outcome/maximin
+    # Is the chosen allocation closer to the feasible true equal-outcome/maximin
     # reference than a 50/50 split is? Ties are tracked separately so they are not
     # misread as either equity/maximin success or equal-split success.
     if abs(outcome_distance_difference) <= numerical_tie_tolerance:

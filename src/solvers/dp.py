@@ -25,7 +25,7 @@ class DPState:
 
 
 class FiniteHorizonDPSolver:
-    """Small finite-horizon DP using the posterior precision grid suggested by Falk."""
+    """Small finite-horizon DP using a posterior precision grid."""
 
     def __init__(
         self,

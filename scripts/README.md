@@ -64,3 +64,24 @@ python3 scripts/active_search_evaluation_workflow.py collect --help
 ```
 
 Generated outputs belong under `results/` and are ignored by Git.
+
+## Finite Tutoring Analyses
+
+- `validate_tutoring_design.py`: baseline five-condition validation and allocation-grid sensitivity.
+- `validate_tutoring_design_revision.py`: the fixed C3 prior revision, independent confirmation and fixed-initial-rule comparison.
+- `validate_allocation_identifiability.py`: C2 group responsiveness and individual predictive classification under declared synthetic noise.
+- `audit_tutoring_model_bridge.py`: deterministic finite-support, Gaussian-reference and affine-GPA audit.
+
+## Statistical Analyses
+
+- `reproduce_tutoring_statistics.py`: inference examples, conditional planning,
+  known-bound calibration and variance-adaptive calibration. Select
+  `--analysis inference|planning|bounded|variance-adaptive` and
+  `--mode fixture|smoke|full`, with `--output` specifying the result directory.
+  Scientific context is generated from source rather than stored results.
+- `calibrate_tutoring_methods.py`: the historical 30-cell Student/Welch
+  calibration with `--mode smoke|full` and checkpointed `--resume`. It writes
+  `all_criterion_failures.csv`; a completed run does not imply all criteria pass.
+
+Fixture mode tests wiring only. Smoke mode uses the first full-run batch rather
+than a new independent evidence set. Pure schedule generation requires Node.js.

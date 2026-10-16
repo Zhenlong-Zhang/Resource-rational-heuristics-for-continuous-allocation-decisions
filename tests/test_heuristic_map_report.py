@@ -1,4 +1,4 @@
-"""Focused pure tests for the frozen four-row Falk report model."""
+"""Test purpose: validate the frozen four-row heuristic-map report model."""
 
 from __future__ import annotations
 

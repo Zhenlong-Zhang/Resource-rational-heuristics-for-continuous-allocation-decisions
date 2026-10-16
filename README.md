@@ -27,7 +27,28 @@ The object-level action is an allocation fraction `a` in `[0, 1]`. Person 1 rece
 
 The metalevel state contains beliefs about both needs and remaining time. Available metalevel actions are to sample person 1, sample person 2, or terminate and allocate. Sampling cost is represented through elapsed time rather than an additional utility penalty.
 
-The repository supports both Gaussian beliefs and finite-support priors. Gaussian experiments are used for broad heuristic comparisons and parameter sweeps. Finite-support experiments support controlled active-search analyses and independently checked terminal optimization.
+The repository contains distinct scientific models, not interchangeable versions
+of one task. Continuous Gaussian experiments support broad heuristic comparisons,
+regime searches and solver diagnostics. The finite tutoring task instead uses
+integer needs and reports from 1 to 100, exact discrete Bayes updates and at most
+20 information-acquisition queries per trial. Its 1,001-point allocation grid is
+checked against 2,001 points; repeated one-step sampling is not a globally optimal
+adaptive policy. The finite cap does not change the older Gaussian comparisons.
+
+## Scientific Branches
+
+`main` tracks the latest adopted and verified paper implementation. `20-limit` is
+the maintained conference variant with at most 20 information-acquisition actions
+per finite-task trial, including its matching computational and statistical
+dependencies. It is not a frozen archive: compatible accepted corrections and
+methods belong in both branches, while incompatible model changes remain separate.
+
+Both branches use the same scientific notebook organization and shared
+implementation where compatible. In this release they share the verified
+20-query finite task and the reproduction workflows described below. Later
+budget-only model and statistical analyses are not included in this release.
+Retained historical calibration methods and negative results are supporting
+diagnostics, not evidence for the validity of a different model or error policy.
 
 ## Installation
 
@@ -41,6 +62,9 @@ python3 -m pip install -e .
 ```
 
 Python 3.10 or newer is required.
+
+The statistical reproduction workflows also require Node.js for deterministic
+schedule generation. No browser or npm packages are needed.
 
 ## Quick Start
 
@@ -72,7 +96,13 @@ The main computational settings are command-line options, including episode coun
 
 Analyses are reproduced by notebooks under `notebooks/`. Each notebook calls the shared source code and exposes its main settings near the top; model logic is not duplicated in notebook cells.
 
-See `notebooks/README.md` for the analysis index. Full configurations are intentionally gated by `RUN = False`, so opening a notebook does not start a large computation.
+See the [notebook index](notebooks/README.md) for scientific questions, outputs,
+producers and settings. The four families are heuristic mapping, allocation
+mechanisms, finite tutoring and statistical methods. Full configurations are
+intentionally gated by `RUN = False`, so opening a notebook does not start a
+large computation. The objective/solver notebook regenerates its oracle,
+sweep, fixed-budget, independent confirmation and paired solver intermediates
+before the validated report; it does not require cached result folders.
 
 ## Scarcity Analysis
 
@@ -81,7 +111,7 @@ effort-to-goal (the operational lower-need / closer-to-goal rule). The public im
 keeps the allocation definitions, kink-aware oracle, paired metrics, frozen thresholds, and
 pure heuristic-map builders in `src/experiments/`; the corresponding regression tests are
 in `tests/`. Start with
-`notebooks/round_06/reproduce_round_06.ipynb` for a portable reproduction entry point. The
+[scarcity notebook](notebooks/heuristic_mapping/scarcity.ipynb) for a portable reproduction entry point. The
 `scripts/run_scarcity_public.py` runner writes object, development, and
 confirmation summaries under `results/`; use `--mode smoke` for a small wiring check or
 `--mode serious` for the frozen public episode configuration.
@@ -93,6 +123,8 @@ confirmation summaries under `results/`; use `--mode smoke` for a small wiring c
 - `src/policies/`: allocation heuristics, information-acquisition policies, myopic VOI, and blinkered policies
 - `src/solvers/`: discretized DP, Gauss-Hermite integration, and terminal allocation solvers
 - `src/experiments/`: comparisons, common randomization, sweeps, regime searches, metrics, and controlled analyses
+- `src/design_validation/`: finite tutoring task, exact one-step sampling, task revision and rule-identifiability diagnostics
+- `src/tutoring_analysis/`: participant-level inference, synthetic calibration, bounded sensitivity analyses, and conditional power
 - `scripts/`: portable command-line runners, report generation, and validation tools
 - `configs/`: scientific configurations and output schemas
 - `notebooks/`: interactive reproduction interfaces
@@ -118,6 +150,32 @@ For structured active-search evaluations, use
 available through `scripts/run_method_comparison_task.py`, and the scarcity analysis uses
 `scripts/run_scarcity_public.py`. These runners reuse the scientific implementation in
 `src/` and write generated artifacts under the ignored `results/` directory.
+
+## Finite Tutoring Task
+
+The [finite-task notebook](notebooks/finite_tutoring/design_validation.ipynb)
+reproduces the capped task's baseline and revised C3 configurations, both retained
+because they support distinct reported analyses. Full mode preserves separate
+screening and independent confirmation for both the C3 revision and C2 synthetic
+identifiability, with distinct fixed seeds and output readers. It also runs the
+finite/Gaussian reference audit; this audit does not rerun the older Gaussian
+solver or establish equivalence of the two models.
+
+```bash
+python3 scripts/validate_tutoring_design.py \
+  --conditions-file configs/tutoring_conditions_baseline.json \
+  --stage smoke --output-dir results/finite_baseline_smoke
+```
+
+The [statistical notebook](notebooks/statistical_methods/calibration_and_power.ipynb)
+preserves historical inference examples, conditional planning, Student/Welch
+calibration failures, known-bound and empirical-Bernstein sensitivities, and
+unavailable endpoints. These method-specific supporting analyses are not
+substitutes for a different primary inference policy. Synthetic error control
+and conditional power calculations do not establish human validity or select
+a final sample size. See the
+[notebook index](notebooks/README.md) for the exact scope and scientific settings
+of each reported analysis.
 
 ## Tests
 

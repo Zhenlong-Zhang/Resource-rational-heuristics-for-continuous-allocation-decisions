@@ -17,3 +17,6 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
+
+[tool.setuptools.package-data]
+"src.tutoring_analysis" = ["*.cjs"]

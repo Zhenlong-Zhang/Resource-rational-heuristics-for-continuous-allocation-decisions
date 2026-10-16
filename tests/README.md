@@ -33,3 +33,24 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 - `test_scarcity_public_runner.py`: direct CLI help and tiny portable smoke outputs.
 - Scientific workflow behavior is also covered through the experiment and analysis tests above.
+
+## Finite Tutoring
+
+- `test_tutoring_design_validation.py`: exact finite Bayes, resource accounting, random-stream and independent scalar-oracle checks.
+- `test_tutoring_design_revision.py`: single C3 change, fixed stage seeds, configuration/source identity and selection criteria.
+- `test_allocation_identifiability.py`: synthetic response generators, group slope and held-out classification semantics.
+- `test_tutoring_model_bridge.py`: affine GPA identity and matched continuous-reference audit.
+
+## Statistical Methods
+
+- `test_tutoring_inference.py`: formula oracles, complete-person eligibility and fixed-slot error policies.
+- `test_tutoring_calibration.py`: synthetic populations, seeds, checkpoint identity and failure retention.
+- `test_tutoring_bounded_inference.py`: known-bound intervals and unavailable endpoint handling.
+- `test_tutoring_bounded_robustness.py`: bounded generators and calibration summaries.
+- `test_tutoring_empirical_bernstein.py`: variance-adaptive intervals and range assumptions.
+- `test_tutoring_identifiability_robustness.py`: raw projection truths, corner bounds and C1 diagnostic cases.
+- `test_tutoring_planning.py`: conditional moments, power and sensitivity assumptions.
+- `test_tutoring_reproduction.py`: deterministic schedules, fresh-context generation, full diagnostic retention and CLI execution.
+
+The statistical tests require Node.js for schedule generation as well as the
+Python dependencies. They do not consume saved results or browser exports.

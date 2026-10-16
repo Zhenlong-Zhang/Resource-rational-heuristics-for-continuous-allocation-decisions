@@ -72,7 +72,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "total_time": [80.0, 120.0],
         "learning_per_unit_of_tutoring": [1.0, 1.5],
     },
-    # Designed for Falk's method comparison request: start from symmetric or very
+    # Method comparison starting from symmetric or very
     # limited prior knowledge, actively collect information, choose unequal
     # allocations, and approximate equal outcomes in the hidden true state.
     "active_search_equal_outcome_focused": {
@@ -98,7 +98,7 @@ TARGETED_REGIME_GRID_VALUES: Dict[str, Dict[str, Sequence[float]]] = {
         "sample_time_cost": [0.05, 0.1, 0.25],
         "prior_sample_count": [0.0],
     },
-    # Active-search diagnostic grid from Falk's 07/01 comments. This grid is not meant to
+    # Constructed active-search diagnostic grid. This grid is not meant to
     # be an exhaustive ecological sweep. It deliberately creates larger need
     # separation, reliable/cheap information, no prior samples, and near
     # just-enough-time conditions so manual active-search equal-outcome behavior

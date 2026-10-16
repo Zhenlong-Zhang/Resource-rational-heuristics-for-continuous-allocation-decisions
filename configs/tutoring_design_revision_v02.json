@@ -1,0 +1,14 @@
+{
+  "schema": "tutoring_design_single_revision_v0.2",
+  "date": "2026-09-19",
+  "base_sha256": "1271987f2d8607733e57c7377f13723597f510f914b127ca50c2bb65dc912036",
+  "engine_sha256": "acf1b9ca11b151a28e17abf2007860bb406d3fde26c5ada010812a4b320f503b",
+  "change": {
+    "condition_id": "C3",
+    "field": "prior_kernel_centres",
+    "old_value": [60, 60],
+    "new_value": [50, 70]
+  },
+  "rationale": "Single candidate for equal-outcome versus equal-split discrimination while retaining broad uncertainty. Actual finite prior moments also change; this is not a pure causal mean-gap manipulation.",
+  "status": "numerical_candidate_not_human_validated"
+}

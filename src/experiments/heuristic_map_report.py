@@ -245,7 +245,7 @@ def build_claim_ledger(
         {
             "claim_id": "MAP-S01",
             "claim_type": "suggestion",
-            "statement": "Falk proposed prioritizing the lower-need or closer-to-goal recipient under scarcity.",
+            "statement": "Under scarcity, prioritizing the lower-need or closer-to-goal recipient is a candidate strategy.",
             "source_artifact": "scarcity_frozen_settings.json",
             "source_keys": "scientific_scope;thresholds",
             "evidence_status": "tested_in_frozen_scarcity_scope",

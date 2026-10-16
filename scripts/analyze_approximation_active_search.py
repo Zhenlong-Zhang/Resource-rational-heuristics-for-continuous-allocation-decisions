@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create reproducible approximation and active-search analysis tables and a professor-facing report."""
+"""Create reproducible approximation and active-search analysis tables and a report."""
 
 from __future__ import annotations
 
@@ -458,7 +458,7 @@ def render_report(method_comparison: Mapping[str, object], diagnostic_active_sea
 
   <h2>Supporting Data</h2>
   <p><a href="supporting_data/method_comparison_paired_method_comparisons.csv">MethodComparison paired comparisons</a> · <a href="supporting_data/method_comparison_dp_sensitivity.csv">MethodComparison DP sensitivity</a> · <a href="supporting_data/diagnostic_active_search_representative_environments.csv">DiagnosticActiveSearch representative environments</a> · <a href="supporting_data/analysis_summary.json">Analysis summary</a></p>
-  <p class="muted">The supporting folder also includes the complete 700-row MethodComparison method summary, the complete DiagnosticActiveSearch aggregate tables, and run-validation evidence. The 840,000-row MethodComparison episode file is retained in the project result archive rather than duplicated in this professor-facing folder.</p>
+  <p class="muted">The supporting folder also includes the complete 700-row MethodComparison method summary, the complete DiagnosticActiveSearch aggregate tables, and run-validation evidence. The 840,000-row MethodComparison episode file is retained in the result archive rather than duplicated in this summary folder.</p>
   <footer>Expected average utility is the performance criterion. Information-acquisition and outcome-equality measures are behavioral diagnostics. RR refers to the current approximation, not an exact continuous-state optimal policy.</footer>
 </main></body></html>"""
 
