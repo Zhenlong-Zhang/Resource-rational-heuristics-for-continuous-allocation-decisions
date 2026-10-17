@@ -28,6 +28,29 @@ summaries. Its producers recompute all consumed scientific context. Use
 `scripts/calibrate_tutoring_methods.py`; notebook guides specify full scales.
 All generated files belong under ignored `results/`, not in version control.
 
+## Paired Gamma Attribution
+
+`paired_diagnostic.py` compares unchanged `inference.participant_slope` /
+`inference.contrast` with `nominal_inference.test_contrast` on original vector
+person inputs, then separately with canonical projection. `paired_recipe.py`
+fixes the original Gamma law and portable packet I/O. The existing calibration
+generator consumes the complete C1-C5 draw order at seed2026100627 and batch
+IDs0/39,250 cases each, before extracting20 C4 people with10 trials.
+
+`paired_readback.py` independently reconstructs projections, eligibility,
+Student inference and decisions from saved raw inputs. Only the input-law
+generator is shared; no producer estimator supplies its numerical oracle.
+Raw arrays and fixed identities are exact; independent numerical fields use
+the original absolute1e-10 plus relative1e-9 tolerance, with actual errors
+reported. Both `p<=.05` and `p<.05`, coverage and exact-boundary counts remain.
+
+Use `scripts/reproduce_paired_diagnostic.py` or the supplementary section in
+`calibration_and_power.ipynb`. Existing original scientific packets can be
+read without operational wrappers, but operational provenance is not certified.
+The diagnostic does not call the native-row validator or fabricate native
+observations from unbounded abstract Gamma responses. It is not a Type-I or
+historical-failure repair, original-runtime bit replay, or cap20 validation.
+
 ## Expected-GPA and Nominal Analysis
 
 `expected_outcomes.py` reconstructs native-grid targets from synthetic paid

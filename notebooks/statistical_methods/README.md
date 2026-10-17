@@ -37,12 +37,13 @@ there, and select that Python kernel. Node.js is also required. The reference
 uses NumPy 1.23.5/SciPy 1.10.0 with MKL; newer numerical stacks can produce
 different least-squares coefficient bits and therefore different exact native
 means. Do not round those differences away or merge batches across environments.
-The reference is scoped to this notebook, not a requirement for other analyses.
+The same numerical stack is the reference for the paired Gamma diagnostic below;
+it is not a universal requirement for every historical analysis.
 
 ## Historical Calibration
 
 Open [calibration_and_power.ipynb](calibration_and_power.ipynb) from a repository checkout. The first code
-cell installs the Python package and checks Node.js. Node.js must be installed
+cell installs the Python package and reports Node.js availability. Node.js must be installed
 separately and is required for the extracted
 pure deterministic schedule; no UI engine, survey adapter or private inputs are
 used. Computation defaults to `RUN = False`.
@@ -61,6 +62,30 @@ assumptions stay separate even when both branches share these notebook paths.
 
 ## Outputs
 
+The notebook also contains a Python-only fixed500 paired Gamma diagnostic,
+controlled independently by `RUN_PAIRED = False`. Its default batch selection
+is `[0, 39]`,250 cases each; `[0]` or `[39]` checks one original batch without
+changing its random stream. Select the reference Python3.10.9 kernel and set
+`PRESERVE_PAIRED_REFERENCE = True` in the first cell to retain NumPy1.23.5 and
+SciPy1.10.0. This is not the earlier calibration runtime3.12.14/2.3.5/1.16.3.
+
+The producer regenerates the entire C1-C5 draw order before extracting20 C4
+people/10 trials. It compares legacy/current Student inference on identical
+original person slopes and separately canonical projection. The independent
+reader reconstructs raw inputs and derives its own projection/support/Student
+oracle, checking four Student outputs per case. See the
+[CLI guide](../../scripts/README.md#paired-gamma-diagnostic) for exact commands,
+file schema and reading an existing original packet without private wrappers.
+
+The original diagnostic observed40/500 rejections and471/500 zero-covering
+intervals in each arm, with zero paired rejection/coverage disagreements and
+nonzero floating differences. These are reference observations, not stored
+output or acceptance thresholds. Legacy `p<=.05` and current `p<.05` are both
+retained. Neither agreement nor successful readback repairs the historical111
+failures, validates Type-I error, certifies old-runtime bits, adds independent
+historical attempts, or establishes cap20/native-task/human validity. Original
+pre-adoption `accepted:false` markers are not rewritten.
+
 | Producer | Recomputed output |
 | --- | --- |
 | `reproduce_tutoring_statistics.py --analysis inference` | Synthetic rows, historical three-policy fits, fresh finite-metric fixture and bounded fit. These are functionality examples, not human inference. |
@@ -68,6 +93,7 @@ assumptions stay separate even when both branches share these notebook paths.
 | `calibrate_tutoring_methods.py` | All 30 cells and populations, batch summaries, `calibration_summary.json`, core/policy/power CSV tables and `all_criterion_failures.csv`. |
 | `reproduce_tutoring_statistics.py --analysis bounded` | Ten cells, all nine slots including three unsupported slopes, same-draw Student/Welch comparisons, batch parity, route summary and failed criteria. |
 | `reproduce_tutoring_statistics.py --analysis variance-adaptive` | Recomputed schedules, 3,072 raw projection corners, unsnapped raw and ideal truth rosters, 30 C1 candidate/comparator states, 135 cohort-bound cases, twelve calibration cells, three methods and all policy/scope diagnostics. |
+| `reproduce_paired_diagnostic.py produce/read` | Fixed500 or selected250 raw arrays, person qualifications/slopes, legacy/current/projection inference, paired decisions and independent numerical readback; no Type-I repair claim. |
 
 The historical 390,000-attempt result is **MIXED**, with 111 failed criteria,
 including 94 selection-diagnostic rows. The full command regenerates the register

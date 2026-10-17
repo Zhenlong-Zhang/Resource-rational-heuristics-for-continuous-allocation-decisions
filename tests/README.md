@@ -61,6 +61,11 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 ## Statistical Methods
 
+- `test_paired_diagnostic.py`: deterministic fixed-shape producer/independent-reader
+  integration, stable case IDs, partial/full distinction, frozen law, strict
+  JSON/NPZ transport, malformed/duplicate records, boundary conventions and safe
+  output paths. No stochastic Gamma batch or formal campaign is run by these tests.
+
 - `test_expected_gpa.py`: target reconstruction, person eligibility, nominal
   tails and missing arms, exhaustion/ties, conditional N boundaries and actual
   synthetic-input/target/power CLI routes.

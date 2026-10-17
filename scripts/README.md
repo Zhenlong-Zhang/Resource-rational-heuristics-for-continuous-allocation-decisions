@@ -1,5 +1,38 @@
 # Command-Line Workflows
 
+## Paired Gamma Diagnostic
+
+The Python-only producer and independent scientific reader use public inputs:
+
+```bash
+python scripts/reproduce_paired_diagnostic.py produce --batches 0 39 --output results/paired_gamma/producer
+python scripts/reproduce_paired_diagnostic.py read --input results/paired_gamma/producer --output results/paired_gamma/reader --require-full
+```
+
+This explicitly opts into the fixed500 reproduction. For a selected250 check,
+use `--batches 0` or `--batches 39` and omit `--require-full` on readback.
+Each selection retains250-shaped full C1-C5 draws before C4 extraction; batch
+size and seed are not configurable. Every output directory must be new.
+`--config` defaults to the public `tutoring_calibration_v01.json`; changed
+Gamma-law parameters are rejected.
+
+The reference runtime is Python3.10.9/NumPy1.23.5/SciPy1.10.0; use the existing
+`configs/native_reference_environment.yml` and preserve its versions with
+`configs/native_reference_constraints.txt`. It differs from the earlier
+calibration environment. Cross-platform bitwise equivalence is not promised.
+
+Producer outputs are `batch_<id>.npz`, `cases_<id>.json`, `plan.json`,
+`tests.json`, and `summary.json`. The reader emits `independent_cases.json`,
+`independent_tests.json`, and `summary.json`. Summaries are written last;
+incomplete, duplicate, malformed or inconsistent scientific records are rejected.
+`selectedComplete` does not imply `fixed500Complete`.
+
+The reader also supports original `historical-gamma-diagnostic-v01` producer
+packets through the same `read` command. It reconstructs the scientific data,
+not operational receipts, and leaves the input untouched. No private wrapper,
+source archive or cached result is needed to produce new inputs. Agreement is
+not Type-I/coverage acceptance, historical-failure repair or cap20 transfer.
+
 ## Native-State Calibration
 
 `reproduce_native_calibration.py` provides three portable stages:

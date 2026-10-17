@@ -41,7 +41,10 @@ Generated simulation outputs belong under `results/` and are not source-controll
 - `native_reference_environment.yml`: Linux x86-64 reference numerical builds.
   Exact native projection bits depend on the numerical environment, not only seeds.
 - `native_reference_constraints.txt`: preserve reference NumPy/SciPy versions
-  and compatible plotting/table dependencies when installing this notebook.
+  and compatible plotting/table dependencies when installing the native-state
+  notebook or the supplementary paired Gamma diagnostic. The paired reference
+  is also Python3.10.9/NumPy1.23.5/SciPy1.10.0, distinct from the earlier
+  historical calibration environment.
 
 - `expected_gpa_analysis.json`: nine prespecified budget-only nominal tests,
   one nonprimary diagnostic, fixed arm weights, tails, support and eligibility

@@ -193,8 +193,12 @@ python3 scripts/validate_tutoring_design.py \
 
 The [statistical notebook](notebooks/statistical_methods/calibration_and_power.ipynb)
 preserves historical inference examples, conditional planning, Student/Welch
-calibration failures, known-bound and empirical-Bernstein sensitivities, and
-unavailable endpoints. These method-specific supporting analyses are not
+calibration failures, known-bound and empirical-Bernstein sensitivities,
+unavailable endpoints, and a supplementary fixed500 paired Gamma attribution
+producer with an independent reader. Its separate `RUN_PAIRED` switch keeps
+full reproduction opt-in; a selected250 batch retains the original RNG shape.
+Same-input agreement does not repair historical failures or establish cap20
+transfer. These method-specific supporting analyses are not
 substitutes for a different primary inference policy. Synthetic error control
 and conditional power calculations do not establish human validity or select
 a final sample size. See the
