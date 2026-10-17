@@ -1,5 +1,34 @@
 # Command-Line Workflows
 
+## Native-State Calibration
+
+`reproduce_native_calibration.py` provides three portable stages:
+
+```bash
+python scripts/reproduce_native_calibration.py prepare --prepared results/native/prepared
+python scripts/reproduce_native_calibration.py run --prepared results/native/prepared --output results/native/smoke --mode smoke
+python scripts/reproduce_native_calibration.py summarize --prepared results/native/prepared --output results/native/smoke --mode smoke
+```
+
+Preparation generates all source/lookup/truth inputs. Full mode selects all 40
+subcases and 40 batches each, preserving 250 attempts per batch. `--workers` runs
+independent cells; `--cell` and `--batch-id` select stable resumable units. A
+cell has one writer; each completed batch is committed after content validation.
+Only one CLI invocation may own an output directory at a time; use `--workers`
+for concurrent cells. Repeating
+the command reuses compatible completed batches; different code/runtime or
+inputs are rejected. After a process crash, inspect its `.writer.lock` before
+removing it; never remove a live writer's lock. A fresh preparation directory is
+required when preparation was interrupted or source/runtime changed.
+`prepare --source-states FILE` may reuse previously generated source states;
+their complete finite-state reconstruction is still checked before building
+the lookup and truths. It does not accept a cached lookup as a substitute.
+
+The independent summary writes `summary.json` and `targets.csv`. Smoke remains
+PROVISIONAL. Full reference dispositions are 89 PASS, 22 UNAVAILABLE, 7
+DIAGNOSTIC_ONLY; do not force a different runtime to reproduce them by rounding
+truths or changing thresholds. See the native-state notebook for scope.
+
 The scripts call the implementation in `src/`. They should not contain an independent version of the model.
 
 ## General Experiments

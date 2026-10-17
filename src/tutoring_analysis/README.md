@@ -19,8 +19,8 @@ Numerical calculations are binary64 approximations, not machine certificates.
 `finite_metrics.py` isolates the historical finite-belief metric calculation.
 `source_projection_panel.cjs` contains only deterministic schedule mathematics;
 Node.js is required. `makeSchedule` is also exported for shared scientific
-callers. No UI engine, normalizer,
-participant export, deployment or network dependency is included.
+callers. This historical schedule-only route does not use an engine, normalizer,
+participant export, deployment or network dependency.
 
 `reproduction.py` orchestrates the accepted kernels and emits complete diagnostic
 summaries. Its producers recompute all consumed scientific context. Use
@@ -52,9 +52,22 @@ variance, not heterogeneous Welch. Retention assurance, marginal power and
 joint power are different; no final recruitment size is selected.
 
 Use `scripts/reproduce_expected_gpa.py` and the expected-GPA notebook. These
-budget-only methods do not transfer validation to cap20. The native-state lookup,
-independent truth, prepared calibration and complete calibration reader are not
-included; helper tests do not reproduce the 400000-attempt calibration.
+budget-only methods do not transfer validation to cap20.
+
+## Native-State Calibration
+
+`native_source.cjs` constructs deterministic synthetic sessions through the
+bundled engine and normalizer. `native_reconstruction.py` independently rebuilds
+schedules, reports and finite likelihoods; `native_lookup.py` checks the source
+and creates finite target/projection maps. `native_truth.py` separately derives
+exact rational native means under declared ideal probability laws.
+
+`native_calibration.py` runs the fixed 40-subcase, 40x250-batch design with prepared
+input validation and scalar/vector endpoint audits. `native_readback.py` independently
+recomputes count intervals, applicable Normal-reference power and dispositions.
+Use `scripts/reproduce_native_calibration.py` and the native-state notebook for
+the entire clean-checkout chain, including input generation and compatible resume.
+This is synthetic marginal calibration, not human validation or cap20 transfer.
 
 Python runtime dependencies are NumPy and SciPy. Pure schedule generation also
 requires Node.js.

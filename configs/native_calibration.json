@@ -1,0 +1,382 @@
+{
+  "schema": "native-calibration-spec-v1",
+  "release": "synthetic_marginal_calibration",
+  "analysisId": "person-level-nominal-v1",
+  "attemptsPerSubcase": 10000,
+  "batchSize": 250,
+  "lookupVariants": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "lookupConditions": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5"
+  ],
+  "lookupPrefixes": [
+    [],
+    [
+      0
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  "choicePrefixCycle": [
+    0,
+    1,
+    3
+  ],
+  "lookupSeedNamespace": "r9-calibration-lookup-v1",
+  "C1SyntheticGapControls": [
+    0,
+    0.2,
+    0.5,
+    1
+  ],
+  "selectionCutoff": 0.75,
+  "MCConfidence": 0.95,
+  "criteria": {
+    "nullRejectionCPUpperMaximum": 0.06,
+    "availableCoverageCPLowerMinimum": 0.93,
+    "exactReferencePowerAbsoluteTolerance": 0.02,
+    "unexpectedNumericalFailuresMaximum": 0
+  },
+  "audits": {
+    "batchPositions": [
+      "first",
+      "last"
+    ],
+    "replicateOffsets": [
+      0,
+      1,
+      17,
+      249
+    ],
+    "personPositions": [
+      "first",
+      "middle",
+      "last"
+    ],
+    "absoluteTolerance": 1e-10,
+    "largeSlopeRelativeTolerance": 1e-9
+  },
+  "cells": [
+    {
+      "id": "A01",
+      "seed": 20261011101,
+      "layer": "A",
+      "family": "normal",
+      "n": 20,
+      "sd": 1,
+      "subcases": [
+        "null"
+      ]
+    },
+    {
+      "id": "A02",
+      "seed": 20261011102,
+      "layer": "A",
+      "family": "normal_shared",
+      "n": 80,
+      "sd": 1,
+      "sharedVariance": 0.5,
+      "subcases": [
+        "null"
+      ]
+    },
+    {
+      "id": "A03",
+      "seed": 20261011103,
+      "layer": "A",
+      "family": "normal_unequal",
+      "n": 20,
+      "otherN": 80,
+      "sd": 0.5,
+      "otherSd": 2,
+      "subcases": [
+        "forward",
+        "variance_count_mirror"
+      ]
+    },
+    {
+      "id": "A04",
+      "seed": 20261011104,
+      "layer": "A",
+      "family": "normal_unequal",
+      "n": 20,
+      "otherN": 20,
+      "sd": 0.5,
+      "otherSd": 2,
+      "subcases": [
+        "null"
+      ]
+    },
+    {
+      "id": "A05",
+      "seed": 20261011105,
+      "layer": "A",
+      "family": "normal",
+      "n": 80,
+      "sd": 1,
+      "d": 0.3,
+      "subcases": [
+        "correct_direction",
+        "separate_pooled_reference"
+      ]
+    },
+    {
+      "id": "A06",
+      "seed": 20261011106,
+      "layer": "A",
+      "family": "normal",
+      "n": 80,
+      "sd": 1,
+      "d": 0.3,
+      "subcases": [
+        "opposite_direction",
+        "mixed_H01_H03_H06"
+      ]
+    },
+    {
+      "id": "B01",
+      "seed": 20261011111,
+      "layer": "B",
+      "family": "Q",
+      "q": 0.3,
+      "rho": 0,
+      "n": 20,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B02",
+      "seed": 20261011112,
+      "layer": "B",
+      "family": "Q",
+      "q": 0.3,
+      "rho": 0.3,
+      "n": 80,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B03",
+      "seed": 20261011113,
+      "layer": "B",
+      "family": "Q",
+      "q": 0.3,
+      "rho": 0.3,
+      "n": 80,
+      "armOverrides": {
+        "C3": {
+          "n": 20,
+          "rho": 0.1
+        },
+        "C5": {
+          "n": 20,
+          "rho": 0.1
+        },
+        "C2": {
+          "n": 80,
+          "rho": 0.6
+        },
+        "C4": {
+          "n": 80,
+          "rho": 0.6
+        }
+      },
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B04",
+      "seed": 20261011114,
+      "layer": "B",
+      "family": "Q",
+      "q": 0.02,
+      "rho": 0.3,
+      "n": 20,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B05",
+      "seed": 20261011115,
+      "layer": "B",
+      "family": "R",
+      "q": 0.5,
+      "rho": 0.3,
+      "n": 20,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B06",
+      "seed": 20261011116,
+      "layer": "B",
+      "family": "R",
+      "q": 0.5,
+      "rho": 0.3,
+      "n": 80,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B07",
+      "seed": 20261011117,
+      "layer": "B",
+      "family": "R",
+      "q": 0.5,
+      "rho": 0.6,
+      "n": 80,
+      "targetArm": "C1",
+      "subcases": [
+        "working",
+        "gap_0",
+        "gap_0.2",
+        "gap_0.5",
+        "gap_1"
+      ]
+    },
+    {
+      "id": "B08",
+      "seed": 20261011118,
+      "layer": "B",
+      "family": "L",
+      "q": 0.5,
+      "rho": 0.3,
+      "n": 20,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B09",
+      "seed": 20261011119,
+      "layer": "B",
+      "family": "initial",
+      "coefficient": "zero",
+      "n": 20,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B10",
+      "seed": 20261011120,
+      "layer": "B",
+      "family": "initial",
+      "coefficient": "symmetric_uniform",
+      "n": 80,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B11",
+      "seed": 20261011121,
+      "layer": "B",
+      "family": "R",
+      "coefficient": "centered_beta",
+      "betaShapes": [
+        0.5,
+        5
+      ],
+      "n": 20,
+      "subcases": [
+        "native"
+      ]
+    },
+    {
+      "id": "B12",
+      "seed": 20261011122,
+      "layer": "B",
+      "family": "initial",
+      "coefficient": "centered_beta",
+      "betaShapes": [
+        0.5,
+        5
+      ],
+      "n": 20,
+      "subcases": [
+        "forward",
+        "sign_mirror"
+      ]
+    },
+    {
+      "id": "C01",
+      "seed": 20261011131,
+      "layer": "C",
+      "n": 80,
+      "personRetention": 0.8,
+      "trialRetention": 0.98,
+      "subcases": [
+        "Q",
+        "R",
+        "L",
+        "initial"
+      ]
+    },
+    {
+      "id": "C02",
+      "seed": 20261011132,
+      "layer": "C",
+      "n": 80,
+      "endpointMissingness": 0.1,
+      "subcases": [
+        "Q",
+        "R",
+        "L",
+        "initial"
+      ]
+    },
+    {
+      "id": "C03",
+      "seed": 20261011133,
+      "layer": "C",
+      "n": 80,
+      "cutoff": 0.75,
+      "subcases": [
+        "Q",
+        "R",
+        "initial"
+      ]
+    },
+    {
+      "id": "C04",
+      "seed": 20261011134,
+      "layer": "C",
+      "n": 80,
+      "cutoff": 0.75,
+      "fixedExhaustionMainIndex": 1,
+      "diagnosticOnly": true,
+      "subcases": [
+        "Q",
+        "R",
+        "initial"
+      ]
+    }
+  ],
+  "historicalEvidence": "Earlier selection/calibration failures are not overturned by this differently defined population.",
+  "noFinalN": true,
+  "noHumanTimingClaims": true,
+  "noOnPolicyDraws": true
+}

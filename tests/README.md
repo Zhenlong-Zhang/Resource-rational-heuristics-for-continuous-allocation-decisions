@@ -1,5 +1,11 @@
 # Test Suite
 
+`test_native_calibration.py` checks fixed cell/batch seeds, exact truth coverage,
+independent CP/power arithmetic, scalar/vector Normal parity and immutable output
+writes. Native source/lookup and independent-truth tests cover the prerequisite
+interfaces. These are small regression tests, not a rerun of the formal 400,000
+attempts. The native-state notebook exposes the full scientific configuration.
+
 Run all regression tests from the repository root:
 
 ```bash

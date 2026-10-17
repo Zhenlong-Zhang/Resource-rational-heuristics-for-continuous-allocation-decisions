@@ -22,6 +22,14 @@ maintained `20-limit` variant use this same thematic layout where compatible.
 
 ## Computational Outputs
 
+[Native-state marginal calibration](statistical_methods/native_state_calibration.ipynb)
+adds the complete synthetic budget-only chain: source states, finite lookup,
+independent rational truths, fixed 40x40x250 calibration, and independently
+recomputed `summary.json`/`targets.csv`. Smoke runs three fixed 250-attempt batches
+and remains provisional. Full reference dispositions are 89 PASS, 22 UNAVAILABLE,
+7 DIAGNOSTIC_ONLY; this does not repair unmatched historical selection failures
+or establish latest cap20 compatibility.
+
 The historical reference is a separate identified implementation, not a switch
 back to an obsolete solver in the current package. It regenerates the historical
 comparison/profile/candidate tables and figures under `tables/`, with the source

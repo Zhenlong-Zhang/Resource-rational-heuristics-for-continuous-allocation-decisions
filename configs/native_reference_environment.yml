@@ -1,0 +1,14 @@
+name: native-calibration-reference
+channels:
+  - defaults
+dependencies:
+  - python=3.10.9=h7a1cb2a_1
+  - numpy=1.23.5=py310hd5efca6_0
+  - numpy-base=1.23.5=py310h8e6c178_0
+  - scipy=1.10.0=py310hd5efca6_1
+  - blas=1.0=mkl
+  - mkl=2021.4.0=h06a4308_640
+  - intel-openmp=2021.4.0=h06a4308_3561
+  - mkl-service=2.4.0=py310h7f8727e_0
+  - pip
+  - ipykernel

@@ -49,8 +49,9 @@ implementation where compatible. The default finite task retains the verified
 are separately labelled; including them does not change the default or validate
 their conclusions for a different horizon. Expected-GPA endpoints, synthetic
 nominal inference and conditional sample-size references have a separate,
-explicitly budget-only route. The full native-state nominal calibration and
-later cost-aware adaptive-policy workflow are not included in this release.
+explicitly budget-only route. The complete native-state marginal calibration
+has its own reproduction notebook. The unfinished cost-aware adaptive-policy
+workflow is not included.
 Retained historical calibration methods and negative results are supporting
 diagnostics, not evidence for the validity of a different model or error policy.
 
@@ -120,6 +121,12 @@ Its optional synthetic-history interface reconstructs targets before applying
 the nine prespecified nominal tests. It is not a reproduction of the full
 native-state calibration or an analysis of human data. Expected-GPA equality,
 raw-surplus equality and maximum combined GPA are distinct objectives.
+
+The [native-state calibration](notebooks/statistical_methods/native_state_calibration.ipynb)
+provides the complete 400,000-attempt route, including source/lookup generation,
+independent exact truths, resumable fixed batches and independent count readback.
+Opening the notebook does not run it; small smoke settings remain provisional.
+Use its pinned numerical environment for reference-matched projection arithmetic.
 
 ## Scarcity Analysis
 

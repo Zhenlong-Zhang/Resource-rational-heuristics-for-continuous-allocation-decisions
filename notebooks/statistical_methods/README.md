@@ -24,9 +24,20 @@ does not validate selected heterogeneous Welch/slope power or select final N.
 
 The 400000-attempt native-state calibration is not reproduced by this notebook:
 its native lookup, independent truths, prepared-calibration producer and reader
-are a separate dependency chain. No cap20 transfer, human-data validation or
+are provided by [native_state_calibration.ipynb](native_state_calibration.ipynb).
+No cap20 transfer, human-data validation or
 new cost-aware theory result is claimed. The historical routes below remain
 separate rather than being silently converted to nominal expected-GPA tests.
+
+## Native-State Calibration
+
+For exact native calibration reproduction, create the Linux x86-64 numerical
+environment in `configs/native_reference_environment.yml`, install the package
+there, and select that Python kernel. Node.js is also required. The reference
+uses NumPy 1.23.5/SciPy 1.10.0 with MKL; newer numerical stacks can produce
+different least-squares coefficient bits and therefore different exact native
+means. Do not round those differences away or merge batches across environments.
+The reference is scoped to this notebook, not a requirement for other analyses.
 
 ## Historical Calibration
 

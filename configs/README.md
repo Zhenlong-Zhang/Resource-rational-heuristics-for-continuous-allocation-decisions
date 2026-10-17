@@ -33,6 +33,16 @@ Generated simulation outputs belong under `results/` and are not source-controll
 
 ## Statistical Settings
 
+- `native_design.json`: resolved synthetic budget-only source design used by
+  the native calibration; not a human-session or cap20 validation claim.
+- `native_calibration.json`: exact 40-subcase roster, seeds, laws, 250-attempt
+  batches and 10,000 attempts per subcase (400,000 total). Smoke selects fixed
+  batches without changing RNG shapes or truth definitions.
+- `native_reference_environment.yml`: Linux x86-64 reference numerical builds.
+  Exact native projection bits depend on the numerical environment, not only seeds.
+- `native_reference_constraints.txt`: preserve reference NumPy/SciPy versions
+  and compatible plotting/table dependencies when installing this notebook.
+
 - `expected_gpa_analysis.json`: nine prespecified budget-only nominal tests,
   one nonprimary diagnostic, fixed arm weights, tails, support and eligibility
   rules. This is not the historical multiplicity policy or a calibration output.
