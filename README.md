@@ -4,6 +4,11 @@ This repository studies when simple allocation heuristics can be resource-ration
 
 The decision-maker may gather information before allocating the resource. Each observation improves a belief about one recipient's need, but consumes time that could otherwise be allocated. The code evaluates the resulting tradeoff between expected utility and the opportunity cost of deliberation.
 
+Start with [installation](#installation), then choose an analysis in the
+[thematic notebook index](notebooks/README.md). Each entry links its scientific
+settings and generated outputs; the [CLI guide](scripts/README.md) provides
+command-line alternatives.
+
 ## Scientific Questions
 
 The project asks when a resource-rational strategy resembles:
@@ -37,23 +42,15 @@ adaptive policy. The finite cap does not change the older Gaussian comparisons.
 
 ## Scientific Branches
 
-`main` tracks the latest adopted and verified paper implementation. `20-limit` is
-the maintained conference variant with at most 20 information-acquisition actions
-per finite-task trial, including its matching computational and statistical
-dependencies. It is not a frozen archive: compatible accepted corrections and
-methods belong in both branches, while incompatible model changes remain separate.
-
-Both branches use the same scientific notebook organization and shared
-implementation where compatible. The default finite task retains the verified
-20-query model. Explicit horizon-comparison and budget-only diagnostic workflows
-are separately labelled; including them does not change the default or validate
-their conclusions for a different horizon. Expected-GPA endpoints, synthetic
-nominal inference and conditional sample-size references have a separate,
-explicitly budget-only route. The complete native-state marginal calibration
-has its own reproduction notebook. The unfinished cost-aware adaptive-policy
-workflow is not included.
-Retained historical calibration methods and negative results are supporting
-diagnostics, not evidence for the validity of a different model or error policy.
+`main` is the paper implementation; `20-limit` is the maintained conference
+variant with at most 20 information-acquisition actions per finite-task trial.
+Both currently retain that default finite task and the same thematic notebooks.
+The Gaussian analyses are separate models. Horizon comparisons explicitly
+distinguish cap20 from budget-only paths; expected-GPA nominal inference,
+conditional sample-size references and native-state calibration are budget-only.
+Their presence on `20-limit` does not validate them under the cap. Historical
+calibration failures remain method-specific evidence. Cost-aware adaptive-policy
+calculations are not included.
 
 ## Installation
 
@@ -71,6 +68,11 @@ Python 3.10 or newer is required.
 The statistical reproduction workflows also require Node.js for deterministic
 schedule generation, as does the finite horizon notebook's schedule/parity
 panel. No browser or npm packages are needed.
+
+For notebooks, use a Jupyter environment with this Python kernel. Each notebook's
+first code cell installs its dependencies. Native-state calibration and paired
+Gamma reproduction use a [pinned numerical environment](notebooks/statistical_methods/README.md#native-state-calibration)
+instead of the generic environment above.
 
 ## Quick Start
 
@@ -103,8 +105,8 @@ The main computational settings are command-line options, including episode coun
 Analyses are reproduced by notebooks under `notebooks/`. Each notebook calls the shared source code and exposes its main settings near the top; model logic is not duplicated in notebook cells.
 
 See the [notebook index](notebooks/README.md) for scientific questions, outputs,
-producers and settings. The four families are heuristic mapping, allocation
-mechanisms, finite tutoring and statistical methods. Full configurations are
+producers and [configuration files](configs/README.md). The four families are
+heuristic mapping, allocation mechanisms, finite tutoring and statistical methods. Full configurations are
 intentionally gated by `RUN = False`, so opening a notebook does not start a
 large computation. The objective/solver notebook regenerates its oracle,
 sweep, fixed-budget, independent confirmation and paired solver intermediates
@@ -209,11 +211,11 @@ The [horizon, terminal-time and bounds notebook](notebooks/finite_tutoring/horiz
 adds three separately scoped analyses: 2,400 paired cap20/budget-only scenarios,
 assumed terminal-time sensitivity at initial and fixed old-policy terminal
 beliefs, and numerical Bellman bounds for the zero-terminal-cost affordable
-horizon. It regenerates the paired panel rather than loading private results.
+horizon. It regenerates the paired panel from the scientific settings.
 Root-refinement depth/time limits do not truncate the scientific horizon, and
 the resulting numerical bounds do not certify a globally optimal myopic policy.
-See the notebook's explicit output coverage before treating it as a reproduction
-of every supporting presentation table.
+See the [finite-task output map](notebooks/finite_tutoring/README.md#horizon-and-terminal-diagnostics)
+for raw records and derived summaries.
 
 ## Tests
 
@@ -233,8 +235,8 @@ The RR methods implemented here are approximations unless explicitly identified 
 
 ## Documentation
 
-- `src/README.md`: package map
-- `scripts/README.md`: command-line workflow map
-- `configs/README.md`: configuration and reference-artifact policy
-- `notebooks/README.md`: notebook index
-- `tests/README.md`: test-purpose index
+- [Source package](src/README.md): model and analysis modules
+- [Command-line workflows](scripts/README.md): runners and output formats
+- [Configurations](configs/README.md): scientific settings and reference environments
+- [Notebooks](notebooks/README.md): questions, reproduction settings and outputs
+- [Tests](tests/README.md): scientific and reproducibility checks

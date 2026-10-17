@@ -2,8 +2,17 @@
 
 Entry points are organized by scientific question and result family. They call
 the shared implementation in `src/` and portable runners in `scripts/`; no model
-or inference method is duplicated in notebook cells. Both `main` and the
-maintained `20-limit` variant use this same thematic layout where compatible.
+or inference method is duplicated in notebook cells.
+
+## Start Here
+
+1. Follow the [installation guide](../README.md#installation), then open a notebook below from the checkout. Native calibration and paired Gamma use the [reference environment](statistical_methods/README.md#native-state-calibration).
+2. Run the dependency-install cell. Inspect the notebook's settings and linked [configurations](../configs/README.md), choose smoke/full mode and an output directory, and preview the printed commands with execution disabled.
+3. Enable `RUN` only when ready; the paired Gamma section has its own `RUN_PAIRED` switch. Use the notebook's readers and the output maps below to inspect all results, including failures and unavailable endpoints.
+
+Outputs are generated under ignored `results/` paths, not bundled with the
+notebooks. Smoke checks wiring only. Use fresh destinations unless a route
+explicitly documents compatible resume.
 
 ## Questions and Outputs
 
@@ -17,13 +26,14 @@ maintained `20-limit` variant use this same thematic layout where compatible.
 | When does scarcity favor lower effort-to-goal? Object gate, development selection, confirmation, lower-need metrics and non-positive Gaussian probabilities | [Scarcity](heuristic_mapping/scarcity.ipynb) | `run_scarcity_public.py --mode serious`, `scarcity.py` constants and `scarcity_frozen_settings.json`; 120 object/development episodes and 1200 confirmation episodes, unchanged stage-specific seeds |
 | Is the capped finite task numerically sound and are response rules identifiable? Baseline, C3 revision, C2 recovery and finite-prior bridge | [Finite-task validation](finite_tutoring/design_validation.ipynb) | Four validation/audit runners with baseline/revised conditions and fixed stage recipes; [settings and output map](finite_tutoring/README.md) |
 | Does a query cap bind, how do terminal time prices affect choice, and what numerical bounds hold? | [Horizons, terminal time and bounds](finite_tutoring/horizon_terminal_bounds.ipynb) | `reproduce_finite_tutoring.py`: 400 paired episodes per each of six templates (2400 pairs); 36 initial timing states; conditional sensitivity/bounds at the generated old terminals; six zero-terminal-cost root refinements |
-| How do the retained statistical methods calibrate, and what follows under declared planning assumptions? Inference examples, 28 planning scenarios, three calibration routes, failed criteria, C1 non-adoption, cohort bounds and same-input Gamma attribution | [Calibration and power](statistical_methods/calibration_and_power.ipynb) | Historical Student/Welch 390000 attempts, known-bound 100000, empirical-Bernstein 120000; supplementary fixed500 paired producer and independent reader; fixed250 batch shape and unchanged seeds; [methods and output map](statistical_methods/README.md) |
+| How do the retained statistical methods calibrate, and what follows under declared planning assumptions? Inference examples, 28 planning scenarios, three calibration routes, failed criteria, C1 identifiability limits, cohort bounds and same-input Gamma attribution | [Calibration and power](statistical_methods/calibration_and_power.ipynb) | Historical Student/Welch 390000 attempts, known-bound 100000, empirical-Bernstein 120000; supplementary fixed500 paired producer and independent reader; fixed250 batch shape and unchanged seeds; [methods and output map](statistical_methods/README.md) |
 | How are expected-GPA resemblance, nominal person-level contrasts and conditional sample sizes defined? | [Expected GPA and nominal inference](statistical_methods/expected_gpa_and_nominal_inference.ipynb) | `reproduce_expected_gpa.py`: 27 initial targets x three rules, optional synthetic raw-history inference and 24 conditional sample-size cases; not full native-state calibration |
+| How do the budget-only nominal methods calibrate on native finite states? Source schedules, lookup maps, independent exact truths, calibration batches and count readback | [Native-state calibration](statistical_methods/native_state_calibration.ipynb) | `reproduce_native_calibration.py prepare/run/summarize`; 40 subcases x 40 batches x 250 attempts, pinned numerical environment; [settings](../configs/README.md#statistical-settings) |
 
 ## Computational Outputs
 
 [Native-state marginal calibration](statistical_methods/native_state_calibration.ipynb)
-adds the complete synthetic budget-only chain: source states, finite lookup,
+provides the complete synthetic budget-only chain: source states, finite lookup,
 independent rational truths, fixed 40x40x250 calibration, and independently
 recomputed `summary.json`/`targets.csv`. Smoke runs three fixed 250-attempt batches
 and remains provisional. Full reference dispositions are 89 PASS, 22 UNAVAILABLE,

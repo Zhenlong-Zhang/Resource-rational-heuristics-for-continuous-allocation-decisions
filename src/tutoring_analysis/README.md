@@ -22,7 +22,7 @@ Node.js is required. `makeSchedule` is also exported for shared scientific
 callers. This historical schedule-only route does not use an engine, normalizer,
 participant export, deployment or network dependency.
 
-`reproduction.py` orchestrates the accepted kernels and emits complete diagnostic
+`reproduction.py` orchestrates the historical methods and emits complete diagnostic
 summaries. Its producers recompute all consumed scientific context. Use
 `scripts/reproduce_tutoring_statistics.py` and
 `scripts/calibrate_tutoring_methods.py`; notebook guides specify full scales.
@@ -45,8 +45,9 @@ the original absolute1e-10 plus relative1e-9 tolerance, with actual errors
 reported. Both `p<=.05` and `p<.05`, coverage and exact-boundary counts remain.
 
 Use `scripts/reproduce_paired_diagnostic.py` or the supplementary section in
-`calibration_and_power.ipynb`. Existing original scientific packets can be
-read without operational wrappers, but operational provenance is not certified.
+[`calibration_and_power.ipynb`](../../notebooks/statistical_methods/calibration_and_power.ipynb).
+Existing original scientific packets can be checked without modifying them;
+the numerical reader does not authenticate their original runtime.
 The diagnostic does not call the native-row validator or fabricate native
 observations from unbounded abstract Gamma responses. It is not a Type-I or
 historical-failure repair, original-runtime bit replay, or cap20 validation.
@@ -99,6 +100,6 @@ The historical checkout entrypoints are the two historical scripts above.
 They explicitly prepend the repository's `src/` directory to `sys.path` before
 importing `tutoring_analysis` and `design_validation`. Each statistics test does
 the same, so standalone discovery does not depend on test order or `PYTHONPATH`.
-The new expected-GPA runner instead prepends the repository root and imports
+The expected-GPA runner instead prepends the repository root and imports
 `src.tutoring_analysis`. Use the documented runners to select the correct model
 and method rather than mixing these independent historical and nominal routes.

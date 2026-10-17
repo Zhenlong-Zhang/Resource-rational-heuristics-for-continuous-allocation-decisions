@@ -1,5 +1,10 @@
 # Command-Line Workflows
 
+Run commands from the repository root after [installation](../README.md#installation).
+For an interactive route with settings and output readers, use the
+[thematic notebook index](../notebooks/README.md). Scientific inputs are listed
+in [configs](../configs/README.md); generated outputs belong under `results/`.
+
 ## Paired Gamma Diagnostic
 
 The Python-only producer and independent scientific reader use public inputs:
@@ -28,10 +33,10 @@ incomplete, duplicate, malformed or inconsistent scientific records are rejected
 `selectedComplete` does not imply `fixed500Complete`.
 
 The reader also supports original `historical-gamma-diagnostic-v01` producer
-packets through the same `read` command. It reconstructs the scientific data,
-not operational receipts, and leaves the input untouched. No private wrapper,
-source archive or cached result is needed to produce new inputs. Agreement is
-not Type-I/coverage acceptance, historical-failure repair or cap20 transfer.
+packets through the same `read` command, checking their scientific records
+without modifying them. Its numerical checks do not authenticate the original
+runtime. New inputs are generated from the fixed recipe. Agreement does not
+establish Type-I/coverage validity, repair historical failures or validate cap20.
 
 ## Native-State Calibration
 
@@ -143,9 +148,9 @@ Generated outputs belong under `results/` and are ignored by Git.
 - `audit_tutoring_model_bridge.py`: deterministic finite-support, Gaussian-reference and affine-GPA audit.
 - `reproduce_finite_tutoring.py`: paired cap20/budget-only episodes, initial
   diagnostics, terminal-time sensitivity and full-affordable-horizon numerical
-  bounds. Stages take public scientific settings and regenerate intermediate
-  paired data; no private preparation or approval receipt is required. Terminal
-  sensitivity is conditional on the supplied old-policy terminals, not a newly
+  bounds. Stages regenerate intermediate paired data from the scientific
+  configurations. Terminal sensitivity is conditional on the supplied
+  old-policy terminals, not a newly
   simulated cost-aware policy. Computational refinement limits are not query caps.
 
 - `reproduce_finite_auxiliary.py`: `source-panel` produces the exact ENGAGEMENT

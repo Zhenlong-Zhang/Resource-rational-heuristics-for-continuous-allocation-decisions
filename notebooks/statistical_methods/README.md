@@ -1,5 +1,10 @@
 # Statistical Methods and Conditional Power
 
+Choose a method below, inspect its settings, then enable computation in the
+notebook. [Installation](../../README.md#installation) and the
+[configuration index](../../configs/README.md#statistical-settings) describe the
+shared dependencies and inputs. Outputs are generated under ignored `results/`.
+
 ## Expected-GPA and Nominal Inference
 
 [expected_gpa_and_nominal_inference.ipynb](expected_gpa_and_nominal_inference.ipynb)
@@ -48,17 +53,15 @@ separately and is required for the extracted
 pure deterministic schedule; no UI engine, survey adapter or private inputs are
 used. Computation defaults to `RUN = False`.
 
-The notebook calls the accepted historical Student/Welch, known-bound Hoeffding,
+The notebook calls the historical Student/Welch, known-bound Hoeffding,
 empirical-Bernstein and conditional planning implementations. Full settings retain
 the exact cell seeds and batch size 250: 390,000, 100,000 and 120,000 attempts,
 respectively. Smoke takes batch zero of each cell and is not independent evidence
 in addition to full. Fixture mode is only for tests and changes RNG array shape.
 
-These explicitly historical methods preserve supporting comparisons and negative
-calibration evidence. They are not a claim that every historical inference policy
-is the latest adopted primary analysis, and must not substitute for a newer
-accepted method's matching calibration or power calculations. Method-specific
-assumptions stay separate even when both branches share these notebook paths.
+These methods retain their own endpoint definitions, error policies and negative
+calibration evidence. They do not calibrate the budget-only nominal methods
+above; method-specific assumptions remain separate on both branches.
 
 ## Outputs
 
@@ -75,16 +78,16 @@ original person slopes and separately canonical projection. The independent
 reader reconstructs raw inputs and derives its own projection/support/Student
 oracle, checking four Student outputs per case. See the
 [CLI guide](../../scripts/README.md#paired-gamma-diagnostic) for exact commands,
-file schema and reading an existing original packet without private wrappers.
+file schema and reading an existing original scientific packet.
 
 The original diagnostic observed40/500 rejections and471/500 zero-covering
 intervals in each arm, with zero paired rejection/coverage disagreements and
 nonzero floating differences. These are reference observations, not stored
-output or acceptance thresholds. Legacy `p<=.05` and current `p<.05` are both
+outputs or pass thresholds. Legacy `p<=.05` and current `p<.05` are both
 retained. Neither agreement nor successful readback repairs the historical111
 failures, validates Type-I error, certifies old-runtime bits, adds independent
-historical attempts, or establishes cap20/native-task/human validity. Original
-pre-adoption `accepted:false` markers are not rewritten.
+historical attempts, or establishes cap20/native-task/human validity. The reader
+leaves input records unchanged and does not authenticate their original runtime.
 
 | Producer | Recomputed output |
 | --- | --- |
@@ -92,7 +95,7 @@ pre-adoption `accepted:false` markers are not rewritten.
 | `reproduce_tutoring_statistics.py --analysis planning` | `planning.json`: 28 declared-assumption scenarios, eligibility/variance geometry, marginal power and conditional joint bounds. |
 | `calibrate_tutoring_methods.py` | All 30 cells and populations, batch summaries, `calibration_summary.json`, core/policy/power CSV tables and `all_criterion_failures.csv`. |
 | `reproduce_tutoring_statistics.py --analysis bounded` | Ten cells, all nine slots including three unsupported slopes, same-draw Student/Welch comparisons, batch parity, route summary and failed criteria. |
-| `reproduce_tutoring_statistics.py --analysis variance-adaptive` | Recomputed schedules, 3,072 raw projection corners, unsnapped raw and ideal truth rosters, 30 C1 candidate/comparator states, 135 cohort-bound cases, twelve calibration cells, three methods and all policy/scope diagnostics. |
+| `reproduce_tutoring_statistics.py --analysis variance-adaptive` | Recomputed schedules, 3,072 raw projection corners, unsnapped raw and ideal truth rosters, 30 diagnostic-only C1 candidate/comparator states (no task revision), 135 cohort-bound cases, twelve calibration cells, three methods and all policy/scope diagnostics. |
 | `reproduce_paired_diagnostic.py produce/read` | Fixed500 or selected250 raw arrays, person qualifications/slopes, legacy/current/projection inference, paired decisions and independent numerical readback; no Type-I repair claim. |
 
 The historical 390,000-attempt result is **MIXED**, with 111 failed criteria,
@@ -112,6 +115,7 @@ decisions. Equal raw-surplus resemblance is not the later expected-GPA construct
 The source schedule extraction keeps the original identity strings, seeded
 cyrb128/SFC32, shuffle, template multiplicities, side balance and stage indices.
 The empirical-Bernstein context is regenerated, never supplied as cached input.
-This notebook does not reproduce UI replay panels, reports/figures, human fits,
-or unfinished theory. Expected utility remains the decision-performance metric;
-the endpoint calibration checks a different, explicitly statistical question.
+This notebook provides numerical statistical diagnostics, not UI replay, report
+graphics, human fits or cost-aware policy predictions. Expected utility remains
+the decision-performance metric; endpoint calibration checks a different,
+explicitly statistical question.

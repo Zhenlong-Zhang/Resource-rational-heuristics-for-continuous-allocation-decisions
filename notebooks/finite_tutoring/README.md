@@ -24,10 +24,9 @@ The stage loops read each stage's own outputs. Confirmation neither overwrites
 screening nor turns screening selection into independent evidence. Smoke uses
 the baseline smoke recipe, C3 screening and C2 smoke, not full confirmation.
 
-The revised source/configuration retains the accepted scientific settings while
-removing administrative design metadata. Its integrity hashes bind these public
-files, not the private historical package. The prior-moment audit uses the revised
-design; both baseline and revised task results remain reproducible.
+Integrity hashes bind the scientific configuration and numerical engine. The
+prior-moment audit uses the revised design; both baseline and revised task
+results remain reproducible. See the [configuration index](../../configs/README.md#finite-tutoring-settings).
 
 Generated outputs go to ignored `results/finite_reproduction/`. Use a new output
 directory for each execution. Smoke is only a wiring check. Target matches and
@@ -58,6 +57,6 @@ compact bounds. Undefined observations keep explicit denominators. Working C1
 uses gap1; template pooling is not human schedule weighting. C5 symmetry-derived
 bounds stay separate from raw root envelopes. Smoke produces partial diagnostics,
 not the complete descriptive tables; full mode generates the complete chain.
-The full budget-only cost-aware policy and later primary inference calibration
-are separate and are not included here. No private receipts or cached results
-are required by the included stages.
+All inputs are regenerated from the scientific settings. Cost-aware adaptive
+policies are not evaluated here; budget-only nominal inference and native-state
+calibration have [separate notebooks](../statistical_methods/README.md).
