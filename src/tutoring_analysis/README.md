@@ -28,13 +28,41 @@ summaries. Its producers recompute all consumed scientific context. Use
 `scripts/calibrate_tutoring_methods.py`; notebook guides specify full scales.
 All generated files belong under ignored `results/`, not in version control.
 
-Python runtime dependencies are NumPy and SciPy. Pure schedule generation also
-requires Node.js. The package covers the completed historical statistical
-analysis only; later nominal-power and budget-planning methods are not included.
+## Expected-GPA and Nominal Analysis
 
-The supported checkout entrypoints are the two scripts above and the notebook.
+`expected_outcomes.py` reconstructs native-grid targets from synthetic paid
+histories. The equal-GPA target minimizes `abs(E[GPA_A] - E[GPA_B])`, not
+`E[abs(GPA_A - GPA_B)]` or raw-surplus inequality. Ties use combined GPA, then
+distance to equal split and the lower index. Its signed resemblance measure is
+`R_EGPA_pp = (abs(j-500) - abs(j-jEGPA))/10`; positive means closer to the
+belief-based equal-GPA target. This is not equality of hidden realized outcomes.
+
+`nominal_inference.py` retains complete-ten, equal-person aggregation, fixed
+arm weights, Student/Welch tests, nominal alpha .05 and two-sided 95% intervals.
+H05 uses the less tail; the other eight primary contrasts use greater. D10 is
+nonprimary and less. Missing arms are not reweighted; zero/nonfinite standard
+error is unavailable. Exhaustion remains eligible for question count but not
+allocation metrics. Tied lower-mean choices contribute zero to the primary
+endpoint. Supporting alternatives do not replace primary eligibility rules.
+
+`conditional_power.py` gives 24 IID-normal noncentral-t planning references:
+three effects, two power targets, two endpoint references and two tails, with
+three retention assumptions each. Independent-group references assume common
+variance, not heterogeneous Welch. Retention assurance, marginal power and
+joint power are different; no final recruitment size is selected.
+
+Use `scripts/reproduce_expected_gpa.py` and the expected-GPA notebook. These
+budget-only methods do not transfer validation to cap20. The native-state lookup,
+independent truth, prepared calibration and complete calibration reader are not
+included; helper tests do not reproduce the 400000-attempt calibration.
+
+Python runtime dependencies are NumPy and SciPy. Pure schedule generation also
+requires Node.js.
+
+The historical checkout entrypoints are the two historical scripts above.
 They explicitly prepend the repository's `src/` directory to `sys.path` before
 importing `tutoring_analysis` and `design_validation`. Each statistics test does
 the same, so standalone discovery does not depend on test order or `PYTHONPATH`.
-The editable install supplies dependencies; it does not promise an independent
-`src.tutoring_analysis` import interface.
+The new expected-GPA runner instead prepends the repository root and imports
+`src.tutoring_analysis`. Use the documented runners to select the correct model
+and method rather than mixing these independent historical and nominal routes.

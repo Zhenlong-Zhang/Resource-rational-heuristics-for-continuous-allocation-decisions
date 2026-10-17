@@ -86,7 +86,23 @@ Generated outputs belong under `results/` and are ignored by Git.
   sensitivity is conditional on the supplied old-policy terminals, not a newly
   simulated cost-aware policy. Computational refinement limits are not query caps.
 
-## Statistical Analyses
+- `reproduce_finite_auxiliary.py`: `source-panel` produces the exact ENGAGEMENT
+  schedules, JS parity and geometry; `time-tables` and `bounds-tables` read
+  generated finite stages and produce scoped descriptive summaries. Node.js
+  is needed only for `source-panel`; use fresh output directories.
+
+## Expected-GPA and Nominal Analysis
+
+`reproduce_expected_gpa.py targets` generates the working budget-only initial
+allocation-target panel. `power` generates 24 conditional sample-size references
+and a readable summary. `analyze --trials PATH` accepts synthetic raw histories,
+reconstructs posteriors and targets, and applies the fixed nine primary tests
+plus one nonprimary diagnostic from `expected_gpa_analysis.json`. All subcommands
+require `--output` pointing to a new directory. See the expected-GPA notebook
+for input format and scope. This is not full native-state calibration, a human
+data adapter, or a new cap20 validation.
+
+## Historical Statistical Analyses
 
 - `reproduce_tutoring_statistics.py`: inference examples, conditional planning,
   known-bound calibration and variance-adaptive calibration. Select

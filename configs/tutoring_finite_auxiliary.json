@@ -1,0 +1,15 @@
+{
+  "schema": "finite-tutoring-auxiliary-v1",
+  "profile": "pilot-engagement-budget-v1",
+  "source_schedule_seed": 2026100902,
+  "conditions": ["C1", "C2", "C3", "C4", "C5"],
+  "schedule_variants": 9,
+  "main_trials_per_schedule": 10,
+  "reversed_trials_per_schedule": 5,
+  "balanced_geometry_cases": 6804,
+  "terminal_pooling": "equal_template_not_human_schedule_weighting",
+  "terminal_templates": ["C3_s0_g0", "C3_s1_g0", "C3_s2_g0", "C5_s0_g0", "C5_s1_g0", "C5_s2_g0"],
+  "terminal_episodes_per_template": 400,
+  "epsilon_levels": [0.1, 0.01, 0.001],
+  "machine_certified_arithmetic": false
+}

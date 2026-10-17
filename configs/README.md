@@ -23,6 +23,8 @@ Generated simulation outputs belong under `results/` and are not source-controll
   motor-noise, lapse and participant-count assumptions for C2 recovery.
 - `tutoring_paired_horizon.json`: 400 paired episodes per active template, fixed
   latent/report seed namespaces and the 20-query comparison cap.
+- `tutoring_finite_auxiliary.json`: exact ENGAGEMENT schedule seed, parity/geometry
+  counts, complete terminal pooling recipe and numerical-bound display levels.
 - `tutoring_terminal_time_v01.json`: ten terminal macros, assumed timing profiles,
   price multipliers and initial/conditional-terminal sensitivity settings.
 - `tutoring_optimality_v01.json`: numerical-envelope tolerances, full affordable
@@ -30,6 +32,10 @@ Generated simulation outputs belong under `results/` and are not source-controll
   not the number of legal information-acquisition actions.
 
 ## Statistical Settings
+
+- `expected_gpa_analysis.json`: nine prespecified budget-only nominal tests,
+  one nonprimary diagnostic, fixed arm weights, tails, support and eligibility
+  rules. This is not the historical multiplicity policy or a calibration output.
 
 - `tutoring_calibration_v01.json`: 30 cells, fixed seeds, historical error
   policies and 390,000 simulation attempts.

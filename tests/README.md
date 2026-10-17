@@ -50,8 +50,14 @@ Some solver and evaluation tests are intentionally more computationally demandin
   feasible lower bounds and computational-cutoff versus horizon separation.
 - `test_finite_reproduction.py`: small real CLI producer-to-consumer chains,
   incompatible or incomplete panel rejection, input guards and checkpoint integrity.
+- `test_finite_auxiliary.py`: deterministic ENGAGEMENT/parity/geometry, descriptive
+  denominators, complete/partial coverage, corrupt-input rejection and real CLI chains.
 
 ## Statistical Methods
+
+- `test_expected_gpa.py`: target reconstruction, person eligibility, nominal
+  tails and missing arms, exhaustion/ties, conditional N boundaries and actual
+  synthetic-input/target/power CLI routes.
 
 - `test_tutoring_inference.py`: formula oracles, complete-person eligibility and fixed-slot error policies.
 - `test_tutoring_calibration.py`: synthetic populations, seeds, checkpoint identity and failure retention.

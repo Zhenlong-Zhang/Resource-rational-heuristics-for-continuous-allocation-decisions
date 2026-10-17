@@ -47,8 +47,10 @@ Both branches use the same scientific notebook organization and shared
 implementation where compatible. The default finite task retains the verified
 20-query model. Explicit horizon-comparison and budget-only diagnostic workflows
 are separately labelled; including them does not change the default or validate
-their conclusions for a different horizon. Later cost-aware adaptive-policy and
-primary statistical-calibration workflows are not included in this release.
+their conclusions for a different horizon. Expected-GPA endpoints, synthetic
+nominal inference and conditional sample-size references have a separate,
+explicitly budget-only route. The full native-state nominal calibration and
+later cost-aware adaptive-policy workflow are not included in this release.
 Retained historical calibration methods and negative results are supporting
 diagnostics, not evidence for the validity of a different model or error policy.
 
@@ -66,7 +68,8 @@ python3 -m pip install -e .
 Python 3.10 or newer is required.
 
 The statistical reproduction workflows also require Node.js for deterministic
-schedule generation. No browser or npm packages are needed.
+schedule generation, as does the finite horizon notebook's schedule/parity
+panel. No browser or npm packages are needed.
 
 ## Quick Start
 
@@ -110,6 +113,13 @@ The [historical Gaussian reference](notebooks/heuristic_mapping/historical_gauss
 preserves the identified source and settings for the earlier 120-episode broad
 grids and 1,200-episode focused confirmations. It is distinct from evaluating
 the current Gaussian solver: source identity, not only episode count, matters.
+
+The [expected-GPA analysis](notebooks/statistical_methods/expected_gpa_and_nominal_inference.ipynb)
+regenerates belief-based allocation targets and 24 conditional power references.
+Its optional synthetic-history interface reconstructs targets before applying
+the nine prespecified nominal tests. It is not a reproduction of the full
+native-state calibration or an analysis of human data. Expected-GPA equality,
+raw-surplus equality and maximum combined GPA are distinct objectives.
 
 ## Scarcity Analysis
 

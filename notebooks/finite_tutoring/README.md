@@ -50,10 +50,14 @@ panels. Timing profiles are assumptions. Conditional terminal sensitivity is not
 a new duration-aware trajectory distribution; numerical statewise bounds do not
 certify the preceding myopic policy. The default capped task above is unchanged.
 
-The notebook lists its remaining output gaps: ENGAGEMENT schedules/JavaScript
-parity/geometry, separate derived working-stimulus/equal-template summaries and
-the compact historical bound presentation. Raw scientific outputs are available;
-these missing presentation/source-panel routes are not claimed as reproduced.
+The companion `reproduce_finite_auxiliary.py` generates 45 ENGAGEMENT schedules
+with seed2026100902, 216 belief and 1620 outcome parity cases, and 6804 balanced
+geometry cases. Its readers consume the raw stages above to produce initial
+ledgers, equal-template and working-stimulus summaries, terminal pooling and
+compact bounds. Undefined observations keep explicit denominators. Working C1
+uses gap1; template pooling is not human schedule weighting. C5 symmetry-derived
+bounds stay separate from raw root envelopes. Smoke produces partial diagnostics,
+not the complete descriptive tables; full mode generates the complete chain.
 The full budget-only cost-aware policy and later primary inference calibration
 are separate and are not included here. No private receipts or cached results
 are required by the included stages.

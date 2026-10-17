@@ -1,4 +1,34 @@
-# Statistical Calibration and Conditional Power
+# Statistical Methods and Conditional Power
+
+## Expected-GPA and Nominal Inference
+
+[expected_gpa_and_nominal_inference.ipynb](expected_gpa_and_nominal_inference.ipynb)
+provides the budget-only expected-GPA target, nominal-test and conditional-power
+route. Full mode generates 27 initial states x three deterministic allocation
+rules and all 24 sample-size cases. These are initial geometry and planning
+references, not new on-policy trajectories. Smoke selects one initial state.
+Optional `RAW_TRIALS` runs the synthetic paid-history interface; its required
+fields are described in the notebook. Cached target columns are not trusted.
+
+The target minimizes `abs(E[GPA_A] - E[GPA_B])` on the native 1001-point grid.
+The signed allocation-distance difference is positive when the choice is closer
+to this target than to equal split. Nine fixed nominal tests use alpha .05,
+equal-person complete-ten aggregation and prespecified tails; a tenth contrast
+is nonprimary. Endpoint definitions, support and missingness rules are in
+`configs/expected_gpa_analysis.json` and `src/tutoring_analysis/README.md`.
+
+Power uses declared effects .2/.3/.4 and marginal targets .8/.9 under IID normal
+person summaries, with common variance for independent arms. It checks integer
+N and N-1, and distinguishes expected retention from 90% count assurance. It
+does not validate selected heterogeneous Welch/slope power or select final N.
+
+The 400000-attempt native-state calibration is not reproduced by this notebook:
+its native lookup, independent truths, prepared-calibration producer and reader
+are a separate dependency chain. No cap20 transfer, human-data validation or
+new cost-aware theory result is claimed. The historical routes below remain
+separate rather than being silently converted to nominal expected-GPA tests.
+
+## Historical Calibration
 
 Open [calibration_and_power.ipynb](calibration_and_power.ipynb) from a repository checkout. The first code
 cell installs the Python package and checks Node.js. Node.js must be installed
