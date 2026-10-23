@@ -27,6 +27,11 @@ Generated simulation outputs belong under `results/` and are not source-controll
   counts, complete terminal pooling recipe and numerical-bound display levels.
 - `tutoring_terminal_time_v01.json`: ten terminal macros, assumed timing profiles,
   price multipliers and initial/conditional-terminal sensitivity settings.
+- `tutoring_cost_aware.json`: frozen repeated selected-macro working-population
+  recipe, potential-stream namespace, original decision tolerances and public
+  source-generation dependencies. No personal question-time price or query cap.
+- `tutoring_cost_aware_selection.json`: explicit example stable coordinates for
+  the selected-trial CLI; changing a selection never renumbers or reseeds it.
 - `tutoring_optimality_v01.json`: numerical-envelope tolerances, full affordable
   horizon and computational refinement limits. A depth limit bounds refinement,
   not the number of legal information-acquisition actions.

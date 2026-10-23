@@ -60,3 +60,31 @@ not the complete descriptive tables; full mode generates the complete chain.
 All inputs are regenerated from the scientific settings. Cost-aware adaptive
 policies are not evaluated here; budget-only nominal inference and native-state
 calibration have [separate notebooks](../statistical_methods/README.md).
+
+## Selected Cost-Aware Computation
+
+[cost_aware_computation.ipynb](cost_aware_computation.ipynb) supplies a different
+trajectory calculation: repeated one-query decisions over duration-priced
+terminal macros. It generates native working roots, follows explicitly selected
+stable trial coordinates, and independently checks all report branches, draws,
+paid updates, terminal values and root bound annotations. The full100-report
+selected-child backup is retained separately from raw maxima.
+
+Source generation follows genuine native checks/practice and baseline ES only
+through each session's last selected main (1..10 supported). It restores unpaid
+selected roots without constructing irrelevant paid/exhaustion prefixes, while
+preserving those forks' action-counter gaps for later mains. The source packet
+is explicitly partial; no full-session or full-panel completion is claimed.
+
+The first cell installs the package with reference constraints; substantial work
+defaults to `RUN = False`. Use Python3.10.9/NumPy1.23.5/SciPy1.10.0 and Node.js.
+Exact probability bits may depend on the numerical build/CPU; numerical agreement
+does not authenticate historical execution. The reader shares NumPy/PCG64 but
+does not call producer numerical helpers.
+
+See [CLI and output layout](../../scripts/README.md#selected-cost-aware-trials).
+The selection JSON is the complete declared scope, not a person or campaign
+roster. Settings remain fixed; unsupported changes are rejected. Personal
+question time is unpriced, terminal time affects the objective only, and exact
+exhaustion has undefined share and zero duration. No person inference, global
+aggregation, cap20 transfer or global-optimality claim is supplied.

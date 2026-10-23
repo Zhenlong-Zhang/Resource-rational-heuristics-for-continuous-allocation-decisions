@@ -44,6 +44,19 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 ## Finite Tutoring
 
+- `test_cost_aware_tutoring.py`: quick selection/JSON/NDJSON rejection, frozen
+  settings, CDF boundary/fallback, stream identity, pathwise-bound and independent
+  zero-budget checks, plus affordable sub-tolerance ASK/STOP and ask-tie
+  disagreements and a tolerated reference-price perturbation. Controlled-menu
+  boundary fixtures are not accepted histories. Run the real
+  selected `prepare`/`produce`/`check` chain separately via the CLI; these tests do
+  not repeat it or establish historical parity.
+- `test_cost_aware_source.cjs`: full supported root-coordinate selection and
+  reserved paid/exhaustion-fork counter arithmetic, without generating sessions
+  or policy histories. Run `node tests/test_cost_aware_source.cjs`; syntax-check
+  the adapter with `node --check src/design_validation/cost_aware_source.cjs`.
+  Python interface tests additionally check selected-root deduplication and
+  rejection of misleading full-panel/completed-session source claims.
 - `test_tutoring_design_validation.py`: exact finite Bayes, resource accounting, random-stream and independent scalar-oracle checks.
 - `test_tutoring_design_revision.py`: single C3 change, fixed stage seeds, configuration/source identity and selection criteria.
 - `test_allocation_identifiability.py`: synthetic response generators, group slope and held-out classification semantics.

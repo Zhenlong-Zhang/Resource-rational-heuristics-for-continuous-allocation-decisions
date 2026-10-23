@@ -18,6 +18,10 @@ enumerate that support. The native allocation grid has 1,001 shares.
 | `finite_auxiliary.py`, `finite_auxiliary_inputs.py` | ENGAGEMENT schedules/parity/geometry and strict readers for generated stages. |
 | `finite_time_tables.py` | Initial, working-stimulus and old-terminal descriptive summaries with explicit denominators. |
 | `finite_bound_tables.py` | Compact raw bounds and separately identified symmetry-derived C5 intersections. |
+| `cost_aware_inputs.py`, `cost_aware_reproduction.py` | Frozen working-root generation, explicit stable trial selection and portable NDJSON file stages. |
+| `cost_aware_source.cjs` | Genuine native session ancestry only as far as selected unpaid roots; preserves skipped-fork action-counter gaps without generating paid prefix panels. |
+| `cost_aware_policy.py`, `cost_aware_bounds.py` | Repeated selected-macro decisions, full report backups, keyed latent/report streams and pathwise continuation bounds. |
+| `cost_aware_reference.py`, `cost_aware_validation.py` | Independent finite mathematics and full selected-record replay; no producer numerical oracle. |
 
 `budget_source_panel.cjs` and `finite_schedule_engine.cjs` provide the pure
 deterministic schedule and native payoff/posterior dependency closure. Node.js
@@ -32,3 +36,11 @@ envelope diagnostics use the budget-only model; the envelope analysis assumes
 zero terminal computation cost. They do not establish capped-model counterparts,
 globally optimal repeated-myopic behavior or human timing validity. Float64
 envelopes are numerical bounds, not machine-certified interval arithmetic.
+
+The [cost-aware notebook](../../notebooks/finite_tutoring/cost_aware_computation.ipynb)
+adds an explicitly selected working-population route, not person or global
+aggregation. Its selected-source adapter reuses native session/restore APIs in
+`tutoring_analysis`, leaving the existing full-panel generator unchanged, and
+existing producer terminal primitives; its reader reconstructs the numerical
+menus/bounds independently. Shared NumPy/PCG64 and environment-sensitive exact
+bits remain limitations. See the [CLI contract](../../scripts/README.md#selected-cost-aware-trials).

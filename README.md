@@ -49,8 +49,11 @@ The Gaussian analyses are separate models. Horizon comparisons explicitly
 distinguish cap20 from budget-only paths; expected-GPA nominal inference,
 conditional sample-size references and native-state calibration are budget-only.
 Their presence on `20-limit` does not validate them under the cap. Historical
-calibration failures remain method-specific evidence. Cost-aware adaptive-policy
-calculations are not included.
+calibration failures remain method-specific evidence. A separate
+[cost-aware calculation](notebooks/finite_tutoring/cost_aware_computation.ipynb)
+generates selected working-population budget-only trials and independently
+checks their full decision records. It does not provide person/global reductions
+or validate the calculation under the cap.
 
 ## Installation
 
@@ -66,8 +69,8 @@ python3 -m pip install -e .
 Python 3.10 or newer is required.
 
 The statistical reproduction workflows also require Node.js for deterministic
-schedule generation, as does the finite horizon notebook's schedule/parity
-panel. No browser or npm packages are needed.
+schedule generation, as do the finite horizon schedule/parity panel and the
+selected cost-aware calculation. No browser or npm packages are needed.
 
 For notebooks, use a Jupyter environment with this Python kernel. Each notebook's
 first code cell installs its dependencies. Native-state calibration and paired

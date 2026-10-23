@@ -5,6 +5,61 @@ For an interactive route with settings and output readers, use the
 [thematic notebook index](../notebooks/README.md). Scientific inputs are listed
 in [configs](../configs/README.md); generated outputs belong under `results/`.
 
+## Selected Cost-Aware Trials
+
+Use the [cost-aware notebook](../notebooks/finite_tutoring/cost_aware_computation.ipynb)
+or the following portable stages. Each output directory must be new.
+
+```bash
+python scripts/reproduce_cost_aware_tutoring.py prepare --config configs/tutoring_cost_aware.json --selection configs/tutoring_cost_aware_selection.json --output results/cost_aware/inputs --node node
+python scripts/reproduce_cost_aware_tutoring.py produce --config configs/tutoring_cost_aware.json --selection configs/tutoring_cost_aware_selection.json --inputs results/cost_aware/inputs --output results/cost_aware/records
+python scripts/reproduce_cost_aware_tutoring.py check --config configs/tutoring_cost_aware.json --selection configs/tutoring_cost_aware_selection.json --inputs results/cost_aware/inputs --records results/cost_aware/records --output results/cost_aware/checked --node node
+```
+
+`--selection` is a JSON array of objects with exactly `conditionId`,
+`scheduleVariant`, `mainIndex`, `replicateId` and `scenarioId`. Coordinates retain
+their original randomization identity. Example scenarios are `base|rho_100` and
+`low|rho_0`; supported scenarios are low/base/high crossed with rho multipliers
+0,.01,.1,1,10,100. Only working roots and original replicate IDs0..63 are supported.
+The namespace/recipe is fixed; there is no reseeding, query cap or global mode.
+
+Preparation writes `source_states.json` and `inputs.json`. Source generation
+supports every main index1..10 but runs only the selected sessions through their
+last requested unpaid root. Genuine checks, practice and baseline ES advancement
+are retained. Unneeded paid/exhaustion forks are omitted; their action-counter
+increments are reserved so later baseline IDs and timestamps stay unchanged.
+`source_states.json` explicitly declares `selected_working_roots`, not a complete
+source panel or completed sessions. The existing full-panel native generator is
+unchanged. Prepare and check share this selected-source adapter; the checker
+still reconstructs schedule and prior mathematics independently. Production writes
+`<condition>_v<variant>_m<main>_r<replicate>_<profile>_rho_<multiplier>.ndjson`
+and then `reference.json`. Each NDJSON file contains a trial header, initial
+decision, latent pair, paid/decision pairs and a final history. A decision embeds
+both full100-report panels, distinct branch/observed posterior bits, selected/raw
+backups and root bound annotations. The reference retains the roots, reference
+rate, final histories and SHA256 of every raw public row excluding its newline.
+These public transport identities are not historical manifests or RNG inputs.
+
+The checker regenerates source and independently reconstructs the existing
+records, without repeating production. It checks both exact recorded-operand
+backups and independently reconstructed full100 backups/policies, including
+discrete action/tie agreement. Its price comes from its own reference calculation,
+not the approximately compared reported reference. `verification.json` reports the exact
+selected scope, numerical errors and completion. Missing/extra/duplicate records,
+changed maps/settings/keys, nonfinite values and incomplete output are rejected.
+Numerical contradictions remain unavailable, not successful STOP outcomes.
+Invalid inputs and numerical noncompletion return exit2; no partial directory
+constitutes a complete result. Expected utility, combined GPA, time-priced
+objective and scalar realized outcomes remain separate fields.
+
+The numerical reference is Python3.10.9/NumPy1.23.5/SciPy1.10.0; use
+`native_reference_environment.yml` and `native_reference_constraints.txt`.
+The CLI fixes numerical library threading before imports. Exact probability bits
+are environment-sensitive; no cross-platform bitwise promise or historical
+acceptance claim follows from a successful check. The two mathematical routes
+share NumPy and PCG64. This route excludes person/global reductions, human
+inference, new question-time charges and validation under the capped task.
+
 ## Paired Gamma Diagnostic
 
 The Python-only producer and independent scientific reader use public inputs:
