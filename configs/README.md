@@ -32,11 +32,27 @@ Generated simulation outputs belong under `results/` and are not source-controll
   source-generation dependencies. No personal question-time price or query cap.
 - `tutoring_cost_aware_selection.json`: explicit example stable coordinates for
   the selected-trial CLI; changing a selection never renumbers or reseeds it.
+- `personal_time_reference.json`: separate finite expected-endpoint recipe,
+  fixed native source scope and whole-person/equal-schedule aggregation.
+- `personal_time_base.json` and `personal_time_instance.json`: explicit request,
+  belief-reading, terminal and random-choice operation costs, valuation and
+  native random-allocation law. These are reference assumptions, not estimates
+  of all human task durations or adoption of a final paper model.
+- `personal_time_design.json` and `personal_time_root_identity.json`: native
+  source design and exact original scientific root identities. The runner
+  regenerates roots; stored identities do not substitute for input generation.
+- `personal_time_selection.json`: small original-coordinate selection, distinct
+  from the complete 450-endpoint reference.
 - `tutoring_optimality_v01.json`: numerical-envelope tolerances, full affordable
   horizon and computational refinement limits. A depth limit bounds refinement,
   not the number of legal information-acquisition actions.
 
 ## Statistical Settings
+
+- `conditional_statistics_environment.json`: exact Python, R, R-package and
+  Node reference versions for the conditional mixed-model, paired-coverage,
+  direct-fit-power and comparison workflows. The same scientific pins are
+  packaged with `src/tutoring_statistics/data/`; both must remain consistent.
 
 - `native_design.json`: resolved synthetic budget-only source design used by
   the native calibration; not a human-session or cap20 validation claim.

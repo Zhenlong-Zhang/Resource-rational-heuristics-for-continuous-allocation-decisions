@@ -55,6 +55,14 @@ generates selected working-population budget-only trials and independently
 checks their full decision records. It does not provide person/global reductions
 or validate the calculation under the cap.
 
+The [personal-time reference](notebooks/finite_tutoring/personal_time_reference.ipynb)
+separately prices both information requests and terminal operations. Its fixed
+five-condition analysis comprises 450 expected endpoints, not 450 realized
+histories. The mixed-model validation and conditional-power notebooks below use
+their own declared synthetic populations and statistical models. Neither their
+presence on `20-limit` nor numerical validation transfers these findings to the
+capped model or adopts a final human-study analysis.
+
 ## Installation
 
 ```bash
@@ -76,6 +84,12 @@ For notebooks, use a Jupyter environment with this Python kernel. Each notebook'
 first code cell installs its dependencies. Native-state calibration and paired
 Gamma reproduction use a [pinned numerical environment](notebooks/statistical_methods/README.md#native-state-calibration)
 instead of the generic environment above.
+
+Mixed-model null, paired coverage and direct-fit power analyses additionally
+require R 4.2.2 and the package versions documented in their
+[notebook guide](notebooks/statistical_methods/README.md). These workflows fit
+the models and independently check their numerical outputs; saved report tables
+are not required inputs.
 
 ## Quick Start
 
@@ -133,6 +147,26 @@ independent exact truths, resumable fixed batches and independent count readback
 Opening the notebook does not run it; small smoke settings remain provisional.
 Use its pinned numerical environment for reference-matched projection arithmetic.
 
+The [personal-time reference](notebooks/finite_tutoring/personal_time_reference.ipynb)
+regenerates native inputs, prices search and termination consistently, and checks
+the finite expected endpoints and original-state acquisition margins. It also
+compares equal expected GPA with equal mean surplus on matched examples.
+
+The [mixed-model null validation](notebooks/statistical_methods/mixed_model_null_validation.ipynb)
+provides the fixed 24,000-input H3-H5 analysis, including unavailable fits,
+baseline comparisons and independent numerical verification. The
+[paired coverage and conditional power](notebooks/statistical_methods/paired_coverage_and_conditional_power.ipynb)
+notebook provides the fixed 10,000-input CR2/GLS comparison and the 40-cell,
+80,000-input direct-fit power analysis. Full runs remain opt-in. Small selections
+check interfaces, not the full reported populations. Coverage limitations and
+failure to establish 80% discovery on the tested grid remain results, not reasons
+to change the simulation settings.
+
+[Inference comparisons](notebooks/statistical_methods/inference_comparisons.ipynb)
+retains the earlier baseline and cluster-robust validation families needed to
+interpret those methods. A favorable targeted comparison does not erase earlier
+coverage deficits or justify transferring inference to unmatched populations.
+
 ## Scarcity Analysis
 
 The scarcity analysis adds a fourth heuristic row: prioritizing the recipient with lower
@@ -154,6 +188,7 @@ confirmation summaries under `results/`; use `--mode smoke` for a small wiring c
 - `src/experiments/`: comparisons, common randomization, sweeps, regime searches, metrics, and controlled analyses
 - `src/design_validation/`: finite tutoring task, exact one-step sampling, task revision and rule-identifiability diagnostics
 - `src/tutoring_analysis/`: participant-level inference, synthetic calibration, bounded sensitivity analyses, and conditional power
+- `src/tutoring_statistics/`: mixed-model null validation, paired CR2/GLS coverage and conditional direct-fit power with independent readback
 - `scripts/`: portable command-line runners, report generation, and validation tools
 - `configs/`: scientific configurations and output schemas
 - `notebooks/`: interactive reproduction interfaces

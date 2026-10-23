@@ -22,6 +22,10 @@ enumerate that support. The native allocation grid has 1,001 shares.
 | `cost_aware_source.cjs` | Genuine native session ancestry only as far as selected unpaid roots; preserves skipped-fork action-counter gaps without generating paid prefix panels. |
 | `cost_aware_policy.py`, `cost_aware_bounds.py` | Repeated selected-macro decisions, full report backups, keyed latent/report streams and pathwise continuation bounds. |
 | `cost_aware_reference.py`, `cost_aware_validation.py` | Independent finite mathematics and full selected-record replay; no producer numerical oracle. |
+| `personal_time_policy.py`, `personal_time_reference.py` | Search/terminal personal-time pricing and a separate complete one-step decision calculation, including costed random termination. |
+| `personal_time_inputs.py`, `personal_time_source.cjs` | Original native roots, explicit scientific selections, exact input identities and compatible immutable output. |
+| `personal_time_reproduction.py` | Expected-endpoint production, independent checking, whole-person/equal-schedule reduction and original-root request margins. |
+| `personal_time_examples.py` | Matched initial equal-expected-GPA and equal-mean-surplus examples using existing finite kernels. |
 
 `budget_source_panel.cjs` and `finite_schedule_engine.cjs` provide the pure
 deterministic schedule and native payoff/posterior dependency closure. Node.js
@@ -44,3 +48,10 @@ aggregation. Its selected-source adapter reuses native session/restore APIs in
 existing producer terminal primitives; its reader reconstructs the numerical
 menus/bounds independently. Shared NumPy/PCG64 and environment-sensitive exact
 bits remain limitations. See the [CLI contract](../../scripts/README.md#selected-cost-aware-trials).
+
+The [personal-time reference](../../notebooks/finite_tutoring/personal_time_reference.ipynb)
+has a different, explicit cost model: request/read time is priced as well as
+termination. Its 450 expected endpoints and 50 original-state margin comparisons
+are not realized histories, cap20 validation or final human-model adoption.
+Numerical guards retain unexpected decisions as discrepancies rather than
+forcing the previously observed initial stopping pattern.

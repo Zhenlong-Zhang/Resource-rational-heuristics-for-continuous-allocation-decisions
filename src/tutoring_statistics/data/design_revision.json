@@ -1,0 +1,15 @@
+{
+  "schema": "tutoring_design_single_revision_v0.2",
+  "date": "2026-09-19",
+  "base_sha256": "45aa65f6d217d2e516be2930d8497acc9e02536c83b93139ead8dc80a219ea0b",
+  "engine_sha256": "319ee626cedf262042cced003b97273cb4f3e9c9e243664380f54bc2c002367f",
+  "change": {
+    "condition_id": "C3",
+    "field": "prior_kernel_centres",
+    "old_value": [60, 60],
+    "new_value": [50, 70]
+  },
+  "rationale": "Prospective single candidate for EO-versus-ES discrimination while retaining broad uncertainty; actual finite prior moments also change. Not a pure causal mean-gap manipulation.",
+  "authority": "Reasoned local working proposal under delegated project judgment; not exact parameters attributed to the user or Falk.",
+  "status": "prospective_candidate_not_human_validated"
+}

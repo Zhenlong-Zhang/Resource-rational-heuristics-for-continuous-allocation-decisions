@@ -1,0 +1,27 @@
+{
+  "schema":"r10-action-cost-candidate-v1",
+  "candidateId":"deterministic-validation-only-not-adopted",
+  "policyId":"repeated-myopic-action-cost-v1",
+  "valuation":{"rhoGPAperSecond":0.01,"description":"declared validation price; not measured, fitted, or paper-adopted"},
+  "task":{"condition_id":"C1","template_id":"r10_validation_only","scale":1.0,"gap_offset":0.0,"prior_centres":[50.0,50.0],"prior_spreads":[10.0,10.0],"report_width":10.0,"total_millihours":120000,"cost_millihours":1000,"repeat_count_per_30":10,"allocation_denominator":2,"max_assessments":120,"alpha":0.5,"loss_multiplier":2.0,"gpa_baseline":3.5,"gpa_scale":0.03},
+  "settings":{
+    "schema":"tutoring-terminal-personal-time-v1","predecessor_profile":"pilot-engagement-budget-v1",
+    "working_C1_total_gap_minutes":1.0,"C1_total_gaps_minutes":[0.0,0.2,0.5,1.0],"C1_gap_scaled":false,
+    "rho_multipliers":[0.0,0.01,0.1,1.0,10.0,100.0],"common_execution_seconds":2.65,
+    "assumed_profiles":{
+      "low":{"read_scalar":0.25,"retrieve_rule":0.1,"add_subtract":0.25,"multiply_divide":0.5,"compare":0.1,"clip":0.1,"EO_inference_seconds":5.0,"OPT_inference_seconds":20.0},
+      "base":{"read_scalar":0.5,"retrieve_rule":0.25,"add_subtract":0.5,"multiply_divide":1.0,"compare":0.25,"clip":0.25,"EO_inference_seconds":20.0,"OPT_inference_seconds":60.0},
+      "high":{"read_scalar":1.0,"retrieve_rule":0.5,"add_subtract":1.0,"multiply_divide":2.0,"compare":0.5,"clip":0.5,"EO_inference_seconds":60.0,"OPT_inference_seconds":180.0}},
+    "C1_independent_inference_seconds":[0.0,5.0,20.0,60.0],"personal_question_time_priced":false,
+    "automatic_zero_budget_duration_seconds":0.0,"empirically_calibrated_cognitive_durations":false,"machine_certified_arithmetic":false,"initial_states":36},
+  "actionCosts":{
+    "terminalProfile":{"read_scalar":0.5,"retrieve_rule":0.25,"add_subtract":0.5,"multiply_divide":1.0,"compare":0.25,"clip":0.25,"EO_inference_seconds":20.0,"OPT_inference_seconds":60.0},
+    "commonTerminalSeconds":2.65,
+    "requestCounts":[[0,1,0,0,0,0],[0,1,0,0,0,0]],"requestOverheadSeconds":[1.3,1.3],
+    "readCounts":[{"uniform":[2,0,0,0,0,0]},{"uniform":[2,0,0,0,0,0]}],
+    "readOverheadSeconds":[{"uniform":0.0},{"uniform":0.0}]},
+  "random":{"probabilities":[0.5,0.0,0.5],"counts":[0,1,0,0,0,0],"overheadSeconds":1.3,"voluntaryEnabled":true,"streamNamespace":"r10-random-terminal:validation-only-v1"},
+  "insufficientBudgetMode":"terminal_menu",
+  "state":{"budget":0,"logs":"task_initial"},
+  "pathReports":[]
+}

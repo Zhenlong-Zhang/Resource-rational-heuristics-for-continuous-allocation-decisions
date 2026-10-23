@@ -88,3 +88,29 @@ roster. Settings remain fixed; unsupported changes are rejected. Personal
 question time is unpriced, terminal time affects the objective only, and exact
 exhaustion has undefined share and zero duration. No person inference, global
 aggregation, cap20 transfer or global-optimality claim is supplied.
+
+## Personal-Time Reference
+
+[personal_time_reference.ipynb](personal_time_reference.ipynb) is a separate
+budget-only reference that prices information requests, reading the updated
+beliefs and terminal operations. It includes voluntary random termination and
+charges forced random choice at exhaustion. Tutoring resource and personal time
+are different costs; expected combined GPA and the net objective are reported
+separately.
+
+The full recipe generates 45 native schedules and checks 450 expected endpoints:
+five conditions, nine equally weighted schedules each, and ten main trials per
+schedule. Independent decision reconstruction precedes whole-person aggregation.
+It also computes both request margins at the 50 original variant-zero roots.
+Adding back only incremental request/read price is not gross information value:
+child termination and tutoring opportunity costs remain. Four initial-state
+targets compare equal expected GPA with equal mean surplus using the existing
+finite mathematical implementation.
+
+The reference does not produce 450 realized histories or a Monte Carlo precision
+estimate. Unexpected search/random choices are retained as discrepancies, not
+replaced with expected stopping. Full calculations are disabled by default;
+small selections check wiring and remain explicitly partial. Source regeneration,
+independent checking and outputs do not require a private report or cached
+result tables. This reference is not validation under the 20-query cap or final
+paper/human-model adoption.

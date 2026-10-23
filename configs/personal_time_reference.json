@@ -1,0 +1,26 @@
+{
+  "schema": "personal-time-finite-reference-v1",
+  "base": "personal_time_base.json",
+  "instance": "personal_time_instance.json",
+  "design": "personal_time_design.json",
+  "root_identity": "personal_time_root_identity.json",
+  "equal_target_design": "tutoring_conditions.json",
+  "analysis": {
+    "profileId": "finite-budget-only-v1",
+    "analysisId": "person-level-nominal-v1",
+    "questionLimitRule": "budget_only"
+  },
+  "construction": {
+    "schema": "native-calibration-spec-v1",
+    "lookupConditions": ["C1", "C2", "C3", "C4", "C5"],
+    "lookupVariants": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    "lookupPrefixes": [[], [0], [0, 1, 0]],
+    "lookupSeedNamespace": "r9-calibration-lookup-v1"
+  },
+  "reference_environment": {"python": "3.10", "numpy": "1.23.5", "node": "22.14.0"},
+  "scope": "budget_only_conditional_reference_not_paper_or_human_model_adoption",
+  "endpoints": "450_expected_initial_stops_not_450_realized_histories",
+  "aggregation": "ten_main_trials_per_person_then_nine_equal_weight_schedules",
+  "margins": "two_request_slots_at_each_of_50_original_variant0_roots",
+  "monte_carlo_precision_established": false
+}

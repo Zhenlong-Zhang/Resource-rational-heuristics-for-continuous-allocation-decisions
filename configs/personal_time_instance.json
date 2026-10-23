@@ -1,0 +1,11 @@
+{
+    "candidateId":"r10-native-D1000-stream-endpoint-validation-not-adopted-v1",
+    "law":{"kind":"uniform_native_grid","denominator":1000,"counts":[0,1,0,0,0,0],"overheadSeconds":2.65,"voluntaryEnabled":true,"streamNamespace":"r10-random-terminal:native-validation-v1"},
+    "valuation":{"rhoGPAperSecond":0.01,"description":"explicit validation convention, not selected paper rho or human preference"},
+    "insufficientBudgetMode":"terminal_menu",
+    "actionCosts":{
+      "terminalProfile":{"read_scalar":0.5,"retrieve_rule":0.25,"add_subtract":0.5,"multiply_divide":1.0,"compare":0.25,"clip":0.25,"EO_inference_seconds":20.0,"OPT_inference_seconds":60.0},
+      "commonTerminalSeconds":2.65,
+      "requestCounts":[[0,0,0,0,0,0],[0,0,0,0,0,0]],"requestOverheadSeconds":[2.65,2.65],
+      "readCounts":[{"uniform":[4,0,0,0,0,0]},{"uniform":[4,0,0,0,0,0]}],
+      "readOverheadSeconds":[{"uniform":0.0},{"uniform":0.0}]}}

@@ -44,6 +44,10 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 ## Finite Tutoring
 
+- `test_personal_time_reference.py` and `test_personal_time_source.cjs`: original
+  coordinate/input identity, immutable output, all-report accounting, charged
+  random exhaustion, independent decision checks and full/partial finite
+  aggregation. Fixtures test wiring; they do not rerun 450 reference decisions.
 - `test_cost_aware_tutoring.py`: quick selection/JSON/NDJSON rejection, frozen
   settings, CDF boundary/fallback, stream identity, pathwise-bound and independent
   zero-budget checks, plus affordable sub-tolerance ASK/STOP and ask-tie
@@ -74,6 +78,10 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 ## Statistical Methods
 
+- `test_conditional_statistics.py`: frozen null/paired/power rosters and seeds,
+  origin reuse, inference/guard and independent reduction conventions, public
+  CLI and immutable output boundaries. Actual representative R fits are separate
+  integration checks; neither is a rerun of the formal populations.
 - `test_paired_diagnostic.py`: deterministic fixed-shape producer/independent-reader
   integration, stable case IDs, partial/full distinction, frozen law, strict
   JSON/NPZ transport, malformed/duplicate records, boundary conventions and safe
@@ -94,3 +102,10 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 The statistical tests require Node.js for schedule generation as well as the
 Python dependencies. They do not consume saved results or browser exports.
+
+## Statistical Comparison Tests
+
+`test_statistical_comparisons.py` checks original roster/seed mappings,
+baseline-fit reuse, corrected denominators, independent reductions, unavailable
+inference and percentage-reporting invariants. Fixtures test software behavior;
+they are not a new full calibration or human-analysis validation.

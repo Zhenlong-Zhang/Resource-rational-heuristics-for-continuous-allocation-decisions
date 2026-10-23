@@ -60,6 +60,69 @@ acceptance claim follows from a successful check. The two mathematical routes
 share NumPy and PCG64. This route excludes person/global reductions, human
 inference, new question-time charges and validation under the capped task.
 
+## Personal-Time Reference
+
+`reproduce_personal_time.py` regenerates the native source roots, computes
+personal-time-priced initial decisions and checks them with a separate evaluator.
+
+```bash
+python scripts/reproduce_personal_time.py all --only C3:0:1,C5:0:1 --output results/personal_time/selected
+python scripts/reproduce_personal_time.py all --full --output results/personal_time/full
+python scripts/reproduce_personal_time.py examples --output results/personal_time/examples
+```
+
+The full recipe has 450 roots and 100 acquisition margins from the 50
+variant-zero roots. `prepare`, `produce` and `check` can run separately with
+the same selection and output directory. Compatible completed outputs are
+verified and reused. Use separate directories for different selections.
+Only a complete independently checked roster produces `finite_reference.csv`;
+selected checks remain explicitly partial. Other outputs include
+`independent_check.json`, `aggregate.json` and `acquisition_margins.csv`.
+These are expected endpoints, not sampled realized outcomes or Monte Carlo
+precision estimates. The four `examples` distinguish expected-GPA equality
+from raw-surplus equality. See the [notebook](../notebooks/finite_tutoring/personal_time_reference.ipynb)
+for the reference environment and scientific scope.
+
+## Conditional Mixed-Model Statistics
+
+`reproduce_conditional_statistics.py` calls the original null, paired-coverage
+and direct-fit-power producers and independent readers. `plan` is read-only;
+numerical work requires `--execute` and an explicit selection.
+
+```bash
+python scripts/reproduce_conditional_statistics.py plan
+python scripts/reproduce_conditional_statistics.py run --execute --family null --ids 0 --output results/conditional_statistics
+python scripts/reproduce_conditional_statistics.py run --execute --family paired --ids 0 --output results/conditional_statistics
+python scripts/reproduce_conditional_statistics.py run --execute --family power --ids 0,1,2 --output results/conditional_statistics
+```
+
+`--full` instead of `--ids` selects the original 24,000, 10,000 or 80,000
+inputs respectively. These settings reproduce declared populations; they are
+not interchangeable sample-size knobs. Disjoint ordinal selections can be
+combined by `aggregate --execute --family FAMILY --output DIRECTORY`.
+Full and partial aggregates are named separately. Actual input generation,
+R fits, independent RDS/matrix readback, guarded unavailability and original
+seeds are preserved. Compatible resumes reuse committed fits without redraws.
+See the [statistical-methods guide](../notebooks/statistical_methods/README.md#mixed-models-paired-coverage-and-direct-fit-power)
+for Python/R/Node dependencies, installation, output details and limitations.
+
+`reproduce_statistical_comparisons.py` preserves the distinct baseline,
+saved-fit diagnostic and fresh cluster-robust comparison populations:
+
+```bash
+python scripts/reproduce_statistical_comparisons.py --family baseline
+python scripts/reproduce_statistical_comparisons.py --family baseline --stage all --execute --limit 1 --output results/statistical_comparisons
+python scripts/reproduce_statistical_comparisons.py --family diagnostic --stage all --execute --limit 1 --output results/statistical_comparisons
+python scripts/reproduce_statistical_comparisons.py --family fresh --stage all --execute --limit 1 --output results/statistical_comparisons
+```
+
+Use `--full` to select each original 40,000-, 480- or 26,000-input roster.
+Baseline and diagnostic share an output root so the diagnostic reuses the
+same saved fits; the fresh population has its own cache namespace and seeds.
+The [comparison notebook](../notebooks/statistical_methods/inference_comparisons.ipynb)
+also calls the no-fit synthetic H8/H9 percentage-reporting interface. These
+conditional comparisons do not establish a human-data method or cap20 validity.
+
 ## Paired Gamma Diagnostic
 
 The Python-only producer and independent scientific reader use public inputs:

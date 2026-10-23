@@ -5,6 +5,149 @@ notebook. [Installation](../../README.md#installation) and the
 [configuration index](../../configs/README.md#statistical-settings) describe the
 shared dependencies and inputs. Outputs are generated under ignored `results/`.
 
+## Mixed Models, Paired Coverage and Direct-Fit Power
+
+[mixed_model_null_validation.ipynb](mixed_model_null_validation.ipynb) calls
+the original twelve null cases x 2,000 inputs, baseline/strict-restart/PORT
+fits, independent actual-RDS extraction, strict decision and case reduction.
+[paired_coverage_and_conditional_power.ipynb](paired_coverage_and_conditional_power.ipynb)
+calls the original 10,000-input fixed154 paired CR2/GLS validation and the
+40-cell x 2,000 direct-fit power reference. All full/run switches default off.
+Both regenerate the actual 450-row initial and 270-row joint covariate panels
+through the native engine and normalizer. Stored covariates authenticate those
+generated scientific inputs; they are not responses or fitted results.
+
+The shared implementation is `src/tutoring_statistics/`. Python/R numerical
+definitions, independent readers, native CJS generation and scientific JSON
+inputs are packaged together. Existing capped/nominal methods are unchanged.
+These are budget-only conditional references on either branch, not new cap20
+validation, a selected human-analysis method or a recruitment recommendation.
+
+### Reference Environment
+
+Use Python **3.10.9**, NumPy **1.23.5**, SciPy **1.10.0**, R **4.2.2**, Node
+**22** (the measured reference used 22.14.0) and GNU coreutils **sha256sum** on
+PATH. A POSIX environment is required for advisory file locks and atomic hard
+links. The runner refuses a missing `sha256sum` before creating output. Exact R package
+versions are listed in `configs/conditional_statistics_environment.json` and
+the matching packaged `data/numerical_environment.json`; the R entry checks
+them before fitting. Use a separate environment/library to avoid upgrading an
+unrelated project. R's source builds require compatible C/C++/Fortran tools.
+
+```bash
+python -m pip install -e . numpy==1.23.5 scipy==1.10.0 pandas==2.0.3 matplotlib==3.7.5
+```
+
+With R 4.2.2 selected, the following explicit setup recipe installs the declared
+versions into a separate local library. Obtain R, Node and coreutils separately.
+`remotes` is an installation helper, not a numerical dependency. Package-source
+availability, compilers and BLAS compatibility still require verification;
+this recipe is not a claim that a fresh installation was tested.
+
+```r
+lib <- file.path(getwd(), "results", "conditional_statistics_R_library")
+dir.create(lib, recursive=TRUE, showWarnings=FALSE)
+.libPaths(c(lib, .libPaths()))
+install.packages("remotes", lib=lib, repos="https://cloud.r-project.org")
+remotes::install_version("jsonlite", version="1.8.8", lib=lib,
+                         repos="https://cloud.r-project.org", upgrade="never")
+versions <- jsonlite::read_json("configs/conditional_statistics_environment.json")$statistical_reference$R_packages
+order <- c("Rcpp", "RcppEigen", "Matrix", "minqa", "nloptr", "numDeriv",
+           "rlang", "lifecycle", "ggplot2", "lme4", "lmerTest", "zoo",
+           "sandwich", "clubSandwich")
+for (name in order) remotes::install_version(name, version=versions[[name]],
+    lib=lib, repos="https://cloud.r-project.org", dependencies=NA, upgrade="never")
+```
+
+Expose that library to subsequent Rscript processes with `R_LIBS_USER`, or use
+an already provisioned matching reference library. Versions alone do not prove
+identical numerical binaries. Do not widen tolerances or change seeds when a
+platform differs. The first notebook code cell installs the Python package and
+pins; R/Node/coreutils are explicit prerequisites, not silently installed.
+
+### Source-Calling Commands
+
+```bash
+python scripts/reproduce_conditional_statistics.py plan
+python scripts/reproduce_conditional_statistics.py run --execute --family null --ids 0 --output results/conditional_statistics
+python scripts/reproduce_conditional_statistics.py run --execute --family paired --ids 0 --output results/conditional_statistics
+python scripts/reproduce_conditional_statistics.py run --execute --family power --ids 0,1,2 --output results/conditional_statistics
+```
+
+Replace the explicit `--ids` selection with `--full` to reproduce the entire
+original family. Alternatively use `--first ORDINAL --count COUNT`; selectors
+are zero-based, ordered and unique. `--rscript` and `--node` select executables.
+`--no-aggregate` defers reduction across disjoint selections; afterwards use
+`aggregate --execute --family FAMILY --output results/conditional_statistics`.
+Concurrent overlapping members are refused. Compatible resumes validate all
+committed inputs/artifacts and reuse them without redraws or additional fits;
+partial/conflicting attempts are preserved and refused, never silently retried.
+
+Full results appear as `FAMILY/aggregate_full.json` only when the exact expected
+roster is present; selected checks write `aggregate_partial_<roster>.json`.
+Artifacts include actual requests, fits, independent RDS extraction and exact
+in-R matrix/response transport with a one-ULP refusal check. Source snapshots
+and runtime/native identities bind each reproduction. Independent reductions
+work without report tables. Optional `--reference-dir DIRECTORY` compares
+external CSVs only for full results; not-requested is not a comparison PASS.
+
+### Scientific Boundaries
+
+Retain strict-only candidate inference, mandatory PORT screens, original
+optimizer guards and H3/H4 greater versus H5 less tails. The historical null
+reference contained 23,992 usable and eight guard-unavailable outcomes. Paired
+CR2/GLS uses terminal-amount S2, 154 complete people per arm and distinct
+Holm4 family events, Holm2 paired tests and simultaneous Monte Carlo bounds.
+Known-Omega GLS is an oracle, not an available human estimator.
+
+Power retains the original 4,000 fixed154 baseline-prefix inputs, sixteen
+actual-shift inputs and new whole-person retention streams, not an all-new
+80,000-input redraw. Shifts receive actual fits; the failed coefficient-
+translation shortcut and withheld 64,000 derived points are not reinstated.
+Original all-count pointwise CP precision and independent beta inversion select
+B=2,000. Preserve three guard-unavailable power outcomes, both literal and
+sign-consistent tails, adverse initial-amount S1 random-retention coverage
+(C1-C2:B, 1,879/2,000) and the right-censored discovery grid. No tested multiplier
+establishes pointwise-supported 80% discovery. There is no continuous MDE,
+minimum N or 193-recruit adequacy conclusion.
+
+Historical accepted results, selected public-entry checks and new full
+reproduction are different evidence. Small checks do not rerun formal
+campaigns or establish human validity.
+Tests in `tests/test_conditional_statistics.py` cover portable dependencies,
+rosters/seeds, tail/guard/denominator invariants and refusal paths without fits.
+
+## Inference Comparisons and Percentage Reporting
+
+[inference_comparisons.ipynb](inference_comparisons.ipynb) reproduces three
+distinct original populations: the 40,000-input baseline, the 480 saved-fit
+diagnostic inputs and the 26,000-input fresh CR2/Satterthwaite validation.
+The diagnostic uses the first twenty original replicates of all twenty-four
+baseline cases. It reuses their fitted models and adds no independent inputs.
+The fresh thirteen-case population uses different declared seeds and must not
+be conflated with either the baseline or the later paired 10,000-input study.
+
+All execution switches default off. A selected check uses original ordinal
+zero; full settings preserve each complete roster. The notebook calls
+`reproduce_statistical_comparisons.py`, whose default `plan` stage calculates
+nothing. Compatible baseline/diagnostic fits share a cache under one output
+root; fresh fits have a separate namespace. Independent readers verify actual
+fit artifacts, matrix transport, contrasts, degrees of freedom and corrected
+event denominators. Outputs distinguish full rosters from partial checks.
+
+The same notebook includes a synthetic no-fit H8/H9 percentage example.
+Effects, SEs and confidence intervals are rescaled from the original ordered
+centered-share estimator; its t statistic, degrees of freedom, p value and
+decision are unchanged. Recomputing inference from rounded displayed
+percentages is not an equivalent replacement. The cancellation example exposes
+that distinction. This software interface is not a human-data adapter or a
+new calibration result.
+
+The baseline's adverse coverage and family error, the corrected saved-fit
+diagnostic and the fresh study's remaining coverage limitations remain
+method-specific evidence. They are not overwritten with the later estimator's
+outputs. Use the same reference environment specified above.
+
 ## Expected-GPA and Nominal Inference
 
 [expected_gpa_and_nominal_inference.ipynb](expected_gpa_and_nominal_inference.ipynb)
