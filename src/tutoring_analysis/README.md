@@ -1,105 +1,80 @@
-# Statistical Methods
+# Historical Capped Statistical Methods
 
-The historical inference route rejects budget-only or newer-profile records,
-even when a participant asked no more than 20 questions. The model identity,
-not the observed sample count alone, determines which analysis is applicable.
+This package retains the original inference, synthetic calibration and planning
+methods for the count-cap-20, ten-main-trial pilot analysis. The row validator
+rejects explicit budget-only or newer-profile identities even when a participant
+asked no more than 20 questions. Model identity, not observed count alone,
+determines applicability. These method studies are not finite-task policy
+trajectories or human-study validation.
 
-`inference.py` retains historical person-weighted Student/Welch tests, raw OLS
-projections, complete-ten eligibility and three multiplicity policies.
-`calibration.py` generates all declared historical populations and stress cases;
-`planning.py` provides conditional moment geometry and power calculations.
+## Methods and Dependencies
+
+`inference.py` retains person-weighted Student/Welch tests, raw OLS projections,
+complete-ten eligibility, nine core slots and three multiplicity policies.
+`calibration.py` generates all 30 original cells and their supporting populations:
+390,000 attempts with batch size 250 and unchanged cell seeds. Gaussian,
+bounded, heavy-tail and Gamma labels describe abstract response laws, not
+separate allocation-task models.
+
+`planning.py` provides all 28 declared-assumption scenarios, conditional moment
+geometry and power calculations, including infeasible or unavailable cases.
+The retained `dose30` sensitivities in calibration/planning mean 30 trials per
+person, not 30 queries within a trial. Their original
+`hypothetical_future_profile` labels distinguish them from current complete-ten
+pilot observations. Early/late and available-history populations remain
+supporting sensitivities, not replacements for the primary population or new
+task-model studies. Planning assumptions are not estimated from QA or human data;
+no final recruitment N is selected.
 
 `bounded_inference.py` and `robustness.py` implement the optional known-bound
-six-mean sensitivity while keeping all nine slots and three unavailable slopes.
+six-mean sensitivity, preserving all nine slots and three unavailable slopes.
+The original ten-cell study has 100,000 attempts, separate selected/original
+targets and same-draw Student/Welch comparisons; it does not replace primary
+inference.
+
 `empirical_bernstein.py` and `identifiability_robustness.py` provide the separate
-variance-adaptive method, source-known projection domain, exact finite-pattern
+variance-adaptive method, source-known projection domain, finite-pattern
 expectations in real arithmetic, raw floating coefficients and cohort bounds.
-Numerical calculations are binary64 approximations, not machine certificates.
+The original twelve-cell study has 120,000 attempts. Its source context retains
+3,072 projection corners, separate raw/ideal null rosters, 30 diagnostic C1
+candidate/comparator states without candidate adoption and 135 hypothetical
+cohort-bound cases. These bounds are not confidence intervals or an
+original-population selection repair. Binary64 calculations are approximations,
+not machine certificates; raw truths are not snapped to ideal zeros.
 
-`finite_metrics.py` isolates the historical finite-belief metric calculation.
-`source_projection_panel.cjs` contains only deterministic schedule mathematics;
-Node.js is required. `makeSchedule` is also exported for shared scientific
-callers. This historical schedule-only route does not use an engine, normalizer,
-participant export, deployment or network dependency.
+`finite_metrics.py` isolates historical finite-belief metric calculation for
+fresh functionality fixtures. `source_projection_panel.cjs` contains pure
+deterministic schedule mathematics and requires Node.js. It preserves the
+original schedule identities, seed, shuffle and balancing rules. Neither route
+needs a UI engine, normalizer, participant export, deployment or network service.
+Finite geometry and the C1 audit depend on `design_validation.bounded_task`,
+`design_validation.c1_identifiability` and `configs/tutoring_conditions.json`.
 
-`reproduction.py` orchestrates the historical methods and emits complete diagnostic
-summaries. Its producers recompute all consumed scientific context. Use
-`scripts/reproduce_tutoring_statistics.py` and
-`scripts/calibrate_tutoring_methods.py`; notebook guides specify full scales.
-All generated files belong under ignored `results/`, not in version control.
+## Reproduction and Interpretation
 
-## Paired Gamma Attribution
+`reproduction.py` orchestrates these historical methods and emits complete
+diagnostic summaries. Its producers recompute every consumed scientific context.
+Use `scripts/reproduce_tutoring_statistics.py` and
+`scripts/calibrate_tutoring_methods.py`; the
+[statistical notebook guide](../../notebooks/statistical_methods/README.md)
+maps settings, original scales and outputs. Both checkout entrypoints explicitly
+prepend `src/` before importing `tutoring_analysis` and `design_validation`.
+The statistics tests do the same, without depending on test order or PYTHONPATH.
+NumPy/SciPy provide the Python numerical runtime; Node.js supplies deterministic
+schedule generation. All outputs belong under ignored `results/`, not in version
+control. Smoke overlaps full batch zero; alternate-sized fixtures are not a
+prefix of the scientific run.
 
-`paired_diagnostic.py` compares unchanged `inference.participant_slope` /
-`inference.contrast` with `nominal_inference.test_contrast` on original vector
-person inputs, then separately with canonical projection. `paired_recipe.py`
-fixes the original Gamma law and portable packet I/O. The existing calibration
-generator consumes the complete C1-C5 draw order at seed2026100627 and batch
-IDs0/39,250 cases each, before extracting20 C4 people with10 trials.
+The historical Student/Welch result remains MIXED with 111 failed criteria,
+including 94 selection-diagnostic rows. Failure enumeration preserves every
+primary/supporting population and policy, all-attempt rejection denominators,
+available-interval coverage denominators and missing counts. Successful
+execution does not mean all criteria pass. The bounded and empirical-Bernstein
+studies' absence of frozen failures within their scopes is not a universal
+guarantee or a repair of those historical failures.
 
-`paired_readback.py` independently reconstructs projections, eligibility,
-Student inference and decisions from saved raw inputs. Only the input-law
-generator is shared; no producer estimator supplies its numerical oracle.
-Raw arrays and fixed identities are exact; independent numerical fields use
-the original absolute1e-10 plus relative1e-9 tolerance, with actual errors
-reported. Both `p<=.05` and `p<.05`, coverage and exact-boundary counts remain.
-
-Use `scripts/reproduce_paired_diagnostic.py` or the supplementary section in
-[`calibration_and_power.ipynb`](../../notebooks/statistical_methods/calibration_and_power.ipynb).
-Existing original scientific packets can be checked without modifying them;
-the numerical reader does not authenticate their original runtime.
-The diagnostic does not call the native-row validator or fabricate native
-observations from unbounded abstract Gamma responses. It is not a Type-I or
-historical-failure repair, original-runtime bit replay, or cap20 validation.
-
-## Expected-GPA and Nominal Analysis
-
-`expected_outcomes.py` reconstructs native-grid targets from synthetic paid
-histories. The equal-GPA target minimizes `abs(E[GPA_A] - E[GPA_B])`, not
-`E[abs(GPA_A - GPA_B)]` or raw-surplus inequality. Ties use combined GPA, then
-distance to equal split and the lower index. Its signed resemblance measure is
-`R_EGPA_pp = (abs(j-500) - abs(j-jEGPA))/10`; positive means closer to the
-belief-based equal-GPA target. This is not equality of hidden realized outcomes.
-
-`nominal_inference.py` retains complete-ten, equal-person aggregation, fixed
-arm weights, Student/Welch tests, nominal alpha .05 and two-sided 95% intervals.
-H05 uses the less tail; the other eight primary contrasts use greater. D10 is
-nonprimary and less. Missing arms are not reweighted; zero/nonfinite standard
-error is unavailable. Exhaustion remains eligible for question count but not
-allocation metrics. Tied lower-mean choices contribute zero to the primary
-endpoint. Supporting alternatives do not replace primary eligibility rules.
-
-`conditional_power.py` gives 24 IID-normal noncentral-t planning references:
-three effects, two power targets, two endpoint references and two tails, with
-three retention assumptions each. Independent-group references assume common
-variance, not heterogeneous Welch. Retention assurance, marginal power and
-joint power are different; no final recruitment size is selected.
-
-Use `scripts/reproduce_expected_gpa.py` and the expected-GPA notebook. These
-budget-only methods do not transfer validation to cap20.
-
-## Native-State Calibration
-
-`native_source.cjs` constructs deterministic synthetic sessions through the
-bundled engine and normalizer. `native_reconstruction.py` independently rebuilds
-schedules, reports and finite likelihoods; `native_lookup.py` checks the source
-and creates finite target/projection maps. `native_truth.py` separately derives
-exact rational native means under declared ideal probability laws.
-
-`native_calibration.py` runs the fixed 40-subcase, 40x250-batch design with prepared
-input validation and scalar/vector endpoint audits. `native_readback.py` independently
-recomputes count intervals, applicable Normal-reference power and dispositions.
-Use `scripts/reproduce_native_calibration.py` and the native-state notebook for
-the entire clean-checkout chain, including input generation and compatible resume.
-This is synthetic marginal calibration, not human validation or cap20 transfer.
-
-Python runtime dependencies are NumPy and SciPy. Pure schedule generation also
-requires Node.js.
-
-The historical checkout entrypoints are the two historical scripts above.
-They explicitly prepend the repository's `src/` directory to `sys.path` before
-importing `tutoring_analysis` and `design_validation`. Each statistics test does
-the same, so standalone discovery does not depend on test order or `PYTHONPATH`.
-The expected-GPA runner instead prepends the repository root and imports
-`src.tutoring_analysis`. Use the documented runners to select the correct model
-and method rather than mixing these independent historical and nominal routes.
+Historical global-Holm and supporting alternatives retain their original
+definitions. Complete-ten records need not have every endpoint observed;
+informative selection does not become ignorable. Equal raw-surplus resemblance
+is not the later expected-GPA construct. These results are neither validation
+transfers to budget-only methods nor new capped studies.

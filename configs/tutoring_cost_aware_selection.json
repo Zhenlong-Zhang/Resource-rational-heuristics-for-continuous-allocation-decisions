@@ -1,4 +1,0 @@
-[
-  {"conditionId": "C2", "scheduleVariant": 0, "mainIndex": 1, "replicateId": 1, "scenarioId": "base|rho_100"},
-  {"conditionId": "C3", "scheduleVariant": 0, "mainIndex": 1, "replicateId": 1, "scenarioId": "low|rho_0"}
-]

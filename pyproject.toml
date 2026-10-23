@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "resource-rational-allocation"
 version = "0.1.0"
-description = "Resource-rational analysis of continuous allocation decisions"
+description = "Resource-rational allocation with a 20-query finite tutoring model"
 requires-python = ">=3.10"
 dependencies = [
   "matplotlib>=3.7",
@@ -20,5 +20,3 @@ include = ["src*"]
 
 [tool.setuptools.package-data]
 "src.tutoring_analysis" = ["*.cjs"]
-"src.design_validation" = ["*.cjs"]
-"src.tutoring_statistics" = ["*.R", "*.cjs", "data/*.json"]

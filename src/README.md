@@ -1,25 +1,14 @@
-# Source Package
+# Scientific Source
 
-`src/` is the source of truth for model and analysis logic.
+| Package | Purpose |
+| --- | --- |
+| [design_validation](design_validation/README.md) | Finite positive-support tutoring with a 20-query cap, exact Bayesian updates, repeated one-step VOI, grid allocation, task revision and identifiability checks. |
+| [tutoring_analysis](tutoring_analysis/README.md) | Participant-level inference, fixed synthetic calibration, bounded and variance-adaptive sensitivities, conditional power and public reproduction. |
 
-- `mdp/`: continuous-allocation and finite-support metalevel MDPs
-- `simulator/`: episode execution and policy adapters
-- `policies/`: hand-coded heuristics and information-acquisition approximations
-- `solvers/`: DP, Gauss-Hermite, and terminal allocation solvers
-- `experiments/`: randomization, metrics, sweeps, comparisons, and strict evidence workflows
-- `design_validation/`: exact finite tutoring task, fixed prior revision and rule identifiability
-- `tutoring_analysis/`: participant-level statistics, synthetic calibration, conditional planning and bounded sensitivity analyses
+The portable runners add `src/` to the import path for the original isolated
+packages. The installed package also exposes the `src` namespace without loading
+unrelated models. Scientific kernels and frozen configurations retain their
+original identities; notebooks call the runners.
 
-Use the scripts or notebooks for complete analyses. Import modules directly when developing a new policy, solver, metric, or experiment.
-
-```python
-from src.mdp.meta_mdp import EnvironmentConfig
-from src.policies.heuristic import EqualDivisionPolicy
-from src.simulator.simulator import run_single_episode
-
-config = EnvironmentConfig(random_seed=7)
-result = run_single_episode(config, EqualDivisionPolicy())
-print(result.realized_utility)
-```
-
-Subdirectory READMEs describe the public classes and functions in more detail.
+Expected utility measures performance. Behavioral diagnostics, statistical
+calibration and human validity are distinct claims.
