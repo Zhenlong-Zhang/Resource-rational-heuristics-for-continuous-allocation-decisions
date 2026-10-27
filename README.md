@@ -171,6 +171,12 @@ retains the earlier baseline and cluster-robust validation families needed to
 interpret those methods. A favorable targeted comparison does not erase earlier
 coverage deficits or justify transferring inference to unmatched populations.
 
+[Magnitude composition and precision](notebooks/statistical_methods/magnitude_composition_and_precision.ipynb)
+provides the candidate difference/sum p-value combination and independent
+exact-binomial Monte Carlo planning. Valid input tests remain a prerequisite;
+software agreement and the planning result do not establish magnitude-test
+calibration, power or a human recruitment target.
+
 ## Scarcity Analysis
 
 The scarcity analysis adds a fourth heuristic row: prioritizing the recipient with lower

@@ -117,6 +117,38 @@ campaigns or establish human validity.
 Tests in `tests/test_conditional_statistics.py` cover portable dependencies,
 rosters/seeds, tail/guard/denominator invariants and refusal paths without fits.
 
+## Magnitude Composition and Precision
+
+[magnitude_composition_and_precision.ipynb](magnitude_composition_and_precision.ipynb)
+calls the candidate difference/sum p-composition API and the separate
+deterministic Monte Carlo precision calculation. Execution defaults off.
+Use Python 3.10.9, NumPy 1.23.5 and SciPy 1.10.0 for precision. Its independent
+reader requires R 4.2.2/jsonlite 1.8.8 and a Python executable for standard-library
+SHA-256 only; it does not import the producer's numerical functions.
+The first code cell installs Python dependencies. R setup is described above.
+
+For initial-need amount slopes, `D=a-b` and `S=a+b` give `abs(a)<abs(b)` iff
+`D*S<0`. The pure API combines two fixed intersection-union branches with
+Bonferroni2, then Holm over four comparisons. Input p-values must come from
+valid one-sided tests; the API does not estimate, authenticate or calibrate
+them. Each sum and difference needs its own variance and degrees of freedom.
+Statistical unavailability is padded only inside Holm; technical uncertainty
+is not treated as nonrejection. The notebook's example values are fixtures,
+not empirical findings.
+
+Precision planning scans every positive integer B and every count from 0 to B.
+It asks for at least 90% assurance, under Binomial(B,.05), that a central 95%
+Clopper-Pearson interval has half-width at most .01. Numerical ambiguities are
+reported, never rounded away. The reference result B=2129 is a planning result,
+not a calibration tolerance, simultaneous guarantee, power estimate or human N.
+Source/input hashes provide self-consistency, not external archive authenticity.
+Output directories must be new; no fit or random draw occurs.
+
+This route does not reproduce the separate saved-output coverage diagnosis or
+single-saved-fit eight-contrast extraction. Those require matching retained
+inputs and distinct entrypoint validation. It does not relabel earlier
+signed-effect power as magnitude power or alter its negative findings.
+
 ## Inference Comparisons and Percentage Reporting
 
 [inference_comparisons.ipynb](inference_comparisons.ipynb) reproduces three

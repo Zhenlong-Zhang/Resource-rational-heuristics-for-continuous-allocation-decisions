@@ -16,6 +16,7 @@ describes selected and full reproduction.
 | `comparison_percentage.py` | Synthetic H8/H9 percentage reporting using the original ordered-mean Student estimator; no human-data or fit validation claim. |
 | `native_inputs.py` | Regenerate and authenticate the original initial and joint covariate panels. |
 | `kernel_entry.R`, `comparison_entry.R` | Actual R fit and saved-artifact readback entry points with reference-package checks. |
+| `magnitude_composition.py` | Candidate D/S intersection-union and Bonferroni2/Holm4 composition of supplied p-values; no fitting or constituent-test validation. |
 
 ## Scientific Components
 

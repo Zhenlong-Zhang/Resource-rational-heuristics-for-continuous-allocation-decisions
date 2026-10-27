@@ -34,6 +34,7 @@ explicitly documents compatible resume.
 | How does the refined mixed-effects procedure behave under declared nulls? | [Mixed-model null validation](statistical_methods/mixed_model_null_validation.ipynb) | Original 12 cases x 2,000 inputs; baseline, strict restart and PORT consistency checks; independent fits/readback and full versus available denominators |
 | What do paired coverage and recruitment/effect assumptions imply for the candidate analysis? | [Paired coverage and conditional power](statistical_methods/paired_coverage_and_conditional_power.ipynb) | Fixed 10,000 paired CR2/known-covariance GLS inputs and 40 x 2,000 direct-fit power inputs; original legacy prefixes, actual shifts, whole-person retention, independent reductions and Monte Carlo bounds |
 | How do the retained baseline and cluster-robust methods compare? | [Inference comparisons](statistical_methods/inference_comparisons.ipynb) | Separately identified 40,000-input baseline, 480 saved-fit diagnostic and 26,000-input fresh validation; original estimators, rosters, guards and negative findings, not relabelled paired-validation results |
+| How are candidate magnitude p-values combined, and how many Monte Carlo replicates meet the fixed precision rule? | [Magnitude composition and precision](statistical_methods/magnitude_composition_and_precision.ipynb) | Supplied-p-value API with four fixed comparisons; exhaustive CP planning and independent R enumeration. Not constituent-test calibration, magnitude power or human sample-size selection |
 
 ## Computational Outputs
 

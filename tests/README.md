@@ -1,5 +1,18 @@
 # Test Suite
 
+The candidate composition and precision-entry tests use pytest:
+
+```bash
+python -m pip install pytest
+python -m pytest tests/test_magnitude_composition.py tests/test_monte_carlo_precision.py
+```
+
+- `test_magnitude_composition.py`: eight fixed supplied-p-value fixtures for
+  both D/S orientations, strict thresholds, fixed Holm4, explicit unavailable
+  and unresolved states, invalid inputs and candidate-only claims; no fits.
+- `test_monte_carlo_precision.py`: read-only CLI help and early runtime,
+  overwrite and missing-reader refusals without running a precision scan.
+
 `test_native_calibration.py` checks fixed cell/batch seeds, exact truth coverage,
 independent CP/power arithmetic, scalar/vector Normal parity and immutable output
 writes. Native source/lookup and independent-truth tests cover the prerequisite

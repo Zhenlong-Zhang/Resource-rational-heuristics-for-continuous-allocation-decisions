@@ -83,6 +83,28 @@ precision estimates. The four `examples` distinguish expected-GPA equality
 from raw-surplus equality. See the [notebook](../notebooks/finite_tutoring/personal_time_reference.ipynb)
 for the reference environment and scientific scope.
 
+## Magnitude Composition and Precision
+
+The pure candidate API is
+`src.tutoring_statistics.magnitude_composition.compose_family(records)`.
+The [notebook](../notebooks/statistical_methods/magnitude_composition_and_precision.ipynb)
+shows the exact four-comparison input/status schema and its scientific limits.
+
+```bash
+python scripts/plan_monte_carlo_precision.py --output results/magnitude_precision
+Rscript --vanilla scripts/read_monte_carlo_precision.R results/magnitude_precision results/magnitude_precision_independent python3
+```
+
+Use the pinned Python 3.10.9/NumPy 1.23.5/SciPy 1.10.0 and R 4.2.2/jsonlite 1.8.8
+environment described in the statistical notebook guide. The optional final
+reader argument selects Python only for SHA-256. The reader independently
+enumerates with R qbeta/dbinom. Both output directories must be new with an
+existing parent. Producer outputs are binding.json, trace.csv and result.json;
+the reader writes independent_trace.csv and independent.json. Altered sources,
+inputs, runtime metadata or incomplete results are rejected. Numerical
+agreement validates this planning calculation, not magnitude calibration,
+population power or recruitment adequacy.
+
 ## Conditional Mixed-Model Statistics
 
 `reproduce_conditional_statistics.py` calls the original null, paired-coverage
