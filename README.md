@@ -40,16 +40,20 @@ integer needs and reports from 1 to 100, exact discrete Bayes updates and at mos
 checked against 2,001 points; repeated one-step sampling is not a globally optimal
 adaptive policy. The finite cap does not change the older Gaussian comparisons.
 
-## Scientific Branches
+## Scientific Scope
 
-`main` is the paper implementation; `20-limit` is the maintained conference
-variant with at most 20 information-acquisition actions per finite-task trial.
-Both currently retain that default finite task and the same thematic notebooks.
+`main` is the maintained paper implementation. The historical 20-question
+capped release is preserved at the fixed
+[cap20 archive tag](https://github.com/Zhenlong-Zhang/Resource-rational-heuristics-for-continuous-allocation-decisions/tree/archive/cap20-2026-10-26)
+(`dd48add9788ae9245019cbc91fbce30fb9ac1311`), with its matching code, statistical
+methods and thematic reproduction notebooks. It is not a separately maintained
+conference branch.
+
 The Gaussian analyses are separate models. Horizon comparisons explicitly
 distinguish cap20 from budget-only paths; expected-GPA nominal inference,
 conditional sample-size references and native-state calibration are budget-only.
-Their presence on `20-limit` does not validate them under the cap. Historical
-calibration failures remain method-specific evidence. A separate
+These findings do not transfer to the capped model. Historical calibration
+failures remain method-specific evidence. A separate
 [cost-aware calculation](notebooks/finite_tutoring/cost_aware_computation.ipynb)
 generates selected working-population budget-only trials and independently
 checks their full decision records. It does not provide person/global reductions
@@ -59,9 +63,9 @@ The [personal-time reference](notebooks/finite_tutoring/personal_time_reference.
 separately prices both information requests and terminal operations. Its fixed
 five-condition analysis comprises 450 expected endpoints, not 450 realized
 histories. The mixed-model validation and conditional-power notebooks below use
-their own declared synthetic populations and statistical models. Neither their
-presence on `20-limit` nor numerical validation transfers these findings to the
-capped model or adopts a final human-study analysis.
+their own declared synthetic populations and statistical models. Numerical
+validation neither transfers these findings to the capped model nor adopts a
+final human-study analysis.
 
 ## Installation
 

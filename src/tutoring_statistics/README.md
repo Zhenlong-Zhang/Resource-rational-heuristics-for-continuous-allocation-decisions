@@ -54,7 +54,7 @@ scientific setup requires a new output directory. A selected check cannot be
 reported as a full population, and guard failures are not converted to zero
 effects or successful fits.
 
-These are conditional budget-only statistical references, on either branch.
+These are conditional budget-only statistical references.
 They do not transfer validation to the capped task, establish a final human
 analysis or select a recruitment sample size. Preserve adverse coverage and
 right-censored power findings alongside successful numerical checks.

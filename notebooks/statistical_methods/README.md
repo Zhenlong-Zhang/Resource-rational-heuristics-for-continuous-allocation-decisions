@@ -20,7 +20,7 @@ generated scientific inputs; they are not responses or fitted results.
 The shared implementation is `src/tutoring_statistics/`. Python/R numerical
 definitions, independent readers, native CJS generation and scientific JSON
 inputs are packaged together. Existing capped/nominal methods are unchanged.
-These are budget-only conditional references on either branch, not new cap20
+These are budget-only conditional references, not new cap20
 validation, a selected human-analysis method or a recruitment recommendation.
 
 ### Reference Environment
@@ -204,7 +204,7 @@ in addition to full. Fixture mode is only for tests and changes RNG array shape.
 
 These methods retain their own endpoint definitions, error policies and negative
 calibration evidence. They do not calibrate the budget-only nominal methods
-above; method-specific assumptions remain separate on both branches.
+above; method-specific assumptions remain separate.
 
 ## Outputs
 
