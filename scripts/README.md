@@ -309,6 +309,47 @@ require `--output` pointing to a new directory. See the expected-GPA notebook
 for input format and scope. This is not full native-state calibration, a human
 data adapter, or a new cap20 validation.
 
+## Saved-Result Diagnostics
+
+Start with [saved_coverage_and_contrasts.ipynb](../notebooks/statistical_methods/saved_coverage_and_contrasts.ipynb).
+The existing `reproduce_conditional_statistics.py run --family power` creates
+the scientific inputs if a new reproduction is intended: ordinal32 for the
+single fit, or ordinals `40*(rep-1)+32`, rep1..2000, for coverage. This is actual
+input production and fitting, not a saved-only check. Both operations are
+explicitly disabled by default in the notebook.
+
+For existing public output, `diagnose_saved_coverage.py prepare-public` takes
+`--aggregate`, `--events-directory` and `--output` to bind the complete target.
+`diagnose --request INPUT --output RESULT` computes its diagnosis;
+`read_saved_coverage.py --request INPUT --producer-result RESULT --output PROOF`
+independently admits and reduces the same original intervals. The target can be
+complete while its parent grid is partial. Missing raw endpoints or target
+members are errors, not reconstructed or excluded observations.
+
+`reproduce_saved_fit_magnitude.py prepare --reproduction-root ROOT --output INPUT`
+binds the existing fixed target's spec/manifest/model. `compute --input INPUT
+--output RESULT --rscript Rscript` calculates the eight contrasts; `verify
+--input INPUT --producer-result RESULT --output PROOF --rscript Rscript`
+independently compares them using the R packages. R4.2.2, the
+[reference package versions](../configs/conditional_statistics_environment.json)
+and GNU `sha256sum` are required. Neither saved-only command generates inputs
+or fits a model. Use a new output destination; partial/failed artifacts remain
+available for inspection rather than being overwritten.
+
+For authenticated historical archives, coverage `prepare-historical` instead
+takes `--aggregate`, `--independent` and `--summary-index`; optional
+`--relocations` is a JSON list of `originalPath`/`localPath` objects. Saved-fit
+`prepare --historical-request FILE` optionally takes `--locations`, a JSON map
+from original descriptor paths to current absolute paths. These resolve the
+same original bytes without editing historical manifests or proofs. They do
+not turn old results into newly produced public artifacts. Keep archive inputs
+outside the source tree; no private archive is bundled with the package.
+
+Coverage diagnosis is descriptive and preserves the historical .9395 warning.
+The eight-contrast check applies to one saved object, not population magnitude
+calibration, power or a human-analysis method. The fresh-public numerical route
+and historical-input readback have distinct verification scopes.
+
 ## Historical Statistical Analyses
 
 - `reproduce_tutoring_statistics.py`: inference examples, conditional planning,

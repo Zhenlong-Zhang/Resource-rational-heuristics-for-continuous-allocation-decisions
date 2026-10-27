@@ -220,6 +220,32 @@ means. Do not round those differences away or merge batches across environments.
 The same numerical stack is the reference for the paired Gamma diagnostic below;
 it is not a universal requirement for every historical analysis.
 
+## Saved Coverage And Contrasts
+
+[saved_coverage_and_contrasts.ipynb](saved_coverage_and_contrasts.ipynb) connects
+the existing public input producer to two saved-result diagnostics. Input
+production is explicitly separate and default off. The coverage route uses
+only cell33's2,000 members; its aggregate can remain partial relative to the
+full80,000-input grid. The fit route selects ordinal32, the first member of
+that same cell. Preparation never silently fits or draws missing inputs.
+
+Coverage is independently recomputed from the saved CI endpoints and exact
+membership. The historical target had1879/2000 CR2 coverage versus1881/2000
+baseline coverage,109 common misses and CR2 misses60 below/61 above truth.
+These are authenticated historical observations, not required success counts
+for a new public reproduction or proof of a unique cause.
+
+The single-fit route retains actual cluster counts, all eight contrast-specific
+variances/dfs, full covariances, exact R source/frame checks and independent
+lmerTest/clubSandwich calculations. Its output does not validate magnitude
+population error control or power. Source/runtime bindings belong to the current
+execution and do not assert equality with historical binary files.
+
+Both historical-source positive routes and fixed public-schema fixtures are
+separate verification targets. Do not interpret a historical saved-input check
+as execution of a fresh public population or a new fit. For archive relocation
+and CLI options, see [saved diagnostics](../../scripts/README.md#saved-result-diagnostics).
+
 ## Historical Calibration
 
 Open [calibration_and_power.ipynb](calibration_and_power.ipynb) from a repository checkout. The first code

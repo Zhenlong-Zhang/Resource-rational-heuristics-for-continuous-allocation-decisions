@@ -182,6 +182,13 @@ exact-binomial Monte Carlo planning. Valid input tests remain a prerequisite;
 software agreement and the planning result do not establish magnitude-test
 calibration, power or a human recruitment target.
 
+[Saved coverage and contrasts](notebooks/statistical_methods/saved_coverage_and_contrasts.ipynb)
+diagnoses original saved intervals for the fixed 2,000-member target and computes
+eight contrasts from its first saved fit, with independent readback. It separates
+historical archive admission from new public input production. The historical
+CR2 coverage of .9395 remains a warning; one-fit numerical agreement is not
+population validation.
+
 ## Scarcity Analysis
 
 The scarcity analysis adds a fourth heuristic row: prioritizing the recipient with lower

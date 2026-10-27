@@ -17,6 +17,10 @@ describes selected and full reproduction.
 | `native_inputs.py` | Regenerate and authenticate the original initial and joint covariate panels. |
 | `kernel_entry.R`, `comparison_entry.R` | Actual R fit and saved-artifact readback entry points with reference-package checks. |
 | `magnitude_composition.py` | Candidate D/S intersection-union and Bonferroni2/Holm4 composition of supplied p-values; no fitting or constituent-test validation. |
+| `saved_coverage.py`, `independent_saved_coverage.py` | Admit saved historical/public target records and independently diagnose original intervals, retained counts and paired misses. |
+| `saved_fit_inputs.py`, `saved_fit_runtime.py` | Saved-only manifest/spec/model admission, original-descriptor relocation and current source/runtime binding. |
+| `saved_fit_magnitude.py`, `saved_fit_reproduction.py` | Eight named contrasts from a single existing fit, using the shared covariance/df kernels; no draws or fitting. |
+| `independent_saved_fit.py`, `independent_saved_fit.R` | Independent model-matrix/package contrasts, covariance/df/p-value comparison and source closure. |
 
 ## Scientific Components
 
