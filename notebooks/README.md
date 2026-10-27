@@ -4,6 +4,12 @@ Entry points are organized by scientific question and result family. They call
 the shared implementation in `src/` and portable runners in `scripts/`; no model
 or inference method is duplicated in notebook cells.
 
+Use `main` for the maintained reproduction workflows. Retained historical
+analyses are identified by their scientific scope and fixed source versions,
+not by separate maintained branches. See the [scientific scope](../README.md#scientific-scope)
+for the archived capped release. Do not substitute a newer model or estimator
+when reproducing a historical result.
+
 ## Start Here
 
 1. Follow the [installation guide](../README.md#installation), then open a notebook below from the checkout. Native calibration and paired Gamma use the [reference environment](statistical_methods/README.md#native-state-calibration).

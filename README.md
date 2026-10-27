@@ -42,12 +42,17 @@ adaptive policy. The finite cap does not change the older Gaussian comparisons.
 
 ## Scientific Scope
 
-`main` is the maintained paper implementation. The historical 20-question
-capped release is preserved at the fixed
+`main` is the only maintained branch and contains the latest adopted and
+verified research implementation. Start with its thematic notebooks for the
+current analyses. Historical results retain their original model, settings and
+source identity; a newer method is not a replacement for reproducing an older
+calculation.
+
+The historical 20-question capped release is preserved at the fixed
 [cap20 archive tag](https://github.com/Zhenlong-Zhang/Resource-rational-heuristics-for-continuous-allocation-decisions/tree/archive/cap20-2026-10-26)
 (`dd48add9788ae9245019cbc91fbce30fb9ac1311`), with its matching code, statistical
-methods and thematic reproduction notebooks. It is not a separately maintained
-conference branch.
+methods and thematic reproduction notebooks. This is an immutable historical
+reference, not a parallel development branch.
 
 The Gaussian analyses are separate models. Horizon comparisons explicitly
 distinguish cap20 from budget-only paths; expected-GPA nominal inference,
