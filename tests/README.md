@@ -1,5 +1,17 @@
 # Test Suite
 
+`test_magnitude_reduction.py` checks fixed case/seed identities, sign-crossing
+truth, unavailable-versus-unresolved outcomes and independently reduced partial
+denominators. `test_magnitude_reproduction.py` checks explicit selectors,
+no-execution defaults, immutable-input boundaries, scalar-event tampering and
+wrong-member resume refusal. They do not generate a scientific population or
+establish calibration of the candidate method.
+
+`test_h6_h7_surplus_mapping.py` checks prospective roles, historical payload
+preservation, no-rescue and unavailable-result handling, fixed algebra-fixture
+reproduction, independent tamper rejection and the portable CLI chain. These
+deterministic software fixtures are not human or native-population validation.
+
 The candidate composition and precision-entry tests use pytest:
 
 ```bash

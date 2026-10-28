@@ -198,10 +198,10 @@ def guard_components(raw):
     return result
 
 
-def validate_extraction(extracted, transported, history):
+def validate_extraction(extracted, transported, history, *, fit_key=FIT_KEY):
     spec, base = history["spec"], history["baseline"]
     exact(extracted["coefficientNames"], list(NAMES), "actual coefficient names")
-    require(extracted["fitKey"] == FIT_KEY and extracted["formula"] ==
+    require(extracted["fitKey"] == fit_key and extracted["formula"] ==
             "y~condition*need_A+condition*need_B+(1|participant)"
             and extracted["REML"] is True and extracted["optimizer"] == "nloptwrap"
             and extracted["verified"] is True and extracted["requestDescriptor"] == spec["request"]
@@ -215,7 +215,7 @@ def validate_extraction(extracted, transported, history):
     # Python-parsed original need/y to these serialized floating values.
     exact(extracted["design"], transported["design"], "same-export actual X/y")
     counts = validate_population(history["request"], spec, history["generation"], extracted["design"])
-    raw, candidate = base["raw"], history["candidate"]["rawCandidate"]
+    raw = base["raw"]
     near(extracted["coefficients"], [raw["coefficients"][name] for name in NAMES], "actual model beta")
     near(extracted["fixedVcov"], raw["vcov"], "actual model covariance")
     near(extracted["residualVariance"], raw["residualVariance"], "actual residual variance")
@@ -224,6 +224,11 @@ def validate_extraction(extracted, transported, history):
         exact(extracted["diagnostics"][key], raw["diagnostics"][key], "actual guard " + key)
     for key in ("gradient", "hessianEigenvalues"):
         near(extracted["diagnostics"][key], raw["diagnostics"][key], "actual guard " + key)
+    # A supplied baseline RDS can be checked before a separate candidate
+    # record exists. Its CR2 inference is still recomputed independently.
+    if history.get("candidate") is None:
+        return counts
+    candidate = history["candidate"]["rawCandidate"]
     exact(candidate["coefficientNames"], list(NAMES), "candidate coefficient names")
     require(candidate["status"] == "fitted" and candidate["method"] == METHOD, "Wrong historical candidate method")
     exact(candidate["diagnostics"], raw["diagnostics"], "candidate original guard")

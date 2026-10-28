@@ -1,0 +1,38 @@
+{
+  "schema": "h6-h7-surplus-public-spec-v1",
+  "analysisId": "r11-h6h7-surplus-prospective-v1",
+  "scientificAdoption": "prospective_surplus_primary_egpa_secondary",
+  "executionScope": "saved_public_synthetic_result_mapping_only",
+  "referenceState": "actual_terminal_posterior_and_remaining_budget",
+  "target": "native_projected_equal_posterior_mean_surplus",
+  "pairedEndpoint": "(abs(j-500)-abs(j-jSurplus))/10",
+  "personAggregation": "ordered_binary64_mainIndex_1_to_10_equal_person_weight",
+  "population": "equal_people_complete_ten;Q_includes_exhaustion;choice_all_positive_defined",
+  "minimumPeoplePerArm": 2,
+  "null": 0,
+  "tail": "greater",
+  "alpha": 0.05,
+  "confidence": 0.95,
+  "method": "Student",
+  "noSupportingRescue": true,
+  "noGlobalErrorGuarantee": true,
+  "humanAdapterReleased": false,
+  "humanDirectionEstablished": false,
+  "humanPowerEstablished": false,
+  "historicalAnalysisId": "person-level-nominal-v1",
+  "historicalSchema": "person-level-nominal-result-v1",
+  "claims": [
+    {
+      "id": "H06_R_SURPLUS_C2", "condition": "C2",
+      "endpoint": "R_surplus_pp", "primary": true,
+      "historicalNumericalTestId": "S_surplus_C2",
+      "predecessorClaimId": "H06_R_EGPA_C2", "secondaryId": "S_R_EGPA_C2"
+    },
+    {
+      "id": "H07_R_SURPLUS_C3", "condition": "C3",
+      "endpoint": "R_surplus_pp", "primary": true,
+      "historicalNumericalTestId": "S_surplus_C3",
+      "predecessorClaimId": "H07_R_EGPA_C3", "secondaryId": "S_R_EGPA_C3"
+    }
+  ]
+}

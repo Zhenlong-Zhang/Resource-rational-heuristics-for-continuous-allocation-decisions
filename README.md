@@ -149,6 +149,11 @@ Its optional synthetic-history interface reconstructs targets before applying
 the nine prespecified nominal tests. It is not a reproduction of the full
 native-state calibration or an analysis of human data. Expected-GPA equality,
 raw-surplus equality and maximum combined GPA are distinct objectives.
+The same notebook also reproduces the fixed deterministic 25-person algebra
+fixture and the prospective H6/H7 mapping: surplus-primary in C2/C3,
+expected-GPA-secondary, with no secondary rescue. The mapping preserves its
+input tests rather than recalculating or relabeling historical numerical results.
+This is a software/inference fixture, not native-task or human validation.
 
 The [native-state calibration](notebooks/statistical_methods/native_state_calibration.ipynb)
 provides the complete 400,000-attempt route, including source/lookup generation,
@@ -188,6 +193,15 @@ eight contrasts from its first saved fit, with independent readback. It separate
 historical archive admission from new public input production. The historical
 CR2 coverage of .9395 remains a warning; one-fit numerical agreement is not
 population validation.
+
+[Magnitude validation and conditional power](notebooks/statistical_methods/magnitude_validation_and_power.ipynb)
+provides the fixed 10,645-input fresh validation and eight-cell, 16,000-input
+saved-fit power analysis of the original difference/sum magnitude candidate.
+It includes source generation, input-specific numerical checking and independent
+aggregation, preserving partial denominators and unfavorable coverage/power results.
+Saved power reuses fitted inputs from the conditional-statistics workflow.
+These finite studies do not adopt the candidate for human-data analysis or
+establish an 80% discovery threshold or a recruitment sample size.
 
 ## Scarcity Analysis
 

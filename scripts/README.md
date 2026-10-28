@@ -363,3 +363,34 @@ and historical-input readback have distinct verification scopes.
 
 Fixture mode tests wiring only. Smoke mode uses the first full-run batch rather
 than a new independent evidence set. Pure schedule generation requires Node.js.
+
+## Magnitude Validation And Power
+
+`reproduce_magnitude_study.py --mode fresh_validation|saved_power_core` prints the
+fixed scientific plan without computation. `--execute --output DIRECTORY`
+requires an explicit selector: `--all`, `--ids JSON_FILE`, or zero-based roster
+positions `--start N --count K`. `--workers` controls process-level concurrency.
+Saved power additionally requires `--power-directory` pointing to committed
+outputs of `reproduce_conditional_statistics.py`. It does not fit them again.
+`--aggregate NEW_JSON` checks committed inputs and produces independently checked
+summaries; incomplete selections remain explicitly incomplete. Use the thematic
+[notebook](../notebooks/statistical_methods/magnitude_validation_and_power.ipynb)
+for the complete source-generating chain and numerical requirements.
+
+The optional `--verify-input JSON --execute --output NEW_JSON` interface checks
+one explicitly bound supplied fit's arithmetic without new observations or fits.
+It does not authenticate the generating law, historical acceptance or campaign
+membership. Preserve all output evidence after failures; never replace missing
+technical results with statistical nonrejections.
+
+## Surplus-Primary Role Mapping
+
+The expected-GPA notebook calls `map_h6_h7_surplus.py fixture --output DIRECTORY`
+to reconstruct the original deterministic 25-person algebra recipe. Then
+`map_h6_h7_surplus.py map --analysis RESULT_JSON --output NEW_JSON` maps four
+unchanged nominal results to prospective surplus-primary/expected-GPA-secondary
+roles. `read_h6_h7_surplus_mapping.py --analysis RESULT_JSON --mapping MAP_JSON
+--output NEW_JSON` independently checks that mapping. Existing compatible public
+analysis JSON can replace fixture generation. The optional `example` stage writes
+a separate four-person illustration; it is not the original fixture. Neither
+route establishes native-task calibration, human direction or human power.

@@ -63,3 +63,17 @@ These are conditional budget-only statistical references.
 They do not transfer validation to the capped task, establish a final human
 analysis or select a recruitment sample size. Preserve adverse coverage and
 right-censored power findings alongside successful numerical checks.
+
+## Magnitude Study
+
+`magnitude_design.py` fixes the five fresh validation templates and eight original
+power cells, seeds and truth masks. `magnitude_reproduction.py` coordinates public
+input production, saved-fit reuse, per-input checking and resumable commitments.
+`magnitude_reduction.py` reports planned, completed and statistically available
+denominators separately. `independent_magnitude_reduction.py` independently checks
+scalar events and aggregate counts/intervals. The numerical contrasts reuse the
+saved-fit kernels; the complete entry is `scripts/reproduce_magnitude_study.py`.
+
+Direct `--verify-input` checks supplied-fit arithmetic only. It does not establish
+the generating law or admit an arbitrary fit into a campaign. Campaign execution
+additionally binds the generated input proof or committed upstream power member.

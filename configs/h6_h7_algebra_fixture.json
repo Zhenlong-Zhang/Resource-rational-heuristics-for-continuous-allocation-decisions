@@ -1,0 +1,22 @@
+{
+  "schema": "h6-h7-algebra-fixture-spec-v1",
+  "recipeId": "independent-deterministic-algebra-v1",
+  "scope": "nonengine_algebra_fixture;not_native_or_forward_generated",
+  "arms": ["C1", "C2", "C3", "C4", "C5"],
+  "peoplePerArm": 5,
+  "mainIndices": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "people": 25,
+  "rows": 250,
+  "stochasticResponseDraws": false,
+  "initialIntegerBudget": 100000,
+  "paidIntegerCost": 1000,
+  "gap": "0 if C5 else (main-5.5)*(1+person/10)",
+  "paidCount": "(0,1,3)[(main+person)%3]",
+  "terminalGap": "gap+(-1)**(main+person)*(person+1)/5",
+  "means": "[50+gap,50];[50+terminalGap,50]",
+  "jEGPA": "500+((main+armIndex)%5-2)*7",
+  "jSurplus": "jEGPA+3",
+  "shareIndex": "500+(main-5)*(person+1)*(3 if armIndex%2==0 else -3)+2*person",
+  "initialProjection": "exact_rational_centered_OLS_weights_rounded_once_to_binary64",
+  "referenceEnvironment": {"python": "3.10.9", "numpy": "1.23.5", "scipy": "1.10.0"}
+}

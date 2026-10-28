@@ -78,6 +78,13 @@ joint power are different; no final recruitment size is selected.
 Use `scripts/reproduce_expected_gpa.py` and the expected-GPA notebook. These
 budget-only methods do not transfer validation to cap20.
 
+`h6_h7_surplus.py` adds a separate prospective role mapping: surplus is primary
+for C2/C3 and expected GPA is secondary, never a rescue endpoint. Its fixed
+25-person algebra fixture reconstructs the original test inputs through the
+existing public inference functions; it is not native data. The mapping itself
+does not recompute numerical tests. `h6_h7_surplus_check.py` independently checks
+the roles and exact preservation of each supplied historical test payload.
+
 ## Native-State Calibration
 
 `native_source.cjs` constructs deterministic synthetic sessions through the

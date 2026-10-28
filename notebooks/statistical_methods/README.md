@@ -149,6 +149,48 @@ single-saved-fit eight-contrast extraction. Those require matching retained
 inputs and distinct entrypoint validation. It does not relabel earlier
 signed-effect power as magnitude power or alter its negative findings.
 
+## Magnitude Validation and Conditional Power
+
+[magnitude_validation_and_power.ipynb](magnitude_validation_and_power.ipynb)
+provides the complete source-calling route for the original difference/sum
+intersection-union magnitude candidate: five fresh templates x 2,129 inputs
+(10,645 total), and eight original saved-power cells x 2,000 (16,000 total).
+It uses the reference environment above; its first code cell installs the
+Python pins. `RUN=False` disables scientific execution, and `FULL=False`
+selects one replicate per case without changing the planned denominators.
+
+For a clean checkout, set `RUN=True`, `FULL=True` and
+`PRODUCE_POWER_INPUTS=True`. Fresh input generation, fitting and independent
+eight-contrast checks use `scripts/reproduce_magnitude_study.py`. Saved-input
+production calls `scripts/reproduce_conditional_statistics.py run --family power`
+with comma-separated `--ids`, batches of at most 100 and `--no-aggregate`.
+The IDs come from `magnitude_design.manifest('saved_power_core')` and preserve
+the sparse original cells 2,4,6,8,10,12,14,16 across all 2,000 replicates. It does
+not generate the rest of the 80,000-input grid or require its final aggregate.
+
+To reuse compatible existing public power outputs, including a complete 80k
+output, set `PRODUCE_POWER_INPUTS=False` and point `POWER_ROOT` to the root
+containing `power/manifest.json` and its committed inputs/fits. Saved magnitude
+analysis admits these artifacts and does not redraw or refit them. This is
+a new public reproduction, not historical archived-byte identity; arbitrary
+private result directories are not interchangeable with public commitments.
+
+Magnitude `--all` selects a full fixed mode, `--start/--count` slices roster
+positions, and `--ids` accepts a JSON file rather than a comma string.
+Separate `--aggregate` calls independently reduce the admitted events into
+five fresh and eight saved case reports. Keep M/T/Aj/A4, inapplicable events,
+unknown outcomes, full/available-only rates, paired transitions and all linear
+coverage diagnostics. Report files and their dependencies stay under ignored
+`results/`; filenames alone never establish full completion.
+
+This route retains both the model-based magnitude diagnostic and the original
+CR2 candidate, not the separate joint-inference candidate. The adverse S5
+multiplier 2 A-sum coverage (.9395 in each of two correlated contrasts) and the
+older, distinct S1 B-difference coverage warning remain. Peak historical
+candidate discovery 23.75%/15.75% does not establish 80% power, an 80% MDE, minimum
+human N, 193-recruit adequacy or human-method adoption. Opening the notebook or
+passing a small entry check is not a new full-population result.
+
 ## Inference Comparisons and Percentage Reporting
 
 [inference_comparisons.ipynb](inference_comparisons.ipynb) reproduces three

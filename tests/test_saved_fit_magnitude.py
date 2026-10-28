@@ -185,6 +185,16 @@ def test_same_export_zero_tolerance_without_rejecting_source_transport_rounding(
     history = dict(spec=spec, baseline=dict(raw=raw, fitArtifact=fit), candidate=candidate,
                    request=request, generation=generation)
     assert adapter.validate_extraction(extracted, transported, history) == spec["populationCounts"]
+    baseline_only = dict(history, candidate=None)
+    assert adapter.validate_extraction(extracted, transported, baseline_only) == spec["populationCounts"]
+    changed = copy.deepcopy(extracted)
+    changed["verified"] = False
+    with pytest.raises(ValueError, match="model/frame"):
+        adapter.validate_extraction(changed, transported, baseline_only)
+    changed = copy.deepcopy(extracted)
+    changed["diagnostics"]["converged"] = False
+    with pytest.raises(ValueError, match="actual guard"):
+        adapter.validate_extraction(changed, transported, baseline_only)
     transported["design"]["X"][0][0] = math.nextafter(1., math.inf)
     with pytest.raises(ValueError, match="same-export"):
         adapter.validate_extraction(extracted, transported, history)
@@ -192,6 +202,8 @@ def test_same_export_zero_tolerance_without_rejecting_source_transport_rounding(
     transported["exactMatrixInR"] = False
     with pytest.raises(ValueError, match="same-R"):
         adapter.validate_extraction(extracted, transported, history)
+    with pytest.raises(ValueError, match="same-R"):
+        adapter.validate_extraction(extracted, transported, baseline_only)
 
 
 def test_original_guard_and_explicit_status_no_all_available_gate():

@@ -70,6 +70,12 @@ Generated simulation outputs belong under `results/` and are not source-controll
 - `expected_gpa_analysis.json`: nine prespecified budget-only nominal tests,
   one nonprimary diagnostic, fixed arm weights, tails, support and eligibility
   rules. This is not the historical multiplicity policy or a calibration output.
+- `h6_h7_surplus.json`: prospective C2/C3 surplus-primary, expected-GPA-secondary
+  role mapping. It references unchanged nominal results and forbids secondary
+  rescue; it does not modify their original identities or claim human validation.
+- `h6_h7_algebra_fixture.json`: original deterministic 25-person/250-row API
+  fixture recipe, including exact projection arithmetic. Its prescribed targets
+  are algebra-test inputs, not native-task histories or simulated human choices.
 
 - `tutoring_calibration_v01.json`: 30 cells, fixed seeds, historical error
   policies and 390,000 simulation attempts.
