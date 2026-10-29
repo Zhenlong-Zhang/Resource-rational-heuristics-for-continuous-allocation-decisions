@@ -26,6 +26,7 @@ enumerate that support. The native allocation grid has 1,001 shares.
 | `personal_time_inputs.py`, `personal_time_source.cjs` | Original native roots, explicit scientific selections, exact input identities and compatible immutable output. |
 | `personal_time_reproduction.py` | Expected-endpoint production, independent checking, whole-person/equal-schedule reduction and original-root request margins. |
 | `personal_time_examples.py` | Matched initial equal-expected-GPA and equal-mean-surplus examples using existing finite kernels. |
+| `personal_time_sensitivity.py` and `personal_time_sensitivity_*` | Frozen six-price original-proxy study: on-policy streams and expected stops, independent reconstruction, whole-person and equal-schedule summaries. |
 
 `budget_source_panel.cjs` and `finite_schedule_engine.cjs` provide the pure
 deterministic schedule and native payoff/posterior dependency closure. Node.js

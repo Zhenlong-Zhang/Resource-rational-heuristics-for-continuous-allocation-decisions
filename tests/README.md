@@ -78,6 +78,11 @@ Some solver and evaluation tests are intentionally more computationally demandin
   coordinate/input identity, immutable output, all-report accounting, charged
   random exhaustion, independent decision checks and full/partial finite
   aggregation. Fixtures test wiring; they do not rerun 450 reference decisions.
+- `test_personal_time_sensitivity.py`: six-price recipe and CLI, original
+  key-derived streams, paid updates, expected-only endpoints, immutable resume,
+  missing/tampered record rejection and whole-ten/equal-nine reductions.
+  Synthetic fixtures do not rerun the 2,700-endpoint comparison; use the
+  personal-time notebook for source-generated trajectories and their checks.
 - `test_cost_aware_tutoring.py`: quick selection/JSON/NDJSON rejection, frozen
   settings, CDF boundary/fallback, stream identity, pathwise-bound and independent
   zero-budget checks, plus affordable sub-tolerance ASK/STOP and ask-tie

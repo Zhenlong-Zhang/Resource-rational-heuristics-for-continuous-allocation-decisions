@@ -115,6 +115,26 @@ precision estimates. The four `examples` distinguish expected-GPA equality
 from raw-surplus equality. See the [notebook](../notebooks/finite_tutoring/personal_time_reference.ipynb)
 for the reference environment and scientific scope.
 
+`reproduce_personal_time_sensitivity.py` extends the same original model across
+six fixed absolute prices. It generates native inputs, produces expected stops
+or actual on-policy trajectories, then independently reconstructs the decisions,
+streams, state transitions and whole-person/equal-schedule summaries.
+
+```bash
+python scripts/reproduce_personal_time_sensitivity.py all --only C3:0:1,C5:0:1 --output results/personal_time_sensitivity/selected
+python scripts/reproduce_personal_time_sensitivity.py all --full --output results/personal_time_sensitivity/full
+```
+
+Use `prepare`, `produce` and `check` separately to resume the same selection.
+The recipe fixes prices 0, .00001, .0001, .001, .0031622776601683794 and .01;
+the full comparison has 450 roots per price. Its 1,860 expected-only endpoints
+and 840 realized histories must not be pooled as 2,700 realized observations.
+`finite_sensitivity.csv` is emitted only with complete condition coverage.
+`trial_rows.json`, `person_rows.json`, `aggregate.json` and
+`independent_check.json` retain the checking scope and denominators. Partial
+selections are diagnostics. Original proxy durations and random laws are fixed;
+finite conditional utility is not exact ex-ante utility or human calibration.
+
 ## Magnitude Composition and Precision
 
 The pure candidate API is

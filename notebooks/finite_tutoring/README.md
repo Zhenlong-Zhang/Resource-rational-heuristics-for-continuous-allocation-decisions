@@ -131,3 +131,18 @@ small selections check wiring and remain explicitly partial. Source regeneration
 independent checking and outputs do not require a private report or cached
 result tables. This reference is not validation under the 20-query cap or final
 paper/human-model adoption.
+
+The notebook also calls `reproduce_personal_time_sensitivity.py` for the frozen
+six-price comparison: 0, .00001, .0001, .001, .0031622776601683794 and .01 GPA per
+personal second. This separate chain produces and independently checks complete
+on-policy trajectories when a request is selected. Its 2,700 endpoints contain
+1,860 expected-only stops and 840 realized histories; the .01 reference remains
+expected-only. Original request/read timing and 20/60-second terminal proxies
+are unchanged. A different literal timing model cannot inherit this comparison.
+
+`RUN_SENSITIVITY=False` and `SENSITIVITY_FULL=False` are safe defaults. Full
+condition means require all nine whole-ten schedules. Outputs distinguish
+posterior expected final utility, GPA, the priced objective, acquisition and
+allocation diagnostics; unreplicated schedule-cell MCSE is unavailable. The
+finite comparison retains negative/undefined results and establishes neither a
+continuous price boundary nor empirical human calibration.

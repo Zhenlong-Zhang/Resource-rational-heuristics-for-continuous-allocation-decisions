@@ -1,0 +1,20 @@
+{
+  "schema": "personal-time-proxy-sensitivity-v1",
+  "reference": "personal_time_reference.json",
+  "rates": [
+    ["rho_0", 0.0],
+    ["rho_0.00001", 0.00001],
+    ["rho_0.0001", 0.0001],
+    ["rho_0.001", 0.001],
+    ["rho_geometric_0.001_0.01", 0.0031622776601683794],
+    ["rho_0.01", 0.01]
+  ],
+  "seed": 20261019,
+  "populationId": "r10-working-five-v0-rep0-candidate-not-population-estimate",
+  "randomizationGroup": "r10-original-root-private-stream-candidate-v1",
+  "replicateId": 0,
+  "reference_environment": {"python": "3.10", "numpy": "1.23.5", "node": "22.14.0"},
+  "aggregation": "ten_main_trials_per_person_then_nine_equal_weight_schedules",
+  "scope": "frozen_original_proxy_finite_diagnostic_not_literal_or_human_model",
+  "historicalReference": "rho_0.01_expected_only_no_realized_histories"
+}

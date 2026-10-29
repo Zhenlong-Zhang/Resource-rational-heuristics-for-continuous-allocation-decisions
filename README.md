@@ -68,8 +68,12 @@ preserved. It does not establish global optimality or capped-model validity.
 
 The [personal-time reference](notebooks/finite_tutoring/personal_time_reference.ipynb)
 separately prices both information requests and terminal operations. Its fixed
-five-condition analysis comprises 450 expected endpoints, not 450 realized
-histories. The mixed-model validation and conditional-power notebooks below use
+five-condition reference comprises 450 expected endpoints, not 450 realized
+histories. A separate six-price comparison retains the original timing proxies
+and follows actual acquisition trajectories where the policy searches. Its
+2,700 endpoints distinguish 1,860 expected-only stops from 840 realized histories;
+these finite points do not establish a continuous boundary or a human-calibrated
+price. The mixed-model validation and conditional-power notebooks below use
 their own declared synthetic populations and statistical models. Numerical
 validation neither transfers these findings to the capped model nor adopts a
 final human-study analysis.
@@ -166,7 +170,9 @@ Use its pinned numerical environment for reference-matched projection arithmetic
 The [personal-time reference](notebooks/finite_tutoring/personal_time_reference.ipynb)
 regenerates native inputs, prices search and termination consistently, and checks
 the finite expected endpoints and original-state acquisition margins. It also
-compares equal expected GPA with equal mean surplus on matched examples.
+compares equal expected GPA with equal mean surplus on matched examples and
+reproduces the six-price original-proxy sensitivity study, including its
+unfavorable heuristic diagnostics and undefined slopes.
 
 The [mixed-model null validation](notebooks/statistical_methods/mixed_model_null_validation.ipynb)
 provides the fixed 24,000-input H3-H5 analysis, including unavailable fits,
