@@ -5,6 +5,38 @@ For an interactive route with settings and output readers, use the
 [thematic notebook index](../notebooks/README.md). Scientific inputs are listed
 in [configs](../configs/README.md); generated outputs belong under `results/`.
 
+## Complete Cost-Aware Study
+
+`reproduce_cost_aware_study.py` wraps the selected-trial numerical producer and
+independent checker in a complete source-to-aggregate workflow:
+
+```bash
+python scripts/reproduce_cost_aware_study.py prepare --mode full --output results/cost_study/prepared
+python scripts/reproduce_cost_aware_study.py run --prepared results/cost_study/prepared --output results/cost_study/computed --all --workers 1
+python scripts/reproduce_cost_aware_study.py aggregate --prepared results/cost_study/prepared --output results/cost_study/computed --summary results/cost_study/summary.json
+```
+
+Use `--mode smoke` for one ten-main person, never a full-study claim.
+`--people-per-shard` defaults to8 and changes ownership, not RNG keys. `--ids`
+selects comma-separated stable shard ordinals instead of `--all`. Completed
+shards are source/runtime/input-bound and verified before reuse. Resume reuses
+completed trial files, a finished producer or a finished independent checker;
+an incomplete trial file must be preserved separately before retrying that
+trial. Existing completed computations are not overwritten. Use a new summary
+filename when collecting later shards. Numerical-source/runtime changes need a
+separate compatible study, not a silent mixture under the same output directory.
+
+Full output has90 performance and2088 estimand rows across18 scenarios,
+including36 deterministic initial-asking contrasts and2052 non-Q/supporting
+route rows. Exact identity membership and all518400 histories are required.
+Performance first averages ten trials/person and then preserves nine variant
+strata. Initial/terminal slopes, expected-GPA/surplus resemblance, lower-need
+share and sensitivity endpoints retain their original definitions. Missing
+computation, unsupported endpoints and scientific ineligibility stay distinct.
+The standardized-variant diagnostic has no MCSE; the assigned-person route uses
+its original ratio-estimator MCSE. Candidate H6/H7 and negative directions are
+retained, without human inference or a continuous rate boundary.
+
 ## Selected Cost-Aware Trials
 
 Use the [cost-aware notebook](../notebooks/finite_tutoring/cost_aware_computation.ipynb)
@@ -144,6 +176,38 @@ same saved fits; the fresh population has its own cache namespace and seeds.
 The [comparison notebook](../notebooks/statistical_methods/inference_comparisons.ipynb)
 also calls the no-fit synthetic H8/H9 percentage-reporting interface. These
 conditional comparisons do not establish a human-data method or cap20 validity.
+
+## Joint Magnitude And Interval Comparisons
+
+`reproduce_joint_and_interval_statistics.py` analyzes committed outputs from
+`reproduce_magnitude_study.py`; it does not generate responses or fit models.
+Its four modes require different original input populations:
+
+| Analysis mode | Upstream magnitude mode | Full input count |
+| --- | --- | --- |
+| `joint_saved` | `saved_power_core` | 16,000 |
+| `joint_fresh` | `fresh_joint_validation` | 10,645 |
+| `oracle_s1` | `saved_coverage_s1` | 2,000 |
+| `coverage` | `fresh_coverage_validation` | 4,258 |
+
+The [magnitude notebook](../notebooks/statistical_methods/magnitude_validation_and_power.ipynb)
+provides the complete upstream input/fit commands, including original sparse
+power ordinals. For example, with matching fresh-joint inputs already produced:
+
+```bash
+python scripts/reproduce_joint_and_interval_statistics.py --mode joint_fresh --input results/joint_inputs --output results/joint_analysis --start 0 --count 5
+python scripts/reproduce_joint_and_interval_statistics.py --mode joint_fresh --input results/joint_inputs --output results/joint_analysis --all --execute
+python scripts/reproduce_joint_and_interval_statistics.py --mode joint_fresh --input results/joint_inputs --output results/joint_analysis --aggregate results/joint_analysis/summary.json --execute
+```
+
+Without `--execute`, the command prints its plan only. `--start`/`--count`
+select positions in the original roster; `--ids` accepts a JSON file of exact
+original ordinals. Compatible commitments are reused; a changed scientific
+source or input law is refused. Aggregation independently checks the exact
+completed roster and preserves unknowns and partial denominators.
+The `coverage` mode additionally uses the pinned KR packages in
+`src/tutoring_statistics/data/interval_environment.json`. These candidates and
+simulation oracles are not selected human-data methods.
 
 ## Paired Gamma Diagnostic
 

@@ -21,7 +21,7 @@ from .saved_fit_inputs import Observations
 ROOT = Path(__file__).resolve().parent
 SCHEMA = "magnitude-study-reproduction-v1"
 INPUT_SCHEMA = "magnitude-study-fit-input-v1"
-MODES = ("fresh_validation", "saved_power_core")
+from .magnitude_design import ALL_MODES as MODES
 
 
 def require(condition, message):
@@ -61,7 +61,7 @@ def source_files():
 
 
 def initialize(output, mode, args):
-    require((mode == "saved_power_core") == bool(args.power_directory),
+    require(mode.startswith("saved_") == bool(args.power_directory),
             "Saved power requires --power-directory; fresh validation must not use it")
     output = io.validate_output(output, getattr(args, "power_directory", None))
     output.mkdir(parents=True, exist_ok=True)
@@ -317,7 +317,7 @@ def member(payload):
             return admit_commit(manifest_pin, io.pin(final), expected_ordinal=ordinal)["event"]
         # Never silently rerun a partially completed numerical extraction.
         require(not any(directory.glob("magnitude.*")), "Uncommitted numerical output; preserve and inspect before retry")
-        if manifest["plan"]["mode"] == "fresh_validation":
+        if manifest["plan"]["mode"].startswith("fresh_"):
             spec, spec_pin = fresh_spec(manifest, manifest_pin, ordinal, directory)
             base, candidate, origin = fit_fresh(manifest, manifest_pin, spec, spec_pin, directory)
             generation_proof = io.pin(directory / "generation_proof.json")
@@ -378,7 +378,7 @@ def admit_commit(manifest_pin, commit_pin, *, expected_ordinal=None):
     spec = observed.read(binding["spec"])
     require(binding["mode"] == result["mode"] and binding["ordinal"] == ordinal
             and binding["schema"] == INPUT_SCHEMA, "Changed result input identity")
-    if result["mode"] == "fresh_validation":
+    if result["mode"].startswith("fresh_"):
         proof = observed.read(commitment["generationProof"])
         require(proof == dict(spec=binding["spec"], manifest=manifest_pin,
                 request=spec["request"], generation=spec["generation"], independentReplay=True),

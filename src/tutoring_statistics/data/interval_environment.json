@@ -1,0 +1,15 @@
+{
+  "method": "h10_model_based_KR_pbkrtest052_rank1_candidate_v1",
+  "R": "4.2.2",
+  "additional_R_packages": {
+    "pbkrtest": "0.5.2",
+    "broom": "1.0.5",
+    "dplyr": "1.1.4",
+    "MASS": "7.3-60.0.1"
+  },
+  "inherits": "numerical_environment.json",
+  "scope": "Gaussian_common_variance_two_law_interval_diagnostic",
+  "shared_pbkrtest_core": true,
+  "independent_KR_algorithm": false,
+  "human_method_adopted": false
+}

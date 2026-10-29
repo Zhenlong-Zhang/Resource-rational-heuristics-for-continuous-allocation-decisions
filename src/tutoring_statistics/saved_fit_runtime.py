@@ -41,10 +41,12 @@ cat(toJSON(list(R=as.character(getRversion()),Rhome=normalizePath(R.home()),
 '''
 
 
-def runtime(rscript, observed, output):
+def runtime(rscript, observed, output, *, extra_packages=None):
     import numpy
     import scipy
     expected = load(ROOT / "data/numerical_environment.json")["statistical_reference"]
+    if extra_packages:
+        expected = dict(expected, R_packages=dict(expected["R_packages"], **extra_packages))
     require(sys.version.split()[0] == expected["python"] and numpy.__version__ == expected["numpy"]
             and scipy.__version__ == expected["scipy"], "Use the declared reference numerical environment")
     executable = shutil.which(str(rscript))

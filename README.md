@@ -60,9 +60,11 @@ conditional sample-size references and native-state calibration are budget-only.
 These findings do not transfer to the capped model. Historical calibration
 failures remain method-specific evidence. A separate
 [cost-aware calculation](notebooks/finite_tutoring/cost_aware_computation.ipynb)
-generates selected working-population budget-only trials and independently
-checks their full decision records. It does not provide person/global reductions
-or validate the calculation under the cap.
+generates selected trials or the complete working-population budget-only study,
+independently checks decision records, and reduces 51,840 model persons across
+18 timing/price scenarios. The original terminal-cost-only model, candidate
+expected-GPA resemblance endpoints and high-cost zero/reversed predictions are
+preserved. It does not establish global optimality or capped-model validity.
 
 The [personal-time reference](notebooks/finite_tutoring/personal_time_reference.ipynb)
 separately prices both information requests and terminal operations. Its fixed
@@ -202,6 +204,13 @@ aggregation, preserving partial denominators and unfavorable coverage/power resu
 Saved power reuses fitted inputs from the conditional-statistics workflow.
 These finite studies do not adopt the candidate for human-data analysis or
 establish an 80% discovery threshold or a recruitment sample size.
+
+The same notebook also reproduces joint-Gaussian magnitude comparisons on the
+saved power inputs and a separate five-law fresh validation, the original
+known-covariance interval diagnostic, and a fresh paired CR2/Kenward-Roger
+coverage comparison. Each keeps its own input law, seeds and denominator.
+Numerical agreement does not establish uniform error control, successful
+coverage repair, or suitability for human-data analysis.
 
 ## Scarcity Analysis
 

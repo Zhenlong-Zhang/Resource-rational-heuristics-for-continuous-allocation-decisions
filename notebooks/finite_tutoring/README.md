@@ -61,7 +61,7 @@ All inputs are regenerated from the scientific settings. Cost-aware adaptive
 policies are not evaluated here; budget-only nominal inference and native-state
 calibration have [separate notebooks](../statistical_methods/README.md).
 
-## Selected Cost-Aware Computation
+## Cost-Aware Computation
 
 [cost_aware_computation.ipynb](cost_aware_computation.ipynb) supplies a different
 trajectory calculation: repeated one-query decisions over duration-priced
@@ -82,12 +82,29 @@ Exact probability bits may depend on the numerical build/CPU; numerical agreemen
 does not authenticate historical execution. The reader shares NumPy/PCG64 but
 does not call producer numerical helpers.
 
-See [CLI and output layout](../../scripts/README.md#selected-cost-aware-trials).
+The notebook also exposes the [complete study](../../scripts/README.md#complete-cost-aware-study):
+five conditions x18 scenarios x9 variants x64 model persons x10 mains.
+This yields90 performance groups,36 initial-asking contrasts and2052 other
+endpoint/route rows. The full route preserves candidate H6/H7, original frozen
+initial slopes, eligibility and person/stratum MCSE; it does not substitute the
+later surplus-primary analysis or personal request/read pricing. Completed
+shards can be reused without repeating their trajectories. All execution is off
+by default and the one-person smoke scope cannot satisfy full-study gates.
+
+See [selected CLI and output layout](../../scripts/README.md#selected-cost-aware-trials).
 The selection JSON is the complete declared scope, not a person or campaign
 roster. Settings remain fixed; unsupported changes are rejected. Personal
 question time is unpriced, terminal time affects the objective only, and exact
-exhaustion has undefined share and zero duration. No person inference, global
-aggregation, cap20 transfer or global-optimality claim is supplied.
+exhaustion has undefined share and zero duration. No human inference, global
+aggregation, cap20 transfer or global-optimality claim is supplied by the
+selected-trial route.
+
+Complete-study aggregation regenerates initial-slope plans in an isolated
+single-thread MKL 2021.4 AVX subprocess using the reference environment. It
+records the effective dispatch and binary identity; other policy computations
+keep their parent runtime. This reference is checked against the historical
+frozen plans, not evidence of the original job's unknown dispatch provenance
+or a guarantee of identical bits on arbitrary hardware.
 
 ## Personal-Time Reference
 

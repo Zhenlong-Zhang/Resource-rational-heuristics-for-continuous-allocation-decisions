@@ -42,12 +42,19 @@ globally optimal repeated-myopic behavior or human timing validity. Float64
 envelopes are numerical bounds, not machine-certified interval arithmetic.
 
 The [cost-aware notebook](../../notebooks/finite_tutoring/cost_aware_computation.ipynb)
-adds an explicitly selected working-population route, not person or global
-aggregation. Its selected-source adapter reuses native session/restore APIs in
+supports selected working-population trials and the complete study through
+`cost_aware_campaign.py`. `cost_aware_aggregation.py` preserves original
+ten-main eligibility, fixed projection weights and person/variant Monte Carlo
+reductions. Its selected-source adapter reuses native session/restore APIs in
 `tutoring_analysis`, leaving the existing full-panel generator unchanged, and
 existing producer terminal primitives; its reader reconstructs the numerical
 menus/bounds independently. Shared NumPy/PCG64 and environment-sensitive exact
 bits remain limitations. See the [CLI contract](../../scripts/README.md#selected-cost-aware-trials).
+
+`projection_reference.py` regenerates initial-slope plans in an isolated MKL
+AVX reference subprocess. The full summary stores their exact plans and runtime;
+the policy process retains its own numerical settings. Reference environment
+pins are required, and arbitrary-hardware bitwise parity is not promised.
 
 The [personal-time reference](../../notebooks/finite_tutoring/personal_time_reference.ipynb)
 has a different, explicit cost model: request/read time is priced as well as

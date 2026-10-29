@@ -20,7 +20,7 @@ def load_inputs(directory, context, expected_selection):
     return inputs
 
 
-def produce(config, selection_file, inputs_directory, output):
+def produce(config, selection_file, inputs_directory, output, *, resume=False):
     """Compute each selected history once and retain every raw scientific row."""
     from .budget_horizon import budget_templates
     from .terminal_time import reference_rate
@@ -30,7 +30,8 @@ def produce(config, selection_file, inputs_directory, output):
     inputs = load_inputs(inputs_directory, context, read(selection_file))
     expected_roots = selected_roots(read(Path(inputs_directory) / "source_states.json"), inputs["selection"])
     require(identical(inputs["roots"], expected_roots), "Root adapter/source mismatch")
-    output = Path(output); output.mkdir(parents=True, exist_ok=False)
+    output = Path(output); output.mkdir(parents=True, exist_ok=resume)
+    require(not (output / "reference.json").exists(), "Completed producer must be reused, not overwritten")
     reference = reference_rate(budget_templates(context["design"]))
     identity = digest(inputs)
     manifest = {"schema": "finite-cost-aware-records-v1", "scope": "selected_working_trials",
@@ -40,6 +41,26 @@ def produce(config, selection_file, inputs_directory, output):
     for selection in inputs["selection"]:
         filename = trial_name(selection) + ".ndjson"
         hashes = []
+        if resume and (output / filename).exists():
+            from .cost_aware_inputs import parse
+            history = None
+            with (output / filename).open("rb") as stream:
+                for line in stream:
+                    require(line.endswith(b"\n"), "Partial trial: preserve file separately before retrying this trial")
+                    raw = line[:-1]
+                    record = parse(raw.decode("utf-8"))
+                    require(history is None, "Extra records after completed history")
+                    if not hashes:
+                        require(record == {"kind": "trial", "selection": selection, "inputsDigest": identity},
+                                "Changed resumed trial inputs")
+                    if record["kind"] == "history":
+                        history = record["value"]
+                    hashes.append(hashlib.sha256(raw).hexdigest())
+            require(history is not None and history["status"] == "completed",
+                    "Incomplete trial: preserve file separately before retrying this trial")
+            manifest["trials"].append({"selection": selection, "file": filename,
+                                       "rowSha256": hashes, "history": history})
+            continue
         with (output / filename).open("xb") as stream:
             def emit(record):
                 raw = compact(record).encode("utf-8")

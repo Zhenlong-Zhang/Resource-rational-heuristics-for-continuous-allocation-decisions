@@ -13,6 +13,7 @@ ARMS = ("C1", "C2", "C3")
 METHOD = "h10_magnitude_DS_IUT_Bonferroni2_Holm4_candidate_v1"
 UPSTREAM = "participant_CR2_Satterthwaite_v1"
 MODES = ("fresh_validation", "saved_power_core")
+ALL_MODES = MODES + ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1")
 FRESH_NAMESPACE = "r11-h10-magnitude-validation-v1-20261026"
 SAVED_NAMESPACE = "r11-h10-magnitude-saved-power-v1-20261026"
 TEMPLATES = (1, 2, 3, 4, 6)
@@ -43,13 +44,19 @@ def fresh_cases():
 
 
 def expected_ordinals(mode):
-    require(mode in MODES, "Unknown campaign mode")
+    require(mode in ALL_MODES, "Unknown campaign mode")
+    if mode not in ("fresh_validation", "saved_power_core"):
+        from . import joint_interval_design
+        return joint_interval_design.manifest(mode)["expectedOrdinals"]
     return (list(range(5*2129)) if mode == "fresh_validation" else
             [40*(rep-1)+index-1 for rep in range(1, 2001) for index in CORE])
 
 
 def manifest(mode):
     """Return the full fixed scientific roster, never a runtime acceptance claim."""
+    if mode in ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1"):
+        from . import joint_interval_design
+        return joint_interval_design.manifest(mode)
     ids = expected_ordinals(mode)
     if mode == "fresh_validation":
         cases = fresh_cases()
@@ -64,6 +71,9 @@ def manifest(mode):
 
 
 def case_for(manifest, ordinal):
+    if manifest["mode"] in ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1"):
+        from . import joint_interval_design
+        return joint_interval_design.case_for(manifest, ordinal)
     valid = (type(ordinal) is int and ((manifest["mode"] == "fresh_validation" and 0 <= ordinal < 10645)
              or (manifest["mode"] == "saved_power_core" and 0 <= ordinal < 80000 and ordinal % 40+1 in CORE)))
     require(valid, "Unplanned scientific ID")

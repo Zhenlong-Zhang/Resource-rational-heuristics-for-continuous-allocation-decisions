@@ -77,3 +77,26 @@ saved-fit kernels; the complete entry is `scripts/reproduce_magnitude_study.py`.
 Direct `--verify-input` checks supplied-fit arithmetic only. It does not establish
 the generating law or admit an arbitrary fit into a campaign. Campaign execution
 additionally binds the generated input proof or committed upstream power member.
+
+## Joint Magnitude And Interval Comparisons
+
+`joint_interval_design.py` fixes the separate saved and fresh populations.
+`joint_interval_reproduction.py` binds upstream input/fit commitments, performs
+the selected comparison and independently reduces the complete or partial
+roster. The entry is `scripts/reproduce_joint_and_interval_statistics.py`;
+the magnitude notebook supplies the upstream generation and fitting commands.
+
+- `sign_congruence.py` and `joint_magnitude.py` implement the Gaussian-boundary
+  reference and four-comparison joint-magnitude candidate.
+- `saved_joint_reduction.py` and `joint_reduction.py` summarize the original
+  saved-power and fresh-validation laws without combining their populations.
+- `known_covariance.py` and `known_covariance_reduction.py` provide the
+  known-Omega diagnostic on the original S1 inputs, not a human estimator.
+- `interval_fit.R` and `interval_reduction.py` compare CR2, model-based and
+  Kenward-Roger intervals on the separate fresh coverage inputs.
+- Matching `independent_*.py` modules reconstruct references, identities and
+  aggregate statistics. Shared R packages and the shared negative-correlation
+  boundary solver remain explicit dependencies, not independent algorithms.
+
+These comparisons preserve adverse coverage and false-rejection findings.
+Completed computation is not selection of a final analysis method.

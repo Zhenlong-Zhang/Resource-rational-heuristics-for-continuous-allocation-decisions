@@ -12,7 +12,8 @@ import math
 IDS = ("C1-C2:A", "C1-C2:B", "C1-C3:A", "C1-C3:B")
 LINEAR_IDS = tuple(key + ":" + kind for key in IDS for kind in ("D", "S"))
 ARMS = ("C1", "C2", "C3")
-MODES = ("fresh_validation", "saved_power_core")
+MODES = ("fresh_validation", "saved_power_core", "fresh_joint_validation",
+         "fresh_coverage_validation", "saved_coverage_s1")
 CORE = (2, 4, 6, 8, 10, 12, 14, 16)
 
 
@@ -63,6 +64,12 @@ def truth(case):
 
 def expected_ids(mode):
     require(mode in MODES, "Unknown campaign mode")
+    if mode == "fresh_joint_validation":
+        return list(range(10645))
+    if mode == "fresh_coverage_validation":
+        return list(range(4258))
+    if mode == "saved_coverage_s1":
+        return [40*(rep-1)+32 for rep in range(1, 2001)]
     return list(range(10645)) if mode == "fresh_validation" else [
         40*(rep-1)+cell-1 for rep in range(1, 2001) for cell in CORE]
 
@@ -71,10 +78,13 @@ def case_for(ctx, ordinal):
     """Map an admitted scientific manifest without private source-audit imports."""
     manifest = ctx["manifest"]
     require(type(ordinal) is int and ordinal in ctx["expectedSet"], "Unplanned ordinal")
-    if manifest["mode"] == "fresh_validation":
-        case = dict(manifest["cases"][ordinal % 5], repID=ordinal//5+1)
-        bases, stride, index = (dict(retention=1102610260, design=1202610260, response=1302610260),
-                               100000, case["caseIndex"])
+    if manifest["mode"].startswith("fresh_"):
+        n = 2 if manifest["mode"] == "fresh_coverage_validation" else 5
+        case = dict(manifest["cases"][ordinal % n], repID=ordinal//n+1)
+        bases = {"fresh_validation": dict(retention=1102610260, design=1202610260, response=1302610260),
+                 "fresh_joint_validation": dict(retention=1402610270, design=1502610270, response=1602610270),
+                 "fresh_coverage_validation": dict(retention=1702610280, design=1802610280, response=1902610280)}[manifest["mode"]]
+        stride, index = 100000, case["caseIndex"]
     else:
         index, rep = ordinal % 40+1, ordinal//40+1
         case = dict(next(value for value in manifest["cases"] if value["cellIndex"] == index), repID=rep)

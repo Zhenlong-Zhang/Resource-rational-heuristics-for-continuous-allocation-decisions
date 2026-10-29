@@ -288,6 +288,28 @@ separate verification targets. Do not interpret a historical saved-input check
 as execution of a fresh public population or a new fit. For archive relocation
 and CLI options, see [saved diagnostics](../../scripts/README.md#saved-result-diagnostics).
 
+## Joint Magnitude And Interval Comparisons
+
+The final sections of
+[magnitude_validation_and_power.ipynb](magnitude_validation_and_power.ipynb)
+connect four distinct comparisons to their public input producers: joint
+Gaussian-reference inference on 16,000 saved power inputs; a separate
+10,645-input fresh joint validation; known-Omega diagnostics on the original
+2,000 S1 inputs; and a separate 4,258-input paired CR2/Kenward-Roger interval
+study. No saved-result file is required to create a new matching reproduction.
+Compatible already-generated public inputs can instead be reused.
+
+`RUN_JOINT_INTERVAL` and `FULL_JOINT_INTERVAL` default off. The notebook exposes
+the original rosters and settings, prints source-calling commands and reads
+the resulting full JSON summaries. The `coverage` route adds the exact
+packages in `src/tutoring_statistics/data/interval_environment.json` to the R
+environment above. See the [CLI guide](../../scripts/README.md#joint-magnitude-and-interval-comparisons).
+
+Original IUT, joint, known-covariance and fresh interval results remain separate.
+Pointwise finite-law findings, shared KR/negative-correlation numerical cores,
+unfavorable coverage and false-rejection tradeoffs do not establish a final
+human-analysis method, uniform calibration or a recruitment target.
+
 ## Historical Calibration
 
 Open [calibration_and_power.ipynb](calibration_and_power.ipynb) from a repository checkout. The first code

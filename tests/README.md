@@ -1,5 +1,10 @@
 # Test Suite
 
+`test_cost_aware_campaign.py` checks the complete fixed person/history roster,
+shard independence, original endpoint expansion, ten-main eligibility,
+person/variant MCSE, partial-study gates and source-bound missing-only resume.
+Its fixtures test software invariants, not new trajectory evidence.
+
 `test_magnitude_reduction.py` checks fixed case/seed identities, sign-crossing
 truth, unavailable-versus-unresolved outcomes and independently reduced partial
 denominators. `test_magnitude_reproduction.py` checks explicit selectors,
@@ -130,6 +135,10 @@ Python dependencies. They do not consume saved results or browser exports.
 
 ## Statistical Comparison Tests
 
+`test_projection_reference.py` checks isolated numerical-dispatch settings,
+cache reuse and rejection of ineffective reference modes. Its fixtures do not
+assert cross-platform historical bitwise parity.
+
 `test_saved_coverage.py` and `test_saved_coverage_readback.py` check immutable
 target admission, exact roster/CI semantics, independent reduction, relocation
 and semantic tampering. `test_saved_fit_magnitude.py`, `test_saved_fit_inputs.py`
@@ -138,6 +147,15 @@ constraints, original versus public input identities and independent comparison
 rejections. Their public-schema records are explicitly synthetic fixtures, not
 fitted models or scientific population evidence. Run these fixture groups with
 `python3 -m pytest tests/test_saved_*.py`; pytest is a test-only dependency.
+
+`test_joint_interval_statistics.py` checks the distinct input rosters, seed
+domains, immutable commitments, independent reductions and full-versus-partial
+denominators. `test_joint_magnitude.py` checks covariance-aware composition and
+strict Holm decisions. `test_sign_congruence.py` checks analytic limits,
+deterministic integration and conservative unresolved bounds.
+`test_known_covariance.py` compares the known-Omega calculation with an
+independent QR route and checks invalid/rank-deficient input rejection.
+These tests use portable deterministic fixtures, not private fitted results.
 
 `test_statistical_comparisons.py` checks original roster/seed mappings,
 baseline-fit reuse, corrected denominators, independent reductions, unavailable
