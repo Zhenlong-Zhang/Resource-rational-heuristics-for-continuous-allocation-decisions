@@ -118,3 +118,11 @@ covariates without policy trajectories or new fits. `midpoint_generation.py`
 retains the frozen slopes and original sampling law. Matching reduction and
 independent-check modules preserve unknown, unavailable and partial outcomes.
 See the [notebook](../../notebooks/statistical_methods/within_person_coverage_and_midpoint_power.ipynb).
+
+`common_t.py` implements the exact design-only sign certificate and common-df
+Student-tail candidate, with original within-IUT2 fallback and strict Holm4.
+`independent_common_t.py` uses pairwise design differences, a beta-tail reference
+and independent paired counting. `common_t_reproduction.py` reads already checked
+coverage inputs without new generation, fitting or old estimator/QR replay.
+Original intervals are unchanged. Its fixed-input retrospective comparison is
+not a coverage repair, a human power analysis or an adopted analysis method.

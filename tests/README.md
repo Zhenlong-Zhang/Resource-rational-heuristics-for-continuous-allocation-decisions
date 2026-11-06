@@ -178,3 +178,11 @@ native-library identity and full-versus-partial admission. Run with
 `python -m unittest discover -s tests -p test_within_publication.py`.
 Deterministic fixtures supplement, but do not replace, source-generating entry
 checks or formal scientific results.
+
+`test_common_t.py` checks the exact design-sign certificate, independently
+implemented common-t tails and Holm decisions, unknown states and fixed-roster
+paired summaries. `test_common_t_reproduction.py` checks source rebasing,
+immutable input admission, ordinal selection and nonexecuting CLI defaults.
+Run with `python -m unittest discover -s tests -p 'test_common_t*.py'`.
+These deterministic checks do not repeat the original12129-input comparison
+or establish prospective calibration, coverage repair or human power.

@@ -1,0 +1,13 @@
+{
+  "methodID": "h10_within_common_t_sign_congruence_IUT2fallback_Holm4_candidate_v1",
+  "originalMethod": "h10_within_participant_gaussian_t_IUT2_Holm4_candidate_v1",
+  "selected_original_ordinals": [0, 10000],
+  "full_count": 12129,
+  "case_counts": {"S1": 10000, "S5_lambda2": 2129},
+  "alpha": 0.05,
+  "scope": "retrospective_fixed_input_comparison_not_human_adoption",
+  "reference_python": "3.10.9",
+  "numpy": "1.23.5",
+  "scipy": "1.10.0",
+  "large_execution_default": false
+}

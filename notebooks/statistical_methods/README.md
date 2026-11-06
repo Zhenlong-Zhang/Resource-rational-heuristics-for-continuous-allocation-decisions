@@ -325,6 +325,21 @@ covariates matched the historical library. Complete historical12129/4612 scalar
 records were independently reduced without rerunning those studies. These are
 bounded entry checks plus reused full-study evidence, not a new full simulation.
 
+The separate **Common-T Paired Comparison** section reuses already checked
+coverage records. `configs/common_t_comparison.json` retains the same S1/S5
+ordinals and fixed denominator12129. Its producer and independent checker use
+different exact design and Student-tail algorithms; no old input, within fit,
+QR, REML or linear interval is recomputed. Preserve the original coverage source
+checkout, optionally locating it with `--coverage-source-root`. The new source
+binding does not rename old execution or relax source integrity.
+
+Historical S1 R/F was0/10000 under both within-IUT2 and common-t; S5 R/D was
+0/2129 versus5/2129. S1 D and S5 F are inapplicable. Descriptive paired rates and
+intervals do not establish between-method significance, prospective calibration,
+human power or coverage repair. The other studies' adverse findings remain.
+`RUN_COMMON_T` defaults off; `FULL` chooses original selected IDs versus the
+complete saved cohort. No private result archive is a reproduction dependency.
+
 Use the exact Python3.10.9/NumPy1.23.5/SciPy1.10.0 environment above for new
 coverage and midpoint inputs. The coverage comparator and descriptive mapping
 require R4.2.2 with the exact packaged DESCRIPTION-version map; `Rscript

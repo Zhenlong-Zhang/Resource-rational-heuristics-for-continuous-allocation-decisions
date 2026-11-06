@@ -228,7 +228,8 @@ do not establish human behavior or population precision.
 
 [Within-person coverage and midpoint power](notebooks/statistical_methods/within_person_coverage_and_midpoint_power.ipynb)
 provides the historical displayed-recipient joint slope mapping at six prices, three-method coverage comparison
-and fixed midpoint conditional-power scenario. Native inputs, production,
+and fixed midpoint conditional-power scenario, plus a common-t versus within-IUT2
+paired comparison on saved coverage inputs. Native inputs, production,
 independent checking and reduction are separate stages. The coverage deficits
 and sub-80% midpoint result are retained; reproduction does not establish a
 human-analysis method or adequate recruitment size.

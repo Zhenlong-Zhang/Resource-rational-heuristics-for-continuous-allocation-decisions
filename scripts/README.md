@@ -509,3 +509,27 @@ selects the complete original roster. Midpoint preparation accepts either
 a complete checked mapping. Neither route refits the frozen scenario slopes.
 See the [notebook](../notebooks/statistical_methods/within_person_coverage_and_midpoint_power.ipynb)
 for dependencies, commands, full settings and output interpretation.
+
+`reproduce_common_t.py prepare/produce/check/reduce` compares the common-t
+candidate with within-IUT2 on saved, independently checked coverage outputs.
+It does not generate inputs, refit models or rerun the original within estimator.
+Preparation takes `--coverage DIRECTORY`; optional `--coverage-source-root`
+locates a byte-identical preserved upstream checkout without rewriting receipts.
+Use `--ids 0,10000` for selected original cases or `--all` for the fixed12129
+population. Reduction with `--full` refuses incomplete membership. Statistical
+unavailability, technical unknown and inapplicable events remain distinct.
+
+```bash
+python scripts/reproduce_common_t.py prepare --coverage results/within_coverage_selected --output results/common_t_selected
+python scripts/reproduce_common_t.py produce --output results/common_t_selected --ids 0,10000 --execute
+python scripts/reproduce_common_t.py check --output results/common_t_selected --ids 0,10000 --execute
+python scripts/reproduce_common_t.py reduce --output results/common_t_selected --execute
+```
+
+Matching completed stages resume without new numerical work. A partial failed
+attempt requires inspection rather than automatic rerunning. `reduce --events`
+accepts supplied scalar JSONL only and labels it arithmetic, not authenticated
+numerical reproduction. Each row contains `ordinal`, `caseIndex`, `caseID`,
+`repID`, `analysis` and `endpointUnknown`, as emitted in `record.json:event`.
+`aggregate_full.json` or `aggregate_partial_N.json` contains old-first/new-second
+paired tables, descriptive rates/intervals and independent reduction readback.
