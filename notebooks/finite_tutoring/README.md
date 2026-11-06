@@ -146,3 +146,23 @@ posterior expected final utility, GPA, the priced objective, acquisition and
 allocation diagnostics; unreplicated schedule-cell MCSE is unavailable. The
 finite comparison retains negative/undefined results and establishes neither a
 continuous price boundary nor empirical human calibration.
+
+## Allocation And Welfare
+
+[Allocation and welfare](allocation_and_welfare.ipynb) reduces the checked
+six-price endpoints without rerunning the policy. It evaluates each saved
+allocation at the original target-key true needs, including expected-only
+stops. These are fixed model payoffs, not newly observed search trajectories.
+
+Full output contains 30 equal-schedule welfare/search summaries, 24 defined
+rank-oriented allocation coefficients, six undefined C5 coefficients and 120
+distances to matched equal-split, equal-surplus, expected-utility-optimal and
+lower-need allocations. The regression first fits an intercept and slope in
+each ten-trial schedule, then equally weights all nine schedules. Tied initial
+needs do not identify a higher-need recipient. Distances are not welfare regret.
+
+The same analysis exports both initial logical-recipient means and logical-A
+tutoring minutes for the joint statistical projection. That projection is not
+the rank-oriented share regression. `RUN=False`, `FULL=False` and
+`RUN_POLICY=False` prevent accidental simulation; enable policy generation only
+when matching independently checked inputs are not already available.

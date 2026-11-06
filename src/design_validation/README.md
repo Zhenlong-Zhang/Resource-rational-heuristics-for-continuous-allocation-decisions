@@ -27,6 +27,8 @@ enumerate that support. The native allocation grid has 1,001 shares.
 | `personal_time_reproduction.py` | Expected-endpoint production, independent checking, whole-person/equal-schedule reduction and original-root request margins. |
 | `personal_time_examples.py` | Matched initial equal-expected-GPA and equal-mean-surplus examples using existing finite kernels. |
 | `personal_time_sensitivity.py` and `personal_time_sensitivity_*` | Frozen six-price original-proxy study: on-policy streams and expected stops, independent reconstruction, whole-person and equal-schedule summaries. |
+| `personal_time_diagnostics.py` | Authenticated endpoint reduction, target-key fixed outcomes, rank-oriented share slopes, matched allocation distances and logical A/B amount export. |
+| `personal_time_plots.py` | Full finite-roster welfare/search, allocation-slope and benchmark-distance figures; preserves undefined C5 coefficients. |
 
 `budget_source_panel.cjs` and `finite_schedule_engine.cjs` provide the pure
 deterministic schedule and native payoff/posterior dependency closure. Node.js

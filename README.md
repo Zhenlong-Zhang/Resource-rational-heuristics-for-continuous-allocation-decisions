@@ -218,6 +218,14 @@ coverage comparison. Each keeps its own input law, seeds and denominator.
 Numerical agreement does not establish uniform error control, successful
 coverage repair, or suitability for human-data analysis.
 
+The [allocation and welfare notebook](notebooks/finite_tutoring/allocation_and_welfare.ipynb)
+adds fixed true-state payoffs and matched allocation diagnostics to the checked
+six-price model. It reconstructs all 2,700 target-key outcomes without treating
+expected-only stops as historical search trajectories. Full outputs include 30
+equal-schedule welfare/search summaries, 24 defined rank-oriented slopes, six
+undefined C5 slopes and 120 allocation distances. These finite-model diagnostics
+do not establish human behavior or population precision.
+
 ## Scarcity Analysis
 
 The scarcity analysis adds a fourth heuristic row: prioritizing the recipient with lower

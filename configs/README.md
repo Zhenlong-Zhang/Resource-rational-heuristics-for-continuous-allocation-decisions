@@ -47,6 +47,9 @@ Generated simulation outputs belong under `results/` and are not source-controll
   prices and original stream identities for the repeated-myopic comparison.
   Original request/read and terminal proxies remain fixed; this recipe does
   not calibrate human timing or change the baseline reference.
+- `personal_time_diagnostics.json`: allocation/welfare estimands, tie
+  tolerances, native denominator, latent law and equal-schedule reduction for
+  checked outputs of `personal_time_sensitivity.json`.
 - `tutoring_optimality_v01.json`: numerical-envelope tolerances, full affordable
   horizon and computational refinement limits. A depth limit bounds refinement,
   not the number of legal information-acquisition actions.

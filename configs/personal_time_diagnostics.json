@@ -1,0 +1,11 @@
+{
+  "schema": "finite-allocation-welfare-v1",
+  "policyRecipe": "personal_time_sensitivity.json",
+  "relativeNeedTieTolerance": 1e-9,
+  "slopeCenteredSSFloor": 1e-12,
+  "allocationDenominator": 1000,
+  "aggregation": "ten_trials_then_nine_equal_weight_schedules",
+  "payoff": "recipient_utility_without_personal_time_subtraction",
+  "latentLaw": "original_initial_normalized_logs",
+  "scope": "fixed_finite_roster_not_population_or_human_inference"
+}

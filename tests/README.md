@@ -74,6 +74,10 @@ Some solver and evaluation tests are intentionally more computationally demandin
 
 ## Finite Tutoring
 
+- `test_personal_time_diagnostics.py`: target-specific fixed payoffs, source
+  identity/recipient/index rejection, rank ties, equal-schedule weighting,
+  incomplete rosters, immutable settings and the portable analysis entry.
+
 - `test_personal_time_reference.py` and `test_personal_time_source.cjs`: original
   coordinate/input identity, immutable output, all-report accounting, charged
   random exhaustion, independent decision checks and full/partial finite

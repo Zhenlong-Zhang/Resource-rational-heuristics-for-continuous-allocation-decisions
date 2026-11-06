@@ -135,6 +135,22 @@ and 840 realized histories must not be pooled as 2,700 realized observations.
 selections are diagnostics. Original proxy durations and random laws are fixed;
 finite conditional utility is not exact ex-ante utility or human calibration.
 
+## Allocation And Welfare
+
+`analyze_personal_time_allocations.py` reads independently checked six-price
+policy outputs. It does not select new actions or rerun the policy.
+
+```bash
+python scripts/analyze_personal_time_allocations.py --input results/personal_time_sensitivity/full --output results/allocation_welfare --figures
+```
+
+The analysis writes every target's fixed payoff, 30 complete-cell summaries,
+rank-oriented coefficients, four matched allocation distances and logical-A
+amounts with both initial needs. A separate scalar utility and centered
+least-squares calculation checks the numerical reduction. The full figure
+option requires all 2,700 endpoints; partial inputs retain partial status.
+Historical provenance and report layouts are not scientific inputs.
+
 ## Magnitude Composition and Precision
 
 The pure candidate API is
