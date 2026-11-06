@@ -63,6 +63,9 @@ Generated simulation outputs belong under `results/` and are not source-controll
 
 - `native_design.json`: resolved synthetic budget-only source design used by
   the native calibration; not a human-session or cap20 validation claim.
+- `within_statistics.json`: fixed coverage/midpoint rosters, original small
+  selections and reference Python version. Full execution defaults off; the
+  notebook does not change seeds or input laws when selecting a smaller check.
 - `native_calibration.json`: exact 40-subcase roster, seeds, laws, 250-attempt
   batches and 10,000 attempts per subcase (400,000 total). Smoke selects fixed
   batches without changing RNG shapes or truth definitions.

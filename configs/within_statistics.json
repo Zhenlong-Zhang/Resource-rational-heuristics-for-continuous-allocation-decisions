@@ -1,0 +1,23 @@
+{
+  "scope": "closed_conditional_Gaussian_studies_not_human_adoption",
+  "coverage": {
+    "selected_original_ordinals": [0, 10000],
+    "full_count": 12129,
+    "case_counts": {"S1": 10000, "S5_lambda2": 2129},
+    "input_mode": "fresh_within_validation",
+    "primary": "S1_C1-C2:B:D_paired_coverage_exact_two_sided_McNemar"
+  },
+  "midpoint": {
+    "selected_original_ordinals": [0, 1],
+    "full_count": 4612,
+    "price": 0.0031622776601683794,
+    "epsilon": 0.02,
+    "confidence": 0.95,
+    "primary": "any_true_alternative_rejected_full_flow_Hoeffding"
+  },
+  "reference_python": "3.10.9",
+  "numpy": "1.23.5",
+  "scipy": "1.10.0",
+  "comparator_environment": "src/tutoring_statistics/data/numerical_environment.json",
+  "large_execution_default": false
+}

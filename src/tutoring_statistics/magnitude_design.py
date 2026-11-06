@@ -13,7 +13,7 @@ ARMS = ("C1", "C2", "C3")
 METHOD = "h10_magnitude_DS_IUT_Bonferroni2_Holm4_candidate_v1"
 UPSTREAM = "participant_CR2_Satterthwaite_v1"
 MODES = ("fresh_validation", "saved_power_core")
-ALL_MODES = MODES + ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1")
+ALL_MODES = MODES + ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1", "fresh_within_validation")
 FRESH_NAMESPACE = "r11-h10-magnitude-validation-v1-20261026"
 SAVED_NAMESPACE = "r11-h10-magnitude-saved-power-v1-20261026"
 TEMPLATES = (1, 2, 3, 4, 6)
@@ -45,6 +45,8 @@ def fresh_cases():
 
 def expected_ordinals(mode):
     require(mode in ALL_MODES, "Unknown campaign mode")
+    if mode == "fresh_within_validation":
+        return list(range(12129))
     if mode not in ("fresh_validation", "saved_power_core"):
         from . import joint_interval_design
         return joint_interval_design.manifest(mode)["expectedOrdinals"]
@@ -54,6 +56,9 @@ def expected_ordinals(mode):
 
 def manifest(mode):
     """Return the full fixed scientific roster, never a runtime acceptance claim."""
+    if mode == "fresh_within_validation":
+        from .within_design import coverage_manifest
+        return coverage_manifest()
     if mode in ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1"):
         from . import joint_interval_design
         return joint_interval_design.manifest(mode)
@@ -71,6 +76,9 @@ def manifest(mode):
 
 
 def case_for(manifest, ordinal):
+    if manifest["mode"] == "fresh_within_validation":
+        from .within_design import coverage_case
+        return coverage_case(ordinal)
     if manifest["mode"] in ("fresh_joint_validation", "fresh_coverage_validation", "saved_coverage_s1"):
         from . import joint_interval_design
         return joint_interval_design.case_for(manifest, ordinal)

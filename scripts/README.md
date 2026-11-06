@@ -494,3 +494,18 @@ roles. `read_h6_h7_surplus_mapping.py --analysis RESULT_JSON --mapping MAP_JSON
 analysis JSON can replace fixture generation. The optional `example` stage writes
 a separate four-person illustration; it is not the original fixture. Neither
 route establishes native-task calibration, human direction or human power.
+
+## Within-Person Coverage And Midpoint Power
+
+`reproduce_proxy_h10_mapping.py produce/check` authenticates all 2,700 checked
+six-price endpoints and verifies the joint slope fits independently. It requires
+the original source directory as well as its exported allocation table.
+
+`reproduce_within_statistics.py prepare/produce/check/reduce` provides the fixed
+12,129-input coverage and 4,612-input midpoint scenarios. Use `--ids 0,10000`
+for the two original coverage cases or `--ids 0,1` for midpoint checks; `--all`
+selects the complete original roster. Midpoint preparation accepts either
+`--native-midpoint` to regenerate unpaid initial covariates or `--mapping` with
+a complete checked mapping. Neither route refits the frozen scenario slopes.
+See the [notebook](../notebooks/statistical_methods/within_person_coverage_and_midpoint_power.ipynb)
+for dependencies, commands, full settings and output interpretation.

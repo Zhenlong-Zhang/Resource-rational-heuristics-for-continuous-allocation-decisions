@@ -170,3 +170,11 @@ These tests use portable deterministic fixtures, not private fitted results.
 baseline-fit reuse, corrected denominators, independent reductions, unavailable
 inference and percentage-reporting invariants. Fixtures test software behavior;
 they are not a new full calibration or human-analysis validation.
+
+`test_within_publication.py` checks fixed coverage/midpoint populations and
+seeds, independent within-person projection, strict decisions and scalar
+denominators. It also checks source selection, logical-to-displayed conversion,
+native-library identity and full-versus-partial admission. Run with
+`python -m unittest discover -s tests -p test_within_publication.py`.
+Deterministic fixtures supplement, but do not replace, source-generating entry
+checks or formal scientific results.

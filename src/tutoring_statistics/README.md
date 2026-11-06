@@ -100,3 +100,21 @@ the magnitude notebook supplies the upstream generation and fitting commands.
 
 These comparisons preserve adverse coverage and false-rejection findings.
 Completed computation is not selection of a final analysis method.
+
+## Within-Person Coverage And Midpoint Power
+
+`within_design.py` defines the fixed laws, seeds and original ordinal rosters.
+`within_projection.py` estimates within-person slopes and residual degrees of
+freedom; `independent_within_projection.py` uses Helmert contrasts and QR.
+`within_reproduction.py` prepares, produces, checks and reduces selected or
+complete inputs, with reuse bound to unchanged sources and artifacts.
+
+`proxy_h10_mapping.py` authenticates the full six-price allocation output and
+converts logical-recipient rows to the historical displayed-recipient frame before it
+calls `proxy_h10_fit.R` plus `independent_proxy_h10_fit.R`. The resulting slopes
+describe that finite policy population, not human behavior.
+`midpoint_inputs.py` can instead regenerate the fixed scenario's unpaid native
+covariates without policy trajectories or new fits. `midpoint_generation.py`
+retains the frozen slopes and original sampling law. Matching reduction and
+independent-check modules preserve unknown, unavailable and partial outcomes.
+See the [notebook](../../notebooks/statistical_methods/within_person_coverage_and_midpoint_power.ipynb).

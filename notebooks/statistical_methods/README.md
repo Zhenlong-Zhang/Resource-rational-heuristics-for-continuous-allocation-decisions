@@ -310,6 +310,128 @@ Pointwise finite-law findings, shared KR/negative-correlation numerical cores,
 unfavorable coverage and false-rejection tradeoffs do not establish a final
 human-analysis method, uniform calibration or a recruitment target.
 
+## Within-Person Coverage and Midpoint Power
+
+[within_person_coverage_and_midpoint_power.ipynb](within_person_coverage_and_midpoint_power.ipynb)
+calls the closed three-method12129 coverage route, all six descriptive joint
+REML source-slope fits, and the separately selected4612 midpoint power law.
+Settings are in `configs/within_statistics.json`; all numerical/full switches
+default off. Two original inputs per study passed fresh generation, independent
+checking, partial reduction and no-work resume checks in the reference
+environment. The six-price bridge matched all2700 historical rows,36 slopes
+and24 contrasts; independent profile checks passed for all six fits. Public
+source admission was checked on12 existing endpoints, and all270 native midpoint
+covariates matched the historical library. Complete historical12129/4612 scalar
+records were independently reduced without rerunning those studies. These are
+bounded entry checks plus reused full-study evidence, not a new full simulation.
+
+Use the exact Python3.10.9/NumPy1.23.5/SciPy1.10.0 environment above for new
+coverage and midpoint inputs. The coverage comparator and descriptive mapping
+require R4.2.2 with the exact packaged DESCRIPTION-version map; `Rscript
+--vanilla` binds the resolved executable and loaded package/library bytes.
+A different Python patch version does not satisfy fresh-entry admission.
+The separate descriptive bridge records this declared reproduction environment,
+not an unestablished historical descriptive binary identity. Missing packages
+are blockers, not permission to substitute algorithms or relax pins.
+
+### Source-Slope Dependency
+
+Generate and independently check the full450-root/six-price public output using
+[personal-time sensitivity](../finite_tutoring/personal_time_reference.ipynb),
+or reuse compatible completed public outputs. The
+[allocation exporter](../finite_tutoring/allocation_and_welfare.ipynb) supplies
+`initial_need_amounts.csv` with columns
+`rate,condition,variant,main,person,price,trial_id,need_a,need_b,amount_a,budget_milli`.
+The bridge authenticates all2700 source endpoints, original logical initial
+means, integer budget/allocation arithmetic and price-qualified scientific IDs.
+After authentication it explicitly converts to the historical **displayed-recipient**
+frame for the statistical fit. For a swapped display it swaps the needs and
+complements the integer allocation index; it does not subtract rounded amounts.
+The allocation/welfare exporter remains in logical-recipient order. These are
+different column semantics, not interchangeable estimates of the same slopes.
+A selected two-root output cannot supply a complete fitted mapping. No private
+cache, fitted-result table or invented receipt is required or accepted.
+
+```bash
+python scripts/reproduce_proxy_h10_mapping.py produce --rows results/allocation_welfare_full/initial_need_amounts.csv --source results/personal_time_sensitivity_full --output results/proxy_h10_mapping --rscript Rscript
+python scripts/reproduce_proxy_h10_mapping.py check --rows results/allocation_welfare_full/initial_need_amounts.csv --source results/personal_time_sensitivity_full --output results/proxy_h10_mapping --rscript Rscript
+```
+
+Both accepted R algorithms retain all six fits: the condition-specific joint
+A/B random-intercept REML producer and independent dense profile-Cholesky/QR
+check. Preserve 36 signed slopes,24 magnitude contrasts and zero-variance
+boundaries, not only the midpoint. The original string-main fit ordering is
+distinct from numeric-main RNG library ordering. After source-derived parity,
+the midpoint uses its exact selected stored coefficient decimals; it never
+substitutes nearby recomputed values into the synthetic law.
+
+The fixed midpoint scenario also has a direct native-input route. It generates
+only the270 unpaid C1-C3 initial states, checks their identities and displayed
+recipient order, and binds the ordered27 ten-trial schedules to the
+frozen slopes. It neither reruns policies nor estimates new slopes. This route
+reproduces the selected synthetic law; the separate six-price analysis checks
+its descriptive origin. An existing complete checked mapping remains a valid
+alternative source.
+
+### Prepare, Produce, Check, Reduce
+
+```bash
+python scripts/reproduce_within_statistics.py prepare --study coverage --output results/within_coverage --node node --rscript Rscript
+python scripts/reproduce_within_statistics.py produce --output results/within_coverage --ids 0,10000 --execute
+python scripts/reproduce_within_statistics.py check --output results/within_coverage --ids 0,10000 --execute
+python scripts/reproduce_within_statistics.py reduce --output results/within_coverage --execute
+
+python scripts/reproduce_within_statistics.py prepare --study midpoint --native-midpoint --node node --output results/midpoint_power
+python scripts/reproduce_within_statistics.py produce --output results/midpoint_power --ids 0,1 --execute
+python scripts/reproduce_within_statistics.py check --output results/midpoint_power --ids 0,1 --execute
+python scripts/reproduce_within_statistics.py reduce --output results/midpoint_power --execute
+```
+
+`plan --study STUDY --output OUTPUT` reads the frozen plan without computation.
+For full reproduction replace `--ids` with `--all` in produce/check and require
+`--full` in reduce. Full coverage is S1 ordinals0..9999 plus S5 lambda2
+ordinals10000..12128; full midpoint is0..4611. Selection never changes seeds,
+draw shapes, order or planned denominators. Matching resumes reuse committed
+records without redraw/refit; uncommitted failed attempts are preserved and
+refused. All eight D/S references, separate availability/unknown categories,
+original IUT2/Bonferroni2/Holm4 and strict adjusted p<.05 remain unchanged.
+
+Coverage reuses the public native schedule generator and once-only REML/CR2
+components, not private operation wrappers. Within estimation uses centered SVD,
+RSS/[sum(n_i-1)-rank(PH)] and independent normalized Helmert/QR; the original
+REML guard never selects within inference. Midpoint inputs use centered mean60
+at(50,50), the frozen source-derived schedule library and distinct PCG64 streams.
+The independent adjacent Hoeffding bounds check fixes B4612 before generation.
+No synthetic midpoint REML or known residual-variance substitution occurs.
+
+Reduction reads independently checked scalar records, not RDS or new fits/QR.
+Optional `reduce --study STUDY --events EVENTS.jsonl --output OUTPUT --full
+--execute` checks supplied events using separate producer/reader reducers.
+This is explicitly arithmetic-only: the caller must authenticate the original
+archive and exactly-once membership. It neither fabricates public receipts nor
+claims historical runtime identity. Pure scalar readback can use a separately
+recorded compatible runtime, without weakening fresh-entry pins. A full result
+requires every original member; missing/technical unknown is not a nonrejection.
+
+### Retained Findings
+
+Historical coverage sole primary S1 B12:D was within9500/10000 versus CR29499,
+paired00/01/10/11=(449,52,51,9448), exact McNemar p=1: unresolved, not equivalence.
+S5 B12:S remained adverse: within1996/2129, CR21998, baseline1997. Near-zero S5
+discovery and prior S1 development undercoverage are not repaired by this port.
+Historical midpoint D3080/4612 has full-flow Hoeffding95 band
+[.6478230702515178,.6878230702515178], below80%; R/F/D are distinct, and F0 does
+not establish uniform calibration. Descriptive CP intervals do not select the
+primary decision. These values describe accepted evidence, not hardcoded
+results or favorable success thresholds for fresh inputs. No human power,
+193-recruit adequacy, continuous MDE or final-method adoption follows.
+
+The existing paired10000/40-cell routes above remain the public baseline;
+they are not redrawn by this notebook. Changed fixtures are in
+`tests/test_within_publication.py`. Saved full-cohort reduction,
+historical mapping parity and genuine public entry authentication are different
+verification claims; none can silently stand in for the others.
+
 ## Historical Calibration
 
 Open [calibration_and_power.ipynb](calibration_and_power.ipynb) from a repository checkout. The first code
