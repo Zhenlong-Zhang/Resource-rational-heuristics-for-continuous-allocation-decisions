@@ -226,6 +226,12 @@ equal-schedule welfare/search summaries, 24 defined rank-oriented slopes, six
 undefined C5 slopes and 120 allocation distances. These finite-model diagnostics
 do not establish human behavior or population precision.
 
+Its separate true-need section excludes exact simulated-need ties and adds
+gap and lower-need partial coefficients for 270 schedules, descriptive
+between-schedule SD, the paired C3 slope decomposition and source-verified C5
+selected routines. It reuses checked endpoints without rerunning policies.
+True-need coefficients do not replace the historical initial-belief estimand.
+
 [Within-person coverage and midpoint power](notebooks/statistical_methods/within_person_coverage_and_midpoint_power.ipynb)
 provides the historical displayed-recipient joint slope mapping at six prices, three-method coverage comparison
 and fixed midpoint conditional-power scenario, plus a common-t versus within-IUT2

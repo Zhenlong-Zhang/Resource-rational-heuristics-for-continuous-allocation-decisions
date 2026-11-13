@@ -166,3 +166,12 @@ tutoring minutes for the joint statistical projection. That projection is not
 the rank-oriented share regression. `RUN=False`, `FULL=False` and
 `RUN_POLICY=False` prevent accidental simulation; enable policy generation only
 when matching independently checked inputs are not already available.
+
+The separate `RUN_TRUE_NEED` section uses exact simulated true needs rather than
+initial means. It excludes exact ties, fits a gap slope and a partial lower-need
+slope in each schedule, and reports equal-schedule means and sample SD. Full
+reference output has 2700 endpoints, 66 ties and 270 full-rank fits. The reader
+also reports the noncausal paired C3 slope decomposition and the saved C5
+highest-price rule with displayed/logical recipient counts. It preserves the
+original undefined initial-mean C5 slopes. Both analyses reuse the same checked
+policy inputs and do not run policies; no private result archives are required.

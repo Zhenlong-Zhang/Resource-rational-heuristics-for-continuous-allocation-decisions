@@ -47,6 +47,8 @@ Generated simulation outputs belong under `results/` and are not source-controll
   prices and original stream identities for the repeated-myopic comparison.
   Original request/read and terminal proxies remain fixed; this recipe does
   not calibrate human timing or change the baseline reference.
+- `true_need_diagnostics.json`: exact simulated-need tie exclusion, initial-budget
+  normalization, two distinct OLS estimands and descriptive fixed-schedule SD.
 - `personal_time_diagnostics.json`: allocation/welfare estimands, tie
   tolerances, native denominator, latent law and equal-schedule reduction for
   checked outputs of `personal_time_sensitivity.json`.

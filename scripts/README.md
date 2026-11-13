@@ -151,6 +151,24 @@ least-squares calculation checks the numerical reduction. The full figure
 option requires all 2,700 endpoints; partial inputs retain partial status.
 Historical provenance and report layouts are not scientific inputs.
 
+`analyze_true_need_allocations.py` adds a separate true-need analysis to the same
+checked policy input:
+
+```bash
+python scripts/analyze_true_need_allocations.py --input results/personal_time_sensitivity/full --output results/true_need --full
+```
+
+Outputs include `true_need_schedules.csv`, `true_need_conditions.csv`,
+`c3_paired_decomposition.json`, `c5_selected_rules.json` and source-linked
+`trial_metrics.json`/`source_check.json`. `fixed_outcomes/` preserves the existing
+endpoint admission and original diagnostics. Exact true-need ties, full-rank
+requirements and the initial-budget denominator are explicit; missing/rank-
+deficient fits are unavailable, not zero. Error summaries are sample SD across
+nine fixed schedules, not confidence intervals. The C3 decomposition is
+descriptive, and C5 counts read the saved terminal routine, not a benchmark guess.
+Omit `--full` for explicitly partial inputs; partial runs do not become full
+2700-endpoint evidence. No policy is rerun by either analysis command.
+
 ## Magnitude Composition and Precision
 
 The pure candidate API is

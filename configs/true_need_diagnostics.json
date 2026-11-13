@@ -1,0 +1,11 @@
+{
+  "schema": "true-need-allocation-diagnostics-v1",
+  "allocationRecipe": "personal_time_diagnostics.json",
+  "tieRule": "exact_integer_need_category_equality",
+  "response": "higher_true_need_recipient_final_share",
+  "predictorDenominator": "initial_tutoring_budget",
+  "gapModel": "intercept_plus_high_minus_low_true_need",
+  "partialModel": "intercept_plus_low_and_high_true_need",
+  "aggregation": "nine_equal_weight_fixed_schedules_sample_sd_ddof1",
+  "scope": "fixed_finite_roster_not_population_or_human_inference"
+}

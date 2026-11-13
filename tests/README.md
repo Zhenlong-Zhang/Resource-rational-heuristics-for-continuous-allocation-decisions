@@ -1,5 +1,11 @@
 # Test Suite
 
+`test_true_need_diagnostics.py` checks true-need estimands, exact ties, fixed-roster
+and partial/undefined behavior, paired slope decomposition and display-order
+rule counts. `test_true_need_reproduction.py` checks the portable entrypoint,
+fixed recipe and selected-routine source linkage. These are software fixtures,
+not new policy simulations or human statistical validation.
+
 `test_cost_aware_campaign.py` checks the complete fixed person/history roster,
 shard independence, original endpoint expansion, ten-main eligibility,
 person/variant MCSE, partial-study gates and source-bound missing-only resume.
