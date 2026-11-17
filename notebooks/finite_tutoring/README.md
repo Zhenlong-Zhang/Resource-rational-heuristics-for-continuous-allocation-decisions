@@ -1,5 +1,30 @@
 # Finite Task Reproduction
 
+## Fixed-Design Strategy Cards
+
+[strategy_card_comparison.ipynb](strategy_card_comparison.ipynb) regenerates the
+original five conditions x nine schedules x ten main trials, evaluates six
+allocation/search rules and independently checks their results before producing
+30 condition-card summaries. The four immediate rules use displayed guesses;
+the fifth asks each recipient once and integrates every report pair. Adaptive
+one-more search follows one fixed replicate per root with only budget exhaustion
+as its query limit. Its strict binary64 decisions and separate exact-real
+external payoff evaluation remain distinct.
+
+Use a separate Python 3.11.5 environment; the first cell installs its packages,
+including NumPy 1.24.3. Node 22.14.0 is also required. `RUN=False` and `RUN_PRODUCTION=False` prevent
+accidental computation. Full mode has 450 roots; a two-root selection only
+checks the entry and cannot reproduce the full summary. Each phase has immutable
+source/input bindings. See [CLI usage](../../scripts/README.md#fixed-design-strategy-cards)
+for disjoint-root parallelism and output files.
+
+Fresh computation needs no cached private scores or reports. The first five
+cards retain payoff-support bounds, while adaptive intervals enclose numerical
+error, not sampling uncertainty. One adaptive path per root supplies no
+within-root MCSE or certified ranking and is not a validated human-study target.
+
+## Baseline Design
+
 Open [design_validation.ipynb](design_validation.ipynb) from a repository checkout. The first code cell
 installs the Python package; execution defaults to `RUN = False`.
 

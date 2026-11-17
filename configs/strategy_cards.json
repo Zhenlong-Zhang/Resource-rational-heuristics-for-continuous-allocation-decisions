@@ -1,0 +1,24 @@
+{
+  "schema": "fixed-design-strategy-cards-v1",
+  "source_recipe": "personal_time_reference.json",
+  "conditions": ["C1", "C2", "C3", "C4", "C5"],
+  "variants": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  "mains": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "replicate": 0,
+  "question_limit": "budget_only",
+  "display_version": "r9-finite95-channel80-decimal-v1",
+  "rng": "sha256-first64-big-endian-midpoint-v1",
+  "stream_domain": "R13-one-more-v1",
+  "runtime": {"python": "3.11.5", "numpy": "1.24.3", "node": "22.14.0", "numerical_threads": 1},
+  "gpa_comparison_tolerance": 2e-11,
+  "model": {
+    "internal": "current_runtime_frozen_source_binary64_utility_strict_float_comparison",
+    "external": "normalized_real_exp_of_admitted_binary64_logs_and_width_dyadic160",
+    "history": "owned_ordered_cursor_and_exact_integer_budget",
+    "historyReuse": false,
+    "recipientTies": "physical_symmetric_keyed_midpoint",
+    "rootWeights": "one_ninetieth_within_each_of_five_conditions",
+    "terminalTies": "retain_unresolved_native_set"
+  },
+  "scope": "fixed_450_roots_one_adaptive_path_each_descriptive_not_human_targets"
+}

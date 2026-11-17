@@ -78,6 +78,13 @@ their own declared synthetic populations and statistical models. Numerical
 validation neither transfers these findings to the capped model nor adopts a
 final human-study analysis.
 
+The [fixed-design strategy cards](notebooks/finite_tutoring/strategy_card_comparison.ipynb)
+compare five simple policies with adaptive one-more search on the original 450
+roots. This separate budget-only comparison uses one fixed adaptive path per
+root and preserves its binary64 decision rule. Its 30 condition-card summaries
+are descriptive: numerical enclosures are not sampling confidence intervals or
+certified rankings, and the policies are not adopted human-study targets.
+
 ## Installation
 
 ```bash

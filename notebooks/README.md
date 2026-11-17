@@ -97,6 +97,13 @@ full-count gates or force candidate selection.
 
 ## Running and Interpreting
 
+The [fixed-design strategy-card comparison](finite_tutoring/strategy_card_comparison.ipynb)
+provides a separate 450-root, six-policy route from native input generation
+through independent checks to 30 condition-card summaries. Its one adaptive
+path per root is descriptive, not a sampling-precision or certified-ranking
+analysis. The [finite guide](finite_tutoring/README.md#fixed-design-strategy-cards)
+states the separate numerical environment and safe defaults.
+
 The finite horizon notebook regenerates paired histories before the two terminal
 consumers. Its initial/root analyses do not need a cached panel. It provides raw
 scenario records, paired summaries, macro counts and numerical bound witnesses;

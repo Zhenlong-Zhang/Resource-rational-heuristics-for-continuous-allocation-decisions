@@ -5,6 +5,40 @@ For an interactive route with settings and output readers, use the
 [thematic notebook index](../notebooks/README.md). Scientific inputs are listed
 in [configs](../configs/README.md); generated outputs belong under `results/`.
 
+## Fixed-Design Strategy Cards
+
+`reproduce_strategy_cards.py` runs the original 450-root six-policy comparison
+without private input archives. Use Python 3.11.5, NumPy 1.24.3 and Node 22.14.0
+in a separate environment. The runner sets numerical threads to one. See the
+[notebook](../notebooks/finite_tutoring/strategy_card_comparison.ipynb) for installation.
+
+```bash
+python scripts/reproduce_strategy_cards.py prepare --full --output results/strategy_cards
+python scripts/reproduce_strategy_cards.py produce --full --output results/strategy_cards
+python scripts/reproduce_strategy_cards.py check --full --output results/strategy_cards
+python scripts/reproduce_strategy_cards.py aggregate --full --output results/strategy_cards
+```
+
+`--config configs/strategy_cards.json` is the default frozen recipe; `--node`
+selects the native display runtime. Replace `--full` with `--only C3:0:1,C5:0:1`
+for a small selection. Partial aggregation omits `--full`; it retains original
+1/90 condition weights rather than renormalizing observed roots. No implicit
+production is allowed. Fresh `produce` runs the policy; `check` replays saved
+outputs independently; aggregation does neither.
+
+Prepare once before launching separate processes with disjoint `--only`
+selections. Per-root locks prevent duplicate writers. Completed outputs can be
+reused only with matching source, inputs and numerical build. After an interrupted
+process, retain its evidence and remove its lock only after confirming that no
+writer remains; do not overwrite partial scientific output.
+
+Outputs are `original_inputs/`, bound `roots.json`/`run.json`, per-root
+`producer/` and `independent/` records, then `summary/full/summary.json`,
+`condition_cards.csv` and `source_check.json`. Partial summaries have separate
+names. The full 30-cell table distinguishes expected five-card points/support
+from adaptive numerical enclosures. Its single adaptive replicate per root
+does not supply report-stream precision, certified rankings or human targets.
+
 ## Complete Cost-Aware Study
 
 `reproduce_cost_aware_study.py` wraps the selected-trial numerical producer and

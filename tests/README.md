@@ -192,3 +192,12 @@ immutable input admission, ordinal selection and nonexecuting CLI defaults.
 Run with `python -m unittest discover -s tests -p 'test_common_t*.py'`.
 These deterministic checks do not repeat the original12129-input comparison
 or establish prospective calibration, coverage repair or human power.
+
+`test_strategy_card_fixed.py` checks the display-based rules, selected-index
+payoff arithmetic, fixed-two order/fees, independent readback and ambiguity
+handling. `test_strategy_card_reproduction.py` checks original coordinates,
+fixed denominators, missing/unresolved records, strict comparisons, immutable
+entry defaults and per-root locking. Run with
+`python -m unittest discover -s tests -p 'test_strategy_card*.py'` in the
+card notebook's numerical environment. Fixtures and mocked production wiring
+do not generate new adaptive trajectories or establish sampling precision.

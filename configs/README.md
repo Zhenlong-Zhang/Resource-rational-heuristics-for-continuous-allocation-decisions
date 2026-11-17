@@ -97,3 +97,9 @@ Generated simulation outputs belong under `results/` and are not source-controll
   projection schedules and twelve variance-adaptive calibration cells.
 - `tutoring_power_sensitivity_v01.json`: 28 conditional moment/power scenarios,
   not a final recruitment recommendation.
+
+- `strategy_cards.json`: original 450-root, six-policy budget-only comparison,
+  one fixed adaptive replicate per root, exact stream identity and separate
+  Python/NumPy/Node numerical scope. `personal_time_reference.json` provides
+  the native input recipe, not the decision policy. See the
+  [strategy-card notebook](../notebooks/finite_tutoring/strategy_card_comparison.ipynb).

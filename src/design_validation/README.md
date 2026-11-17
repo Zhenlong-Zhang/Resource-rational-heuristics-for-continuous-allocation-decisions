@@ -67,3 +67,10 @@ termination. Its 450 expected endpoints and 50 original-state margin comparisons
 are not realized histories, cap20 validation or final human-model adoption.
 Numerical guards retain unexpected decisions as discrepancies rather than
 forcing the previously observed initial stopping pattern.
+
+`strategy_cards/` supplies a separate six-policy fixed-design comparison. Its
+portable input generator, five-card kernels, adaptive binary64 policy,
+independent readers and fixed-weight summary are documented in the
+[module guide](strategy_cards/README.md). It reuses the original native roots,
+not the personal-time decision policy. This comparison is descriptive and
+does not certify rankings or establish human-study targets.
