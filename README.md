@@ -9,6 +9,12 @@ Start with [installation](#installation), then choose an analysis in the
 settings and generated outputs; the [CLI guide](scripts/README.md) provides
 command-line alternatives.
 
+To reproduce the four figures in *Fair Allocation Under Deliberation Costs*,
+use [paper_figures.ipynb](notebooks/finite_tutoring/paper_figures.ipynb) or the
+[single-command workflow](scripts/README.md#paper-figures). It includes native
+inputs, six-price numerical production, independent checking, reductions and
+plotting, with resume and checked-output redraw options.
+
 ## Scientific Questions
 
 The project asks when a resource-rational strategy resembles:

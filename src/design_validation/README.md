@@ -6,6 +6,7 @@ enumerate that support. The native allocation grid has 1,001 shares.
 
 | Module | Purpose |
 | --- | --- |
+| `paper_reproduction.py`, `paper_figures_plot.py` | Resumable original six-price source-to-figure orchestration, checked-output reuse, sealed redraw and the four paper figures. No alternative model implementation. |
 | `bounded_task.py` | Task configuration, finite Bayes, terminal allocation, exact one-step sampling, seeded episodes and summaries. |
 | `revision.py` | One fixed prior revision, confirmation stages, selection criteria and grid sensitivity. |
 | `identifiability.py` | Synthetic fixed-share/equal-outcome response rules, group slopes and individual held-out classification. |

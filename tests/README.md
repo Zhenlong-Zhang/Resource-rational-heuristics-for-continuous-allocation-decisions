@@ -1,5 +1,11 @@
 # Test Suite
 
+`test_paper_reproduction.py` checks explicit full/partial scope, source-bound
+independent-checkpoint reuse and invalid-bundle refusal. `test_paper_figures_plot.py`
+checks the four figures' metric definitions, rounded minimum ties, complete
+rosters and fixed-schedule SDs. Fixtures test software behavior; accepted-table
+parity and a small real native entry are separate validation evidence.
+
 `test_true_need_diagnostics.py` checks true-need estimands, exact ties, fixed-roster
 and partial/undefined behavior, paired slope decomposition and display-order
 rule counts. `test_true_need_reproduction.py` checks the portable entrypoint,

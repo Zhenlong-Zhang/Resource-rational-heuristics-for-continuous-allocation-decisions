@@ -1,0 +1,60 @@
+{
+  "schema": "paper-figures-v1",
+  "allocationSchema": "finite-allocation-welfare-v1",
+  "trueNeedSchema": "true-need-allocation-diagnostics-v1",
+  "scope": {"conditions": 5, "prices": 6, "schedulesPerCell": 9, "trialsPerSchedule": 10, "endpoints": 2700},
+  "prices": [
+    {"key": "rho_0", "value": 0, "label": "0"},
+    {"key": "rho_0.00001", "value": 0.00001, "label": "10\u207b\u2075"},
+    {"key": "rho_0.0001", "value": 0.0001, "label": "10\u207b\u2074"},
+    {"key": "rho_0.001", "value": 0.001, "label": "0.001"},
+    {"key": "rho_geometric_0.001_0.01", "value": 0.0031622776601683794, "label": "0.00316"},
+    {"key": "rho_0.01", "value": 0.01, "label": "0.01"}
+  ],
+  "conditions": [
+    {"id": "C1", "label": "Precise, symmetric needs", "shortLabel": "Precise, symmetric"},
+    {"id": "C2", "label": "Precise, unequal needs", "shortLabel": "Precise, unequal"},
+    {"id": "C3", "label": "Uncertain, unequal needs", "shortLabel": "Uncertain, unequal"},
+    {"id": "C4", "label": "Scarcity, precise needs", "shortLabel": "Scarcity, precise"},
+    {"id": "C5", "label": "Scarcity, uncertain need rank", "shortLabel": "Scarcity, uncertain rank"}
+  ],
+  "benchmarks": [
+    {"label": "ES", "field": "ES_pp", "definition": "Equal split"},
+    {"label": "EO", "field": "EO_pp", "definition": "Equal terminal mean surplus"},
+    {"label": "MU", "field": "OPT_pp", "definition": "Representative expected-utility-maximizing grid index"},
+    {"label": "LN", "field": "AL_pp", "definition": "All to lower terminal mean need; split on ties"}
+  ],
+  "definitions": {
+    "frameworkBehavior": "At rho_0.001: ES_pp == 0 gives exact equal division; otherwise AL_pp == 0 gives favor lower terminal mean need; otherwise EO_pp < ES_pp gives resembles equal mean surplus (relative to ES only, not nearest); otherwise show all rounded-nearest benchmarks. Prefix Stop if initial_ask == 0, Ask if initial_ask == 1, otherwise the initial-question percentage. Rules do not use condition IDs or predicted outcomes.",
+    "distances": "Mean absolute allocation-share difference at matched terminal beliefs and remaining budget, in percentage points; ten trials then nine equal-weight schedules",
+    "minimum": "All minima after Python fixed-point formatting to two decimal places",
+    "realizedUtility": "realized_u: sum of recipient utilities evaluated at target-specific true needs and saved allocation/budget; no personal-time subtraction; not posterior expected utility",
+    "initialSearch": "100 * initial_ask: percentage of endpoints with an initial question",
+    "trueNeedOutcome": "Final share of the strictly higher true-need recipient; exclude exact true-need category ties",
+    "trueNeedPredictors": "True need in tutoring units divided by initial tutoring budget, not terminal budget",
+    "gap_slope": "Intercept OLS of higher-true-need share on (higher minus lower true need) / initial budget within each ten-trial schedule",
+    "lower_need_partial": "Coefficient on lower true need / initial budget in intercept OLS controlling higher true need / initial budget within each schedule",
+    "uncertainty": "sample_sd_across_nine_fixed_schedules_ddof1",
+    "undefined": "Reject undefined plotted fits; never drop a schedule or condition-price point",
+    "provenance": "Fixed-target model outcomes; plotting consistency does not authenticate sources or establish original historical trajectories, Monte Carlo precision, or human inference"
+  },
+  "frameworkPrice": "rho_0.001",
+  "decimalPlaces": 2,
+  "absoluteTolerance": 1e-10,
+  "style": {
+    "fontFamily": "DejaVu Sans",
+    "fontSize": 10,
+    "colors": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
+    "accent": "#255C89",
+    "band": "#f2f6f8",
+    "tableBand": "#eef5fb",
+    "tableEdge": "#a7b8c8",
+    "priceAxis": "Combined GPA per personal second"
+  },
+  "figures": {
+    "figure_1_framework": {"sizeInches": [11, 6.4], "dpi": 180},
+    "figure_2_allocation_distances": {"sizeInches": [10, 4.3], "dpi": 240},
+    "figure_3_utility_and_search": {"sizeInches": [9, 3.4], "dpi": 240},
+    "figure_4_true_need_coefficients": {"sizeInches": [10, 4], "dpi": 240}
+  }
+}

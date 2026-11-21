@@ -1,5 +1,18 @@
 # Finite Task Reproduction
 
+## Paper Figures
+
+[paper_figures.ipynb](paper_figures.ipynb) reproduces the four paper figures with
+one shared entry: framework, four-benchmark allocation matrix, realized utility
+and initial search, and true-need coefficients with fixed-schedule sample SDs.
+It generates original inputs and independently checked six-price outcomes from
+scratch, resumes missing records, or reduces existing matching checked results.
+Fast redraw validates a sealed complete reduction bundle and runs no policy.
+Python 3.10, NumPy 1.23.5 and Node 22.14.0 are required for the numerical chain.
+The first cell installs dependencies; computation switches default off. A small
+selection checks wiring but cannot claim to reproduce the full four figures.
+This personal-time proxy model is distinct from the strategy-card model below.
+
 ## Fixed-Design Strategy Cards
 
 [strategy_card_comparison.ipynb](strategy_card_comparison.ipynb) regenerates the

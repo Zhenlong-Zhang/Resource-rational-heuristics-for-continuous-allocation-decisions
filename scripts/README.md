@@ -5,6 +5,42 @@ For an interactive route with settings and output readers, use the
 [thematic notebook index](../notebooks/README.md). Scientific inputs are listed
 in [configs](../configs/README.md); generated outputs belong under `results/`.
 
+## Paper Figures
+
+With Python 3.10, NumPy 1.23.5 and Node 22.14.0, one command regenerates native
+inputs, all six prices x 450 roots, independently checks each policy record,
+reduces matched true-state outcomes and draws all four paper figures:
+
+```bash
+python scripts/reproduce_paper_figures.py all --full --output results/paper_figures --workers 1
+```
+
+Set `--workers` to available CPUs for independent root processes. Repeating this
+command resumes missing producer and independent-check records. It does not
+replay completed matching policies. Sources, numerical build, selection and
+recipe must match; otherwise use a new output directory. Numerical threads
+should be set to one per process to avoid oversubscription.
+
+For a small real entry check, replace `--full` with `--only C1:0:1`. Partial runs
+produce diagnostic records but no full paper figures. If matching public
+six-price checked outputs already exist, reduce them without simulating policies:
+
+```bash
+python scripts/reproduce_paper_figures.py reduce --full --input results/personal_time_sensitivity --output results/paper_from_checked
+python scripts/reproduce_paper_figures.py redraw --input results/paper_figures/paper --output results/paper_redraw
+```
+
+`redraw` requires `figure_bundle.json` and its checked reductions from a complete
+prior `all` or `reduce` run, not arbitrary CSVs. The four files are
+`figure_1_framework.png`, `figure_2_allocation_distances.png`,
+`figure_3_utility_and_search.png` and `figure_4_true_need_coefficients.png`,
+under `paper/figures/` for `all`/`reduce`, or the requested redraw output.
+The frozen plot definitions are in `configs/paper_figures.json`. Expected-only
+stops receive target-key fixed model outcomes, not invented historical search
+trajectories. SD bars describe nine fixed schedules, not population uncertainty.
+The notebook [paper_figures.ipynb](../notebooks/finite_tutoring/paper_figures.ipynb)
+provides installation, configurable calls and figure display.
+
 ## Fixed-Design Strategy Cards
 
 `reproduce_strategy_cards.py` runs the original 450-root six-policy comparison

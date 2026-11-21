@@ -15,6 +15,10 @@ Generated simulation outputs belong under `results/` and are not source-controll
 
 ## Finite Tutoring Settings
 
+- `paper_figures.json`: frozen six-price ordering, four-figure layout and metric
+  definitions for the source-to-paper reproduction entry. It is a plotting recipe,
+  not a substitute numerical model or a file of accepted results.
+
 - `tutoring_conditions_baseline.json` and `tutoring_conditions.json`: baseline
   and revised finite task; the revised C3 centres are [50, 70] rather than [60, 60].
 - `tutoring_design_revision_v02.json`: C3-only change, input/source integrity
