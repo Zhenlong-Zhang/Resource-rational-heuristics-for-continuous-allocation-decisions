@@ -4,6 +4,11 @@ Entry points are organized by scientific question and result family. They call
 the shared implementation in `src/` and portable runners in `scripts/`; no model
 or inference method is duplicated in notebook cells.
 
+- [Operation costs](finite_tutoring/operation_costs.ipynb): literal priced VOC,
+  five no-question rules and complete fixed ask-once expectations.
+- [Coefficient precision](finite_tutoring/coefficient_precision.ipynb): saved
+  design diagnostics and deterministic C5 finite-law/original-floor preparation.
+
 Use `main` for the maintained reproduction workflows. Retained historical
 analyses are identified by their scientific scope and fixed source versions,
 not by separate maintained branches. See the [scientific scope](../README.md#scientific-scope)

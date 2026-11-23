@@ -107,3 +107,8 @@ Generated simulation outputs belong under `results/` and are not source-controll
   Python/NumPy/Node numerical scope. `personal_time_reference.json` provides
   the native input recipe, not the decision policy. See the
   [strategy-card notebook](../notebooks/finite_tutoring/strategy_card_comparison.ipynb).
+- `operation_menu.json`: two evaluated roots, seven fixed procedures and eight
+  exact prices for saved pair/menu and sufficient symbolic cost conditions.
+- `operation_costs.json`: the original five variant-0/main-1 roots, eight exact
+  binary64 prices, literal three-price subset and four fixed ask-once directions.
+  Unknown operation times remain symbolic, with a separate one-second member.

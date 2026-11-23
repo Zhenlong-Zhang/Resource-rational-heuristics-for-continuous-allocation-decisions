@@ -1,5 +1,26 @@
 # Test Suite
 
+`test_operation_menu*.py` protects exact pair signs and open cost boundaries,
+structural rather than overlap ties, named-policy overhead, complete menu
+coverage, twelve semantic refusals and explicit saved-input/reuse boundaries.
+Synthetic operands test interfaces and do not stand in for historical results.
+
+`test_operation_costs.py` protects single-use signed interval reduction,
+positive-upper tiny report masses, H-only actor access, native projection,
+typed fee ownership and immutable missing-only checkpoints. Independent
+reference modules verify actual native entries separately; synthetic tests do
+not establish five-root numerical reproduction or human timing validity.
+
+`test_literal_operation_costs.py` checks paid-VOC operation counts, reached-
+history conditioning, independent pricing and interrupted numerical resume.
+`test_coefficient_*.py` checks saved-design geometry, no-refit behavior, exact
+compact-input admission and portable CLI/checkpoint boundaries.
+`test_c5_moments.py` compares independent strict-CDF finite laws, moment matrices,
+signed ranges and the original empirical-Bernstein precision floor.
+`test_c5_precision_planning.py` checks independent adjacent-integer certificates,
+saved-design admission, zero-slope cases, source-bound reuse and the public CLI.
+These design-only checks do not draw observations or establish achieved precision.
+
 `test_paper_reproduction.py` checks explicit full/partial scope, source-bound
 independent-checkpoint reuse and invalid-bundle refusal. `test_paper_figures_plot.py`
 checks the four figures' metric definitions, rounded minimum ties, complete

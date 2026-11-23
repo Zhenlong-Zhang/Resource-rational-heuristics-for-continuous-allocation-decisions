@@ -5,6 +5,122 @@ For an interactive route with settings and output readers, use the
 [thematic notebook index](../notebooks/README.md). Scientific inputs are listed
 in [configs](../configs/README.md); generated outputs belong under `results/`.
 
+## Operation Costs
+
+Use Python 3.11.5, NumPy 1.24.3 and Node 22.14.0. The
+[notebook](../notebooks/finite_tutoring/operation_costs.ipynb) installs the
+matching packages and leaves computation disabled.
+
+```bash
+python scripts/reproduce_operation_costs.py all \
+  --output results/operation_costs_small --conditions C5 \
+  --families noask,ask_once --directions A --workers 1
+python scripts/reproduce_operation_costs.py all \
+  --output results/operation_costs --workers 4
+```
+
+The second command is the complete five-root operation-cost calculation,
+not a parameter sweep. Separate `prepare`, `produce`, `check` and `tables`
+phases use the same arguments. Repeating a command resumes immutable compatible
+checkpoints. `tables` only reduces checked products. Output includes complete
+JSON evidence and noask, menu-winner, literal, ask-once and contrast CSVs.
+Literal after-search values are conditional; ask-once values are ex-ante.
+Unknown coefficients stay symbolic beside an illustrative one-second member.
+
+### Seven-Procedure Menu
+
+After the complete source command above, reduce the two evaluated roots:
+
+```bash
+python scripts/reproduce_operation_menu.py all \
+  --input results/operation_costs --output results/operation_menu
+python scripts/reproduce_operation_menu.py check \
+  --input results/operation_costs --output results/operation_menu
+```
+
+This saved-only step compares all 42 pairs at eight exact prices, with 16 menu
+best sets and sufficient open price/time regions. It preserves symbolic
+nonnegative operation durations separately from the one-second member.
+Unresolved interval overlap is not a tie; a tie requires a structural or exact
+point proof. Extra personal seconds are assigned to the explicitly named policy
+without changing tutoring time, information, or outcomes. These comparisons
+are not a free online selector or a globally optimal policy.
+
+For this result family alone, the upstream source command may use
+`--conditions C3,C5 --families noask,ask_once --directions A,B`. Missing upstream
+products cause an error rather than implicit regeneration. Optional `export`
+writes `operands.json` from checked products. To recheck these saved mathematical
+operands, use `all` or `check` with `--input-kind saved-operands`; this verifies
+the interval algebra and saved input bindings, not historical policy execution.
+The default checked-products route additionally requires original compatible
+source/checkpoint/independent-reader bindings.
+
+## Saved-Design Precision Planning
+
+The separate planning entry reads a complete checked C5 preparation:
+
+```bash
+python scripts/reproduce_precision_planning.py all \
+  --input results/coefficient_c5_full --output results/c5_precision_plan
+python scripts/reproduce_precision_planning.py check \
+  --input results/coefficient_c5_full --output results/c5_precision_plan
+```
+
+Generate those inputs with the `c5 --full` route below if needed. The planning
+entry does not implicitly generate missing inputs. `plan.json`,
+`independent_check.json` and `precision_counts.csv` preserve six n/n-1
+certificates. The old EB five-look floor is necessary only; new centered
+Hoeffding/Bernstein bounds are conditional sufficient single-look plans.
+For supplied mathematical inputs use `--input-kind saved-designs --input
+operands.json`, created by `c5_precision_reproduction.operand_document` from
+nine saved design payloads and their summary. That mode verifies the conditional
+math, not finite-law or historical execution. No policy sampling, matrix
+inversion, achieved precision or adoption of a new confidence rule is implied.
+The retained non-adoption field refers to the historical planning certificate,
+not to subsequent project decisions or independently authorized campaigns.
+
+## Coefficient Diagnostics
+
+Use the original Python 3.10 / NumPy 1.23.5 environment, not the operation-cost
+environment. A complete compatible sealed paper bundle can be diagnosed
+without running policies:
+
+```bash
+python scripts/reproduce_coefficient_diagnostics.py diagnose \
+  --input results/paper_figures/paper --output results/coefficient_diagnostics
+python scripts/reproduce_coefficient_diagnostics.py check-diagnostics \
+  --input results/paper_figures/paper --output results/coefficient_diagnostics
+python scripts/reproduce_coefficient_diagnostics.py c5 \
+  --only C5:0:1 --output results/c5_preparation_small
+```
+
+For a complete original C5 deterministic preparation, replace `--only C5:0:1`
+with `--full`; `--policy-input` can reuse a compatible checked six-price source.
+The `fresh --full` mode explicitly regenerates the expensive original endpoints
+before diagnosis. No new Monte Carlo replicate or policy-estimation plan is
+part of C5 preparation. See the
+[notebook](../notebooks/finite_tutoring/coefficient_precision.ipynb) for exact
+scientific boundaries and saved-versus-fresh options.
+
+For the original compact dataset, use `import-original` rather than the
+paper-bundle reader. Supply `admitted_rows.json`, `public_summary.json` and
+`true_need_schedules.csv` in one directory. The importer checks exact scientific
+content hashes, the complete row roster and saved-coefficient linkage; it does
+not construct a policy epoch or replace the original provenance flags.
+
+```bash
+python scripts/reproduce_coefficient_diagnostics.py import-original \
+  --input results/original_coefficient_inputs --output results/original_import
+python scripts/reproduce_coefficient_diagnostics.py diagnose-original \
+  --input results/original_import --output results/original_diagnosis
+python scripts/reproduce_coefficient_diagnostics.py check-original \
+  --input results/original_import --output results/original_diagnosis
+```
+
+This optional reuse mode evaluates saved scientific inputs without policy runs
+or refitting. `fresh --full` remains independent of those files. The import is
+not itself a revalidation of historical execution or whole-population parity.
+
 ## Paper Figures
 
 With Python 3.10, NumPy 1.23.5 and Node 22.14.0, one command regenerates native

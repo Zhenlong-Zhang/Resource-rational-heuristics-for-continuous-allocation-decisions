@@ -1,5 +1,59 @@
 # Finite Task Reproduction
 
+## Operation Costs
+
+[operation_costs.ipynb](operation_costs.ipynb) generates original C1-C5
+variant-0/main-1 inputs, literal costed VOC paths at three prices, five
+precommitted no-question rules at eight prices, and four C3/C5 ask-once/raw
+expectations. It calls the shared [implementation](../../src/design_validation/operation_costs/README.md),
+independent readers and CSV routes. The first cell installs the separate
+Python 3.11.5 / NumPy 1.24.3 dependencies; Node 22.14.0 is also required.
+
+`RUN=False` and `FULL=False` are safe defaults. The small entry uses C5,
+no-question rules and one full-100-report direction, not the whole result set.
+`FULL=True` selects all five roots, 15 literal scenarios, 25 noask actors,
+200 noask price rows, 40 menu cells, 32 ask-once price rows and 64 ES/raw
+contrasts. `WORKERS` operates on disjoint units; numerical threads stay at one.
+Re-run the same command to resume missing compatible phases. Checked table
+reuse does not rerun policies or require private files.
+
+The final optional cell compares seven precommitted procedures on C3/C5:
+42 pairs, 336 pair-price cells and 16 best-set cells. It reads the complete
+checked noask and two-direction ask-once outputs without new policy evaluation.
+`menu_best.csv`, `pair_prices.csv` and `sufficient_conditions.json` report
+structural ties, strict price regions, named-policy personal-overhead thresholds
+and sufficient nonnegative symbolic-cost halfspaces. These are finite-menu
+comparisons, not a free selection procedure or a global/human optimum.
+
+Prices are exact captured binary64 operands. Canonical external laws,
+strict source64 decisions and H-only displayed inputs are separate. Personal
+time is not tutoring time. Symbolic unknown durations and their one-second
+illustration remain separate; neither is empirical human timing. Literal
+searched endpoints are conditional, whereas ask-once values are full ex-ante.
+
+## Coefficient Precision
+
+[coefficient_precision.ipynb](coefficient_precision.ipynb) diagnoses the saved
+2,700 endpoints and 270 schedule fits without changing their old OLS estimates.
+It also prepares C5 implemented 53-bit laws, moments, design matrices,
+signed ranges, high-price population-zero certificates and the original
+five-look precision floor. This finite-law preparation is not a canonical
+real-exp evaluation or new low-price coefficient estimate.
+
+Use the original Python 3.10 / NumPy 1.23.5 environment with Node 22.14.0,
+separate from operation costs. Fresh inputs route through the existing public
+personal-time producer; compatible saved diagnosis avoids formal policy
+recomputation. The full preparation has 90 roots and 18 design matrices;
+small subsets verify interfaces but cannot establish the complete design.
+No new policy draws or adopted replacement confidence rule are included.
+The final saved-design planning cell compares the old five-look EB necessary
+floor with two conditional fixed-single-look sufficient bounds. Independent
+adjacent-integer certificates preserve the distinction between planned counts
+and actual precision. Root-by-replicate independence, the centered estimator
+and complete bounded shares are explicit assumptions. The historical planning
+certificate does not itself authorize sampling or report an executed268 campaign;
+its non-adoption flag does not describe subsequent project decisions.
+
 ## Paper Figures
 
 [paper_figures.ipynb](paper_figures.ipynb) reproduces the four paper figures with

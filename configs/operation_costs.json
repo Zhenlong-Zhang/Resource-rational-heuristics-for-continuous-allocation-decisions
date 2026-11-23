@@ -1,0 +1,16 @@
+{
+  "schema": "operation-cost-reproduction-v1",
+  "source_recipe": "strategy_cards.json",
+  "roots": [["C1", 0, 1], ["C2", 0, 1], ["C3", 0, 1], ["C4", 0, 1], ["C5", 0, 1]],
+  "replicate": 0,
+  "rhoHex": ["0x0.0p+0", "0x1.5798ee2308c3ap-27", "0x1.0c6f7a0b5ed8dp-20", "0x1.4f8b588e368f1p-17", "0x1.a36e2eb1c432dp-14", "0x1.0624dd2f1a9fcp-10", "0x1.9e7c6e43390b7p-9", "0x1.47ae147ae147bp-7"],
+  "literalRhoHex": ["0x0.0p+0", "0x1.5798ee2308c3ap-27", "0x1.0c6f7a0b5ed8dp-20"],
+  "families": ["ES", "EO_raw_surplus", "PN", "AL", "GN"],
+  "askOnceRoots": ["C3", "C5"],
+  "directions": ["A", "B"],
+  "externalLaw": "normalized_real_exp_of_admitted_binary64_logs_and_width_dyadic160",
+  "utility": "signed_sqrt_loss2_integer_millihours_native1000",
+  "objective": "combined_GPA_minus_rho_times_personal_seconds",
+  "unknownCostMember": "each_used_unknown_one_second_not_measured",
+  "scope": "fixed_roots_precommitted_procedures_not_free_selector"
+}

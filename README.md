@@ -91,6 +91,21 @@ root and preserves its binary64 decision rule. Its 30 condition-card summaries
 are descriptive: numerical enclosures are not sampling confidence intervals or
 certified rankings, and the policies are not adopted human-study targets.
 
+The [operation-cost analysis](notebooks/finite_tutoring/operation_costs.ipynb)
+separately prices the literal computations, compares five precommitted
+no-question rules, and integrates fixed ask-once/raw policies over all possible
+reports. Unknown operation times remain symbolic; illustrative price rankings
+use an explicit one-second member, not human timing measurements.
+Its saved-only seven-procedure comparison reports certified finite-menu best
+sets and sufficient price/personal-time conditions, not a free online selector.
+
+The [coefficient precision notebook](notebooks/finite_tutoring/coefficient_precision.ipynb)
+adds saved-endpoint design diagnostics and deterministic C5 finite-law/moment
+preparation. The latter retains the original five-look precision-floor failure
+and does not generate new policy draws or replace the earlier fitted slopes.
+Its saved-design planning comparison distinguishes necessary old-rule floors
+from conditional sufficient fixed-look counts; no achieved precision is implied.
+
 ## Installation
 
 ```bash
