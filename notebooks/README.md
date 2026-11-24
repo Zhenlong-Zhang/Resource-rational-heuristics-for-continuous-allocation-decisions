@@ -103,6 +103,11 @@ full-count gates or force candidate selection.
 
 ## Running and Interpreting
 
+The [standalone preview](finite_tutoring/standalone_preview.ipynb) reproduces
+the 14-task interface and strategy questionnaire, separately from numerical
+policy results. It calls the public builder and prints a local serving command;
+formal participant-study deployment is not included.
+
 The [fixed-design strategy-card comparison](finite_tutoring/strategy_card_comparison.ipynb)
 provides a separate 450-root, six-policy route from native input generation
 through independent checks to 30 condition-card summaries. Its one adaptive

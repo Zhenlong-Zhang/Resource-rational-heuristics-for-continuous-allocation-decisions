@@ -273,3 +273,9 @@ also reports the noncausal paired C3 slope decomposition and the saved C5
 highest-price rule with displayed/logical recipient counts. It preserves the
 original undefined initial-mean C5 slopes. Both analyses reuse the same checked
 policy inputs and do not run policies; no private result archives are required.
+## Standalone Interface
+
+[`standalone_preview.ipynb`](standalone_preview.ipynb) builds the 14-task
+tutoring interface, six-card questionnaire and Other text response from public
+source/configuration. It performs no policy simulations. Browser recovery and
+export are software checks, not formal study deployment or human findings.

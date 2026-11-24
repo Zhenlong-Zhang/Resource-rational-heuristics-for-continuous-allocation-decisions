@@ -237,3 +237,25 @@ entry defaults and per-root locking. Run with
 `python -m unittest discover -s tests -p 'test_strategy_card*.py'` in the
 card notebook's numerical environment. Fixtures and mocked production wiring
 do not generate new adaptive trajectories or establish sampling precision.
+
+## Standalone Tutoring Preview
+
+`test_tutoring_preview_build.py` checks the actual portable CLI, input hashes,
+fresh-output protection and inline-source safety. `test_tutoring_preview_engine.cjs`
+checks the built input's five conditions/nine schedules, 14-task budget-only
+profile, same-build recovery and rejection of incompatible saved identities.
+
+```bash
+python -m unittest discover -s tests -p test_tutoring_preview_build.py
+python scripts/build_tutoring_preview.py --output results/tutoring_preview_test
+TUTORING_PREVIEW_DIR=results/tutoring_preview_test node --test tests/test_tutoring_preview_engine.cjs
+TUTORING_CHROME=/path/to/chromium/headless_shell node tests/test_tutoring_standalone_browser.cjs results/tutoring_preview_test/index.html --output results/tutoring_preview_test/browser-check.json
+```
+
+Node 22.14.0 and an installed Chromium headless shell with its OS libraries
+are required for the last command; the helper uses native fetch/WebSocket,
+not npm or Playwright. The browser check drives one synthetic C3 session,
+including all 14 tasks, final acknowledgment, Other/Skip, failed-write retry,
+reload, stable ordering and both export controls. It takes no screenshots and
+collects no human data or scientific policy trajectories. Public relative
+helpers live in `tests/helpers/`. Legacy module-only tests remain separate.

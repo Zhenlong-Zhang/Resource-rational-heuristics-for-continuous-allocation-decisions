@@ -18,9 +18,10 @@ PNG/vector-PDF pairs and actual terminal-action/question tables, distinguishing
 display position from logical recipient. Historical-summary redraw is a
 separate authenticated-input mode, not a new policy run.
 
-The [strategy-response module](src/tutoring_task/README.md) provides standalone
-response storage and export validation with focused software tests. It is not
-a deployment of the participant experiment.
+The [standalone tutoring preview](src/tutoring_task/README.md) builds the
+14-task interface and six-card strategy questionnaire from public source and
+configuration. It includes response storage, recovery and export checks, but
+is not a deployment of the participant experiment.
 
 ## Scientific Questions
 

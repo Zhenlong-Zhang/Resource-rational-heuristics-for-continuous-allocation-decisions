@@ -112,3 +112,9 @@ Generated simulation outputs belong under `results/` and are not source-controll
 - `operation_costs.json`: the original five variant-0/main-1 roots, eight exact
   binary64 prices, literal three-price subset and four fixed ask-once directions.
   Unknown operation times remain symbolic, with a separate one-second member.
+## Standalone Preview
+
+`tutoring_preview.json` pins `tutoring_conditions.json` and supplies the
+accepted browser display/feedback settings. Its fixed profile resolves four
+practice and ten main tasks with budget-only questioning. It is separate from
+formal study deployment and from policy-analysis configuration.

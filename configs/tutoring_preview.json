@@ -1,0 +1,27 @@
+{
+  "schema": "tutoring_standalone_preview_v1",
+  "design_file": "tutoring_conditions.json",
+  "design_sha256": "e44ed5b295f98a8874078f7af4da8273065a7893e22e938c22076d949fff8635",
+  "profile_id": "pilot-r9-design-v1",
+  "participant_flow_version": "r10-prepractice-v1",
+  "practice_tasks": 4,
+  "main_tasks": 10,
+  "display": {
+    "need_summary": "actual_posterior_mean_and_standard_deviation",
+    "probability_plot": true,
+    "mean_sd_decimal_places": 1,
+    "report_reliability": "posterior_predictive_RMS_error_in_hours",
+    "kernel_width_not_exact_error_SD": true,
+    "resource_decimal_places": 3,
+    "internal_rounding": false
+  },
+  "feedback": {
+    "every_trial": true,
+    "show_true_need": true,
+    "show_student_final_GPA": true,
+    "show_total_GPA": true,
+    "show_resource_accounting": true,
+    "show_optimal_allocation": false,
+    "show_heuristic_labels": false
+  }
+}

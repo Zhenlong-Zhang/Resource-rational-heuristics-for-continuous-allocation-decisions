@@ -756,3 +756,10 @@ numerical reproduction. Each row contains `ordinal`, `caseIndex`, `caseID`,
 `repID`, `analysis` and `endpointUnknown`, as emitted in `record.json:event`.
 `aggregate_full.json` or `aggregate_partial_N.json` contains old-first/new-second
 paired tables, descriptive rates/intervals and independent reduction readback.
+## Standalone Tutoring Preview
+
+`build_tutoring_preview.py --output results/tutoring_preview` builds a fresh
+self-contained browser preview from the published fixed recipe and display
+configuration. It writes HTML, resolved input and a source/input/output-bound
+manifest without numerical policy calculations, generated golden fixtures or
+platform adapters. See [the preview guide](../src/tutoring_task/README.md).
