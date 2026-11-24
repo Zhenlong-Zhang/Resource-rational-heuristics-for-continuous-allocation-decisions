@@ -1,5 +1,10 @@
 # Test Suite
 
+`test_tutoring_local_strategy.cjs` and `test_tutoring_strategy_other.cjs` cover
+the standalone response-state module: stable ordering, transactional storage,
+explicit Skip, required Other text, Unicode preservation and legacy export
+reading. Run with Node's built-in `--test`; no deployed experiment is implied.
+
 `test_operation_menu*.py` protects exact pair signs and open cost boundaries,
 structural rather than overlap ties, named-policy overhead, complete menu
 coverage, twelve semantic refusals and explicit saved-input/reuse boundaries.
@@ -26,6 +31,10 @@ independent-checkpoint reuse and invalid-bundle refusal. `test_paper_figures_plo
 checks the four figures' metric definitions, rounded minimum ties, complete
 rosters and fixed-schedule SDs. Fixtures test software behavior; accepted-table
 parity and a small real native entry are separate validation evidence.
+`test_paper_action_tables.py` checks genuine state/event counts, displayed/logical
+recipient mapping, actual routine identity and roster/refusal behavior.
+`test_paper_figure_original.py` checks exact historical-input admission and the
+explicit separation between historical redraw and a new policy-output epoch.
 
 `test_true_need_diagnostics.py` checks true-need estimands, exact ties, fixed-roster
 and partial/undefined behavior, paired slope decomposition and display-order

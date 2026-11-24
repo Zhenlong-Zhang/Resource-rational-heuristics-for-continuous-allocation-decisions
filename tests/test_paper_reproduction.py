@@ -17,6 +17,7 @@ from src.design_validation import personal_time_inputs as I
 from src.design_validation import personal_time_sensitivity as S
 import test_personal_time_sensitivity as sensitivity_fixture
 from test_paper_figures_plot import full_fixture
+from test_paper_action_tables import full_action_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / 'configs/paper_figures.json'
@@ -93,7 +94,8 @@ class PaperReproductionTests(unittest.TestCase):
 
     def test_partial_analysis_never_claims_paper_figures(self):
         with tempfile.TemporaryDirectory() as temp, \
-             patch.object(P.T, 'analyze', return_value={'verifiedTrials': 6, 'fullFiniteTarget': False}):
+             patch.object(P.T, 'analyze', return_value={'verifiedTrials': 6, 'fullFiniteTarget': False}), \
+             patch.object(P.A, 'analyze', return_value={'verifiedTrials': 6, 'tables': []}):
             result = P.reduce_checked(Path(temp) / 'input', Path(temp) / 'out', CONFIG, full=False)
         self.assertFalse(result['paperComplete'])
         self.assertEqual(result['figures'], [])
@@ -174,7 +176,12 @@ class PaperReproductionTests(unittest.TestCase):
                 I.write(analysis / 'source_check.json', true)
                 return {'verifiedTrials': 2700, 'fullFiniteTarget': True}
 
-            with patch.object(P.T, 'analyze', side_effect=fixture_analysis):
+            def fixture_actions(input_path, action_output, config, *, full):
+                self.assertTrue(full)
+                return full_action_fixture(action_output, policy_check, config)
+
+            with patch.object(P.T, 'analyze', side_effect=fixture_analysis), \
+                 patch.object(P.A, 'analyze', side_effect=fixture_actions):
                 made = P.reduce_checked(source, output, CONFIG, full=True)
             self.assertTrue(made['paperComplete'])
             self.assertEqual(len(made['figures']), 4)
@@ -184,10 +191,18 @@ class PaperReproductionTests(unittest.TestCase):
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(len(list(redraw.glob('figure_*.png'))), 4)
+            self.assertEqual(len(list(redraw.glob('figure_*.pdf'))), 4)
             self.assertEqual(json.loads(result.stdout)['newPolicySimulations'], 0)
             before = {p.name: p.read_bytes() for p in redraw.glob('*.png')}
             P.redraw(output, redraw, CONFIG)
             self.assertEqual(before, {p.name: p.read_bytes() for p in redraw.glob('*.png')})
+
+            action_path = output / 'actions/summary.json'
+            action_bytes = action_path.read_bytes()
+            action_path.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'Action/question file changed'):
+                P.redraw(output, Path(temp) / 'refused', CONFIG)
+            action_path.write_bytes(action_bytes)
 
             for mutate in ('summary', 'check'):
                 target = output / 'analysis' / ('summary.json' if mutate == 'summary' else 'source_check.json')

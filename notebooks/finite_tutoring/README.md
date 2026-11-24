@@ -66,6 +66,12 @@ Python 3.10, NumPy 1.23.5 and Node 22.14.0 are required for the numerical chain.
 The first cell installs dependencies; computation switches default off. A small
 selection checks wiring but cannot claim to reproduce the full four figures.
 This personal-time proxy model is distinct from the strategy-card model below.
+The framework compares two prices (.001/.01 combined GPA per personal second);
+all four plots have PNG and vector-PDF outputs. Companion tables report actual
+terminal routines and questions by display slot/logical recipient from checked
+state/events. They do not interpret nearest-benchmark stars as executed routines.
+An optional `redraw-original` route requires the exact two external original
+summary files and labels its output historical, without creating a policy seal.
 
 ## Fixed-Design Strategy Cards
 

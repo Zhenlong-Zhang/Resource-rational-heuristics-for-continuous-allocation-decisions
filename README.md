@@ -13,7 +13,14 @@ To reproduce the four figures in *Fair Allocation Under Deliberation Costs*,
 use [paper_figures.ipynb](notebooks/finite_tutoring/paper_figures.ipynb) or the
 [single-command workflow](scripts/README.md#paper-figures). It includes native
 inputs, six-price numerical production, independent checking, reductions and
-plotting, with resume and checked-output redraw options.
+plotting, with resume and checked-output redraw options. Outputs include four
+PNG/vector-PDF pairs and actual terminal-action/question tables, distinguishing
+display position from logical recipient. Historical-summary redraw is a
+separate authenticated-input mode, not a new policy run.
+
+The [strategy-response module](src/tutoring_task/README.md) provides standalone
+response storage and export validation with focused software tests. It is not
+a deployment of the participant experiment.
 
 ## Scientific Questions
 

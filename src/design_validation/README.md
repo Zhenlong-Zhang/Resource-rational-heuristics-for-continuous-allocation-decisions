@@ -11,6 +11,8 @@ enumerate that support. The native allocation grid has 1,001 shares.
 | `coefficient_*.py`, `c5_*.py` | Saved coefficient/design diagnosis and implemented finite-law C5 moment/range/precision-floor preparation; no replacement policy campaign. |
 | `c5_precision_*.py` | Saved-design centered fixed-look planning with independent adjacent-integer certificates; preserves old necessary floors versus conditional sufficient bounds. No achieved precision or policy draws. |
 | `paper_reproduction.py`, `paper_figures_plot.py` | Resumable original six-price source-to-figure orchestration, checked-output reuse, sealed redraw and the four paper figures. No alternative model implementation. |
+| `paper_action_tables.py` | Actual terminal routines and paid queries by display slot/logical recipient, extracted from checked state/events rather than nearest-allocation benchmarks. |
+| `paper_figure_original.py` | Optional exact-original-summary redraw with explicit historical-input boundaries; never creates a new policy epoch. |
 | `bounded_task.py` | Task configuration, finite Bayes, terminal allocation, exact one-step sampling, seeded episodes and summaries. |
 | `revision.py` | One fixed prior revision, confirmation stages, selection criteria and grid sensitivity. |
 | `identifiability.py` | Synthetic fixed-share/equal-outcome response rules, group slopes and individual held-out classification. |

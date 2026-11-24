@@ -151,11 +151,30 @@ prior `all` or `reduce` run, not arbitrary CSVs. The four files are
 `figure_1_framework.png`, `figure_2_allocation_distances.png`,
 `figure_3_utility_and_search.png` and `figure_4_true_need_coefficients.png`,
 under `paper/figures/` for `all`/`reduce`, or the requested redraw output.
+Each PNG has a vector-PDF counterpart. The framework compares .001 and .01
+combined GPA per personal second. The source-calling reduction also writes
+`paper/actions/action_conditions.csv` and `trial_actions.json`: actual routines, paid questions
+by displayed slot and logical A/B recipient, and explicit endpoint denominators.
+Allocation-distance stars do not identify the routine that was executed.
 The frozen plot definitions are in `configs/paper_figures.json`. Expected-only
 stops receive target-key fixed model outcomes, not invented historical search
 trajectories. SD bars describe nine fixed schedules, not population uncertainty.
 The notebook [paper_figures.ipynb](../notebooks/finite_tutoring/paper_figures.ipynb)
 provides installation, configurable calls and figure display.
+
+For staged execution, `produce` uses the same selection/output as `all` but
+stops after producer records. `check --input OUTPUT/policy --output CHECK_OUTPUT`
+uses the same selection, validates producers and resumes missing independent
+records; it refuses missing producers. Follow with `reduce`. Numerical kernels
+are shared with `all`, not reimplemented. Source-bound old records remain usable
+when their numerical identity matches; changed rendering requires a new
+reduction destination and does not authorize editing old seals.
+
+Optional `redraw-original --input ORIGINAL_SUMMARIES --output NEW_FIGURES`
+authenticates exact `saved_summary.json` and `public_summary.json` scientific
+bytes. It produces an explicitly historical redraw, not a fresh independently
+checked epoch or an actual-action/question table. Arbitrary summary files are
+refused. Fresh reproduction has no dependency on these optional external data.
 
 ## Fixed-Design Strategy Cards
 

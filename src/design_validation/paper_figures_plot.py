@@ -231,6 +231,7 @@ def figure_data(allocation_summary, true_need_summary, design, recipe):
         allocation = _allocation(allocation_summary, cells, schedules, recipe['absoluteTolerance'])
         coefficients = _true_need(true_need_summary, cells, schedules, recipe['absoluteTolerance'])
         framework, distances, utility, fits = [], [], [], []
+        comparisons = []
         for description in descriptions:
             c = description['id']
             base = allocation[c, recipe['frameworkPrice']]
@@ -238,6 +239,10 @@ def figure_data(allocation_summary, true_need_summary, design, recipe):
             ask = 100 * base['initial_ask']
             framework.append(dict(condition=c, initial_search_percent=ask, distances=distance,
                                   behavior=_behavior(base, distance)))
+            for price in ('rho_0.001', 'rho_0.01'):
+                observed = allocation[c, price]
+                comparisons.append(dict(condition=c, price=price, mean_paid=observed['mean_paid'],
+                                        behavior=_behavior(observed, _distance(observed, recipe))))
             distances.append([dict(condition=c, price=p, **_distance(allocation[c, p], recipe)) for p in PRICES])
             utility.append(dict(condition=c, realized_u=[allocation[c, p]['realized_u'] for p in PRICES],
                                 initial_search_percent=[100 * allocation[c, p]['initial_ask'] for p in PRICES]))
@@ -248,37 +253,44 @@ def figure_data(allocation_summary, true_need_summary, design, recipe):
                                trials_per_schedule=10, ties=sum(r['ties'] for r in coefficients.values()),
                                eligible=sum(r['eligible'] for r in coefficients.values()),
                                source_authenticated=False, historical_trajectories_claimed=False),
-                    figures=dict(zip(FIGURES, (dict(price=recipe['frameworkPrice'], rows=framework),
+                    figures=dict(zip(FIGURES, (dict(price=recipe['frameworkPrice'], rows=framework, comparisons=comparisons),
                                               dict(rows=distances), dict(series=utility), dict(series=fits)))))
     except (KeyError, TypeError, AttributeError, OverflowError) as exc:
         raise ValueError('Malformed or numerically invalid figure inputs: ' + str(exc)) from exc
 
 
 def _framework(fig, data, recipe):
-    from matplotlib.patches import Rectangle
-
     ax = fig.subplots()
     ax.axis('off')
-    fig.subplots_adjust(left=.055, right=.97, bottom=.18, top=.84)
-    fig.suptitle('From welfare to allocation under costly deliberation', x=.055, y=.97,
-                 ha='left', fontsize=17, fontweight='bold')
+    fig.subplots_adjust(left=.025, right=.98, bottom=.025, top=.97)
     for x, title, body in (
-            (.03, 'Objective', 'Combined recipient welfare\nminus the value of personal time'),
-            (.37, 'Process', 'Ask or stop, then choose a\nterminal allocation routine'),
-            (.71, 'Environment', 'Needs, uncertainty and scarcity\nchange the payoff to each choice')):
-        ax.text(x, .91, title, fontsize=13, fontweight='bold', color=recipe['style']['accent'], transform=ax.transAxes)
-        ax.text(x, .76, body, fontsize=10.8, transform=ax.transAxes)
-    for y, description, row in zip((.59, .47, .35, .23, .11), data['conditions'], data['figures'][FIGURES[0]]['rows']):
-        ax.add_patch(Rectangle((0, y-.034), 1, .095, transform=ax.transAxes, color=recipe['style']['band'], zorder=0))
-        ax.text(.025, y, description['id'], weight='bold', transform=ax.transAxes)
-        ax.text(.12, y, description['label'], fontsize=10.5, transform=ax.transAxes)
-        ax.text(.56, y, row['behavior'], fontsize=10, color=recipe['style']['accent'], transform=ax.transAxes)
-    fig.text(.055, .025,
-             'At 0.001 combined GPA/s; finite model predictions, not human observations.\n'
-             'Equal-mean-surplus resemblance means closer than equal split, not necessarily the nearest benchmark.\n'
-             'Resemblance to a rule does not identify the computation used to generate it.',
-             fontsize=8.5, color='#43505d', linespacing=1.5)
-
+            (.02, 'Objective', 'Recipient welfare minus\npersonal-time opportunity cost'),
+            (.37, 'Resource-Rational Strategy', 'Gather information and\nchoose an allocation routine'),
+            (.76, 'Environment', 'Needs, uncertainty, scarcity\nand opportunity cost')):
+        ax.text(x, .97, title, fontsize=11, fontweight='bold', transform=ax.transAxes)
+        ax.text(x, .88, body, fontsize=9, transform=ax.transAxes)
+    ax.annotate('', xy=(.42,.84), xytext=(.18,.84), xycoords='axes fraction',
+                arrowprops=dict(arrowstyle='->'))
+    ax.annotate('', xy=(.62,.84), xytext=(.87,.84), xycoords='axes fraction',
+                arrowprops=dict(arrowstyle='->'))
+    descriptions = {c['id']: c for c in data['conditions']}
+    rows = []
+    for row in data['figures'][FIGURES[0]]['comparisons']:
+        description = descriptions[row['condition']]
+        rows.append([description['label'],
+                     f"Reference budget: {description['total_time']:g}",
+                     '0.001' if row['price'] == 'rho_0.001' else '0.01',
+                     row['behavior'] + f"\nMean questions: {row['mean_paid']:.2f}"])
+    table = ax.table(cellText=rows,
+                     colLabels=['Environment: needs', 'Environment: resources',
+                                'Opportunity cost', 'Resource-Rational Strategy'],
+                     colWidths=[.25,.19,.14,.42],cellLoc='left',bbox=[0,0,1,.76])
+    table.auto_set_font_size(False)
+    table.set_fontsize(8.4)
+    for (i,j), cell in table.get_celld().items():
+        cell.set_edgecolor(recipe['style']['tableEdge'])
+        cell.set_facecolor(recipe['style']['tableBand'] if i % 4 in (1,2) else 'white')
+        cell.PAD = .04
 
 def _matrix(fig, data, recipe):
     ax = fig.subplots()
@@ -301,7 +313,7 @@ def _matrix(fig, data, recipe):
             cell.get_text().set_ha('center')
         if j == 0:
             cell.get_text().set_wrap(True)
-    ax.set_title('Allocation distance to four benchmarks (percentage points)', pad=10)
+    ax.set_title('Opportunity Cost of Time (combined GPA / personal second)', pad=10)
 
 
 def _curves(fig, data, recipe, coefficients=False):
@@ -309,28 +321,28 @@ def _curves(fig, data, recipe, coefficients=False):
     labels = [p['label'] for p in data['prices']]
     x = list(range(6))
     series = data['figures'][FIGURES[3] if coefficients else FIGURES[2]]['series']
-    for description, values, color in zip(data['conditions'], series, recipe['style']['colors']):
+    for series_index, (description, values, color) in enumerate(zip(data['conditions'], series, recipe['style']['colors'])):
         for ax, field in zip(axes, METRICS if coefficients else ('realized_u', 'initial_search_percent')):
             if coefficients:
                 ax.errorbar(x, [r[field]['mean'] for r in values['cells']],
                             yerr=[r[field]['sample_sd'] for r in values['cells']],
                             marker='o', capsize=3, color=color, label=description['shortLabel'])
             else:
-                ax.plot(x, values[field], marker='o', color=color, label=description['label'])
+                # Horizontal offsets expose coincident search values without changing y.
+                positions = [v + .035 * (series_index - 2) for v in x] if field == 'initial_search_percent' else x
+                ax.plot(positions, values[field], marker=('o','s','^','D','v')[series_index], color=color, label=description['label'])
     for i, ax in enumerate(axes):
         ax.set_xticks(x, labels)
         ax.tick_params(axis='x', labelsize=8)
-        ax.set_xlabel(recipe['style']['priceAxis'])
+        ax.set_xlabel('Opportunity Cost of Time\n(combined GPA / personal second)')
         if coefficients:
             ax.axhline(0, color='gray', lw=.6)
             ax.set_title(('True-need gap slope', 'Partial slope on lower true need')[i])
-            ax.set_ylabel('Higher-need recipient share coefficient')
+            ax.set_ylabel(('Coefficient on true-need gap', 'Partial coefficient on lower true need')[i])
         else:
             ax.set_ylabel(('Mean realized utility', 'Initial search (%)')[i])
             ax.grid(axis='y', alpha=.2)
-    if coefficients:
-        fig.text(.5, .025, 'Mean \u00b1 SD across nine fixed schedules (not confidence intervals)', ha='center', fontsize=9)
-    else:
+    if not coefficients:
         axes[1].set_ylim(-4, 104)
     fig.legend(*axes[0].get_legend_handles_labels(), loc='upper center',
                bbox_to_anchor=(.5, 1), ncols=3, fontsize=8, frameon=False)
@@ -367,6 +379,7 @@ def render(allocation_summary, true_need_summary, design, output, recipe):
                     _curves(fig, data, recipe, coefficients=name == FIGURES[3])
                 path = output / (name + '.png')
                 fig.savefig(path, dpi=settings['dpi'], facecolor='white')
+                fig.savefig(output / (name + '.pdf'), facecolor='white')
                 paths[name] = path
             finally:
                 fig.clear()

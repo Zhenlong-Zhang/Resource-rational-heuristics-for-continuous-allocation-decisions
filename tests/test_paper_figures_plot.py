@@ -2,7 +2,7 @@
 
 No policies, model kernels, historical outcomes or private artifacts are used.
 Synthetic schedule values test rounding ties, scientific metric selection,
-complete-scope failures, descriptive SDs and the actual four-PNG rendering path.
+complete-scope failures, descriptive SDs and four PNG/vector-PDF output pairs.
 """
 from copy import deepcopy
 import json
@@ -145,6 +145,123 @@ class TestPaperFiguresPlot(unittest.TestCase):
         row = self.data()['figures'][P.FIGURES[0]]['rows'][0]
         self.assertEqual(row['behavior'], 'Stop \u00b7 resembles equal mean surplus')
 
+    def test_framework_compares_both_observed_prices_and_total_questions(self):
+        for ci, c in enumerate(P.CONDITIONS):
+            set_cell(self.allocation, c, 'rho_0.001', ES_pp=20, EO_pp=1,
+                     OPT_pp=.5, AL_pp=5, initial_ask=.3, mean_paid=ci + 1.25)
+            set_cell(self.allocation, c, 'rho_0.01', ES_pp=0, EO_pp=2,
+                     OPT_pp=.5, AL_pp=5, initial_ask=0, mean_paid=0)
+            set_cell(self.allocation, c, P.PRICES[0], initial_ask=1, mean_paid=99)
+        data = self.data()['figures'][P.FIGURES[0]]
+        self.assertEqual(data['price'], 'rho_0.001')
+        self.assertEqual([(r['condition'], r['price']) for r in data['comparisons']],
+                         [(c, p) for c in P.CONDITIONS for p in ('rho_0.001', 'rho_0.01')])
+        for ci, c in enumerate(P.CONDITIONS):
+            low, high = data['comparisons'][2*ci:2*ci+2]
+            self.assertEqual(low, dict(condition=c, price='rho_0.001', mean_paid=ci + 1.25,
+                                      behavior='Ask 30.0% \u00b7 resembles equal mean surplus'))
+            self.assertEqual(high, dict(condition=c, price='rho_0.01', mean_paid=0,
+                                       behavior='Stop \u00b7 exact equal division'))
+            self.assertEqual(low['behavior'], data['rows'][ci]['behavior'])
+        # The second displayed slice must pass the same schedule/summary checks.
+        for cell in self.allocation['conditions']:
+            if (cell['condition'], cell['price']) == ('C5', 'rho_0.01'):
+                cell['mean_paid'] += 1
+        with self.assertRaisesRegex(ValueError, 'does not match summary'):
+            self.data()
+
+    def test_framework_environment_table_and_arrows_point_to_strategy(self):
+        from matplotlib.figure import Figure
+        from matplotlib.text import Annotation
+
+        data = self.data()
+        fig = Figure()
+        try:
+            P._framework(fig, data, self.recipe)
+            ax = fig.axes[0]
+            text = [item.get_text() for item in ax.texts]
+            self.assertIn('Recipient welfare minus\npersonal-time opportunity cost', text)
+            self.assertIn('Resource-Rational Strategy', text)
+            self.assertIn('Needs, uncertainty, scarcity\nand opportunity cost', text)
+            arrows = [item for item in ax.texts if isinstance(item, Annotation)]
+            self.assertEqual([(item.get_position(), item.xy) for item in arrows],
+                             [((.18, .84), (.42, .84)), ((.87, .84), (.62, .84))])
+            self.assertTrue(all(item.arrowprops['arrowstyle'] == '->' for item in arrows))
+            table = ax.tables[0]
+            self.assertEqual([table[0, j].get_text().get_text() for j in range(4)],
+                             ['Environment: needs', 'Environment: resources',
+                              'Opportunity cost', 'Resource-Rational Strategy'])
+            self.assertEqual(len(table.get_celld()), 44)
+            for i, comparison in enumerate(data['figures'][P.FIGURES[0]]['comparisons'], 1):
+                description = data['conditions'][(i-1)//2]
+                self.assertEqual(table[i, 0].get_text().get_text(), description['label'])
+                self.assertEqual(table[i, 1].get_text().get_text(),
+                                 f"Reference budget: {description['total_time']:g}")
+                self.assertEqual(table[i, 2].get_text().get_text(), '0.001' if i % 2 else '0.01')
+                self.assertEqual(table[i, 3].get_text().get_text(),
+                                 comparison['behavior'] + f"\nMean questions: {comparison['mean_paid']:.2f}")
+            self.assertEqual(list(fig.texts), [])
+        finally:
+            fig.clear()
+
+    def test_search_overlap_markers_preserve_y_values_and_opportunity_cost_units(self):
+        from matplotlib.figure import Figure
+
+        for row in self.allocation['persons']:
+            row['initial_ask'] = 0
+        refresh_allocation(self.allocation)
+        data = self.data()
+        fig = Figure()
+        try:
+            P._curves(fig, data, self.recipe)
+            utility, search = fig.axes
+            for ci, (u, s) in enumerate(zip(utility.lines, search.lines)):
+                self.assertEqual(list(u.get_xdata()), list(range(6)))
+                self.assertEqual(list(s.get_xdata()), [x + .035*(ci-2) for x in range(6)])
+                self.assertEqual(list(u.get_ydata()),
+                                 data['figures'][P.FIGURES[2]]['series'][ci]['realized_u'])
+                self.assertEqual(list(s.get_ydata()), [0]*6)
+                self.assertEqual(s.get_marker(), ('o', 's', '^', 'D', 'v')[ci])
+            self.assertEqual(len(search.lines), 5)
+            for ax in fig.axes:
+                self.assertEqual(ax.get_xlabel(), self.recipe['style']['priceAxis'])
+                self.assertEqual(list(ax.get_xticks()), list(range(6)))
+            self.assertEqual(utility.get_ylabel(), 'Mean realized utility')
+            self.assertEqual(search.get_ylabel(), 'Initial search (%)')
+        finally:
+            fig.clear()
+        matrix = Figure()
+        try:
+            P._matrix(matrix, data, self.recipe)
+            self.assertEqual(matrix.axes[0].get_title(),
+                             'Opportunity Cost of Time (combined GPA / personal second)')
+        finally:
+            matrix.clear()
+
+    def test_coefficient_axes_and_bars_use_partial_lower_need_and_fixed_schedule_sd(self):
+        from matplotlib.figure import Figure
+
+        data = self.data()
+        fig = Figure()
+        try:
+            P._curves(fig, data, self.recipe, coefficients=True)
+            self.assertEqual([ax.get_ylabel() for ax in fig.axes],
+                             ['Coefficient on true-need gap', 'Partial coefficient on lower true need'])
+            for ax, field in zip(fig.axes, P.METRICS):
+                self.assertEqual(ax.get_xlabel(), self.recipe['style']['priceAxis'])
+                self.assertEqual(len(ax.containers), 5)
+                for container, series in zip(ax.containers, data['figures'][P.FIGURES[3]]['series']):
+                    line, _, bars = container.lines
+                    self.assertEqual(list(line.get_xdata()), list(range(6)))
+                    self.assertEqual(list(line.get_ydata()), [cell[field]['mean'] for cell in series['cells']])
+                    for x, (segment, cell) in enumerate(zip(bars[0].get_segments(), series['cells'])):
+                        metric = cell[field]
+                        self.assertEqual(list(segment[:, 0]), [x, x])
+                        self.assertAlmostEqual(segment[0, 1], metric['mean'] - metric['sample_sd'])
+                        self.assertAlmostEqual(segment[1, 1], metric['mean'] + metric['sample_sd'])
+        finally:
+            fig.clear()
+
     def test_recomputed_nine_schedule_sample_sd_not_sem_or_population_sd(self):
         data = self.data()
         for series in data['figures'][P.FIGURES[3]]['series']:
@@ -272,11 +389,12 @@ class TestPaperFiguresPlot(unittest.TestCase):
                 P.render(self.allocation, self.true_need, self.design, output, self.recipe)
             self.assertFalse(output.exists())
 
-    def test_render_writes_four_real_pngs_with_frozen_names_and_dimensions(self):
+    def test_render_writes_four_pngs_and_vector_pdf_companions(self):
         with tempfile.TemporaryDirectory() as directory:
             paths = P.render(self.allocation, self.true_need, self.design, directory, self.recipe)
             self.assertEqual(set(paths), set(P.FIGURES))
-            self.assertEqual(sorted(p.name for p in Path(directory).iterdir()), sorted(n + '.png' for n in P.FIGURES))
+            self.assertEqual(sorted(p.name for p in Path(directory).iterdir()),
+                             sorted(n + ext for n in P.FIGURES for ext in ('.png', '.pdf')))
             for name, path in paths.items():
                 self.assertIsInstance(path, Path)
                 self.assertEqual(path.name, name + '.png')
@@ -287,6 +405,12 @@ class TestPaperFiguresPlot(unittest.TestCase):
                 self.assertEqual(struct.unpack('>II', blob[16:24]),
                                  tuple(int(x * settings['dpi']) for x in settings['sizeInches']))
                 self.assertGreater(len(blob), 1000)
+                pdf = path.with_suffix('.pdf').read_bytes()
+                self.assertTrue(pdf.startswith(b'%PDF-'))
+                self.assertTrue(pdf.rstrip().endswith(b'%%EOF'))
+                self.assertIn(b'/Type /Page', pdf)
+                self.assertNotIn(b'/Subtype /Image', pdf)
+                self.assertGreater(len(pdf), 1000)
 
 
 if __name__ == '__main__':
