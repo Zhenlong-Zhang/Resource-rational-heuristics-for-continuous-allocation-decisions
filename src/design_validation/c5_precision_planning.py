@@ -44,6 +44,34 @@ def ceiling(value):
     return -(-value.numerator//value.denominator)
 
 
+def bounded_prefix_certificate(radii, variance, maximum):
+    """Certify the fixed-look bound for one arbitrary bounded historical prefix."""
+    need(len(radii) == 90 and all(x >= 0 for x in radii), 'Exactly 90 nonnegative radii')
+    need(variance > 0 and maximum > 0 and max(radii) == maximum, 'Positive geometry')
+    lower, upper = log_bounds(80, 96)
+    total = sum(radii, F(0))
+
+    def passes(n, log):
+        if n < 1:
+            return False
+        error = EPSILON - total/(90*n)
+        return error > 0 and 8100*n*error**2 >= 2*(variance+30*maximum*error)*log
+
+    left, right = 0, 1
+    while not passes(right, upper):
+        left, right = right, 2*right
+    while right-left > 1:
+        middle = (left+right)//2
+        if passes(middle, upper):
+            right = middle
+        else:
+            left = middle
+    need(not passes(right-1, lower), 'Adjacent integer unresolved')
+    return dict(totalReplicates=right, futureCanonicalReplicates=right-1,
+                currentPassesUpper=True, previousFailsLower=True,
+                logBounds=[rational(lower), rational(upper)])
+
+
 def integer_boundary(coefficient, log_argument, offset=0):
     need(coefficient > 0 and offset in (0, 1), 'Positive planning boundary')
     for terms in (48, 96, 192, 384, 768, 1536):

@@ -57,6 +57,21 @@ source/checkpoint/independent-reader bindings.
 
 ## Saved-Design Precision Planning
 
+The bounded-prefix extension consumes the same complete checked preparation
+directory (or explicit saved-design operands via `--input-kind saved-designs`):
+
+```bash
+python scripts/reproduce_bounded_prefix.py --input results/coefficient_c5_full --output results/c5_bounded_prefix.json
+```
+
+The saved-operands route certifies only its supplied geometry, not a historical
+execution or finite law. For the accepted C5 geometry the conservative
+single-look family count is 1840, including one arbitrary bounded historical
+replicate and 1839 future repetitions. This is conditional design planning,
+not executed sampling or achieved precision. It assumes bounded shares and
+independent future root-by-replicate outcomes under a fixed numerical policy;
+the historical same-policy 268 certificate is a different rule.
+
 The separate planning entry reads a complete checked C5 preparation:
 
 ```bash
