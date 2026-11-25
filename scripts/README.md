@@ -57,6 +57,16 @@ source/checkpoint/independent-reader bindings.
 
 ## Saved-Design Precision Planning
 
+`reproduce_canonical_laws.py --output results/canonical_laws` checks the fixed
+90-root, two-recipient 53-bit latent input and generates three complete
+no-draw report tables. An optional `--historical-tables` compares scientific
+payloads only; it does not copy historical execution identities. Fresh table
+bytes are also compared to three accepted product fingerprints without any
+historical files; unmatched outputs are labeled new and unverified. Bits may
+differ across numerical environments, and matching payloads do not
+prove general CPU, BLAS, IFUNC or historical-policy equivalence. The fixed
+latent law is an adopted scientific input, not a fresh exp/log reconstruction.
+
 The bounded-prefix extension consumes the same complete checked preparation
 directory (or explicit saved-design operands via `--input-kind saved-designs`):
 
