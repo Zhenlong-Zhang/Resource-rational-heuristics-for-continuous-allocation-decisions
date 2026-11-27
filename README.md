@@ -114,6 +114,19 @@ and does not generate new policy draws or replace the earlier fitted slopes.
 Its saved-design planning comparison distinguishes necessary old-rule floors
 from conditional sufficient fixed-look counts; no achieved precision is implied.
 
+The [fixed-population projection notebook](notebooks/finite_tutoring/c5_projection.ipynb)
+provides a source-calling route for the supplemental C5 projection, including
+fixed integer laws, input preparation, sharded sampling, independent replay,
+conditional intervals and redraw. A separate prospective route creates its own
+first repetition; it is under validation and its descriptive outputs do not
+authorize inference or reproduce the historical run. The first historical repetition is a supplied
+external input, not regenerated from a seed. Newly generated results are not
+automatically identical to historical results or authenticated across runtimes.
+An independently checked saved-summary redraw is a separate mode, not a fresh
+simulation. Download the two content-checked inputs from the [public input folder](https://drive.google.com/drive/folders/1DueektDCojHq0A2SwlM_XKf-OzOvJqHh).
+The historical prefix has SHA-256 `926d3b69ba90d107a2ad1c2a8150f68b7e8e3c7cb06490342e1d38523ccd0f73`;
+the saved redraw summary has SHA-256 `06a3c0136ec0753bededce3297b0a29a4d626da110c6959920fea1c8707208ae`.
+
 ## Installation
 
 ```bash

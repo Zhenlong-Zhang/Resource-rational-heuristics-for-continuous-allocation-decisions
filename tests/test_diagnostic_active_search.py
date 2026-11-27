@@ -24,7 +24,7 @@ class ActiveSearchDiagnosticRegressionTest(unittest.TestCase):
             sample_time_cost=1.0,
             allocation_grid_size=21,
             expected_utility_draws=10,
-            random_seed=7,
+            random_seed=987654329000007,
         )
         mdp = ContinuousAllocationMetaMDP(config)
         belief = BeliefState(mean_1=70.0, var_1=1.0, mean_2=30.0, var_2=1.0)
@@ -63,7 +63,7 @@ class ActiveSearchDiagnosticRegressionTest(unittest.TestCase):
             sample_time_cost=0.1,
             prior_sample_count_1=0,
             prior_sample_count_2=0,
-            random_seed=11,
+            random_seed=987654329000011,
         )
         observations = {
             ContinuousAllocationMetaMDP.SAMPLE_PERSON_1: [70.0],

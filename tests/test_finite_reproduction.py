@@ -45,7 +45,12 @@ class FiniteReproductionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             pairs = root/"pairs"
-            self.command("pairs", pairs, "--template", "C3_s0_g0", "--episodes", 1)
+            self.assertEqual(self.settings["root_seed"], 2026100901)
+            test_seed = 987654321012345
+            test_settings = {**self.settings, "root_seed": test_seed}
+            config_path = root/"test_pairs_config.json"
+            config_path.write_text(json.dumps(test_settings))
+            self.command("pairs", pairs, "--config", config_path, "--template", "C3_s0_g0", "--episodes", 1)
             panel = read_json(pairs/"panel.json")
             self.assertEqual(panel["records"], 1)
             self.assertFalse(panel["full_panel_size_and_seed"])
@@ -55,7 +60,7 @@ class FiniteReproductionTests(unittest.TestCase):
             self.assertLessEqual(error, 1e-10)
             self.assertEqual(state[0]+state[2], original["budget_only"]["sample_count"])
             np.testing.assert_allclose(logs, original["budget_only"]["terminal_logs"], atol=1e-10, rtol=0)
-            self.assertEqual(original["scenario"]["root_seed"], 2026100901)
+            self.assertEqual(original["scenario"]["root_seed"], test_seed)
             self.command("time-terminal", root/"time", "--pairs", pairs)
             impact = json.loads((root/"time/terminal_impact.jsonl").read_text())
             self.assertEqual(len(impact["analysis"]["scenarios"]), 18)
@@ -85,8 +90,8 @@ class FiniteReproductionTests(unittest.TestCase):
     def test_seeded_pair_is_replayable_with_shared_prefix(self):
         config = TaskConfig("C3", "small_pair", 1., 0., (45., 65.), (3., 3.), 6.,
                             120000, 20000, 10, allocation_denominator=10, max_assessments=6)
-        first = paired_episode(config, 2026100901, 0)
-        self.assertEqual(first, paired_episode(config, 2026100901, 0))
+        first = paired_episode(config, 987654321012345, 0)
+        self.assertEqual(first, paired_episode(config, 987654321012345, 0))
         a, b = first["budget_only"]["events"], first["capped_twenty"]["events"]
         self.assertEqual(a[:min(len(a), len(b))], b[:min(len(a), len(b))])
         self.assertEqual(len(first["scenario"]["potential_reports"][0]), 6)
@@ -96,7 +101,7 @@ class FiniteReproductionTests(unittest.TestCase):
                             120000, 20000, 10, allocation_denominator=10, max_assessments=6)
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
-            produce_pairs([config], self.settings, directory, 1)
+            produce_pairs([config], {**self.settings, "root_seed": 987654321012345}, directory, 1)
             path = directory/"pairs.jsonl"
             original_text = path.read_text()
             original = json.loads(original_text)

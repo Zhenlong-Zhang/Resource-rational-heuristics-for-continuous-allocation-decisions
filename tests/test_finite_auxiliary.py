@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/"src"))
 from design_validation.bounded_task import load_design
 from design_validation.budget_horizon import budget_templates
-from design_validation.finite_auxiliary import ACTIVE, check_scenarios
+from design_validation.finite_auxiliary import ACTIVE, auxiliary_settings, check_scenarios, source_panel
 from design_validation.finite_auxiliary_inputs import parse, read, terminal_rows, write
 from design_validation.finite_bound_tables import symmetry_bound, terminal_counts
 from design_validation.finite_reproduction import _config_record
@@ -242,6 +242,44 @@ class FiniteAuxiliaryTests(unittest.TestCase):
                 self.assertEqual(sum(d["sideReversed"] for d in definitions), 5)
                 self.assertTrue(all(d["capacity"] > 20 for d in definitions))
             request = {"design": self.design, "seed": 2026100902}
+            again = subprocess.run([shutil.which("node"), str(ROOT/"src/design_validation/budget_source_panel.cjs")],
+                                   input=json.dumps(request), capture_output=True, text=True, check=True, timeout=60)
+            self.assertEqual(panel, parse(again.stdout))
+            changed = deepcopy(self.design)
+            changed["common"]["utility"]["loss_multiplier"] = 3
+            write(root/"changed.json", changed)
+            self.command("source-panel", root/"wrong_design", "--design", root/"changed.json", success=False)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js required for JS scientific parity")
+    def test_source_panel_geometry_and_seed_identity_in_test_domain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            frozen = read(ROOT/"configs/tutoring_finite_auxiliary.json")
+            auxiliary_settings(frozen)
+            self.assertEqual(frozen["source_schedule_seed"], 2026100902)
+            test_seed = 987654326000002
+            test_settings = {**frozen, "source_schedule_seed": test_seed}
+            with self.assertRaises(ValueError):
+                auxiliary_settings(test_settings)
+            write(root/"test_auxiliary.json", test_settings)
+            refused = self.command("source-panel", root/"wrong_auxiliary", "--aux-config",
+                                   root/"test_auxiliary.json", success=False)
+            self.assertIn("Unsupported finite auxiliary recipe", refused.stderr)
+            outputs = source_panel(self.design, test_settings, shutil.which("node"))
+            panel = outputs["source_panel.json"]
+            parity = outputs["source_parity.json"]
+            geometry = outputs["geometry.json"]
+            self.assertEqual(panel["profileId"], "pilot-engagement-budget-v1")
+            self.assertEqual(panel["seed"], test_seed)
+            self.assertEqual(len(panel["schedules"]), 45)
+            self.assertTrue(parity["all_pass"])
+            self.assertEqual((parity["belief_cases"], parity["outcome_cases"]), (216, 1620))
+            self.assertEqual(len(geometry["balanced_geometry"]), 6804)
+            for schedule in panel["schedules"]:
+                definitions = schedule["definitions"]
+                self.assertEqual(sum(d["sideReversed"] for d in definitions), 5)
+                self.assertTrue(all(d["capacity"] > 20 for d in definitions))
+            request = {"design": self.design, "seed": test_seed}
             again = subprocess.run([shutil.which("node"), str(ROOT/"src/design_validation/budget_source_panel.cjs")],
                                    input=json.dumps(request), capture_output=True, text=True, check=True, timeout=60)
             self.assertEqual(panel, parse(again.stdout))

@@ -78,7 +78,7 @@ class ActiveSearchDiagnosticsTests(unittest.TestCase):
             total_time=160.0,
             sample_time_cost=0.0016,
             sigma_sample=20.0,
-            random_seed=11,
+            random_seed=987654329000011,
         )
         episode = build_evaluation_episode(
             config,
@@ -109,7 +109,7 @@ class ActiveSearchDiagnosticsTests(unittest.TestCase):
             sample_time_cost=1.0,
             expected_utility_method="gauss_hermite",
             allocation_grid_size=11,
-            random_seed=17,
+            random_seed=987654329000017,
         )
         with patch.object(active_search_module, "build_evaluation_episode", side_effect=tracked_builder):
             rows = evaluate_active_search_rr_environment(
@@ -194,7 +194,7 @@ class ActiveSearchDiagnosticsTests(unittest.TestCase):
             terminate_cost=1.0,
             expected_utility_draws=20,
             allocation_grid_size=21,
-            random_seed=7,
+            random_seed=987654329000007,
         )
         result = ContinuousAllocationMetaMDP(config).run_episode(
             AlwaysSamplePolicy(),
@@ -314,7 +314,7 @@ class ActiveSearchDiagnosticsTests(unittest.TestCase):
             max_meta_samples=6,
             allocation_grid_size=21,
             expected_utility_draws=10,
-            random_seed=19,
+            random_seed=987654329000019,
         )
         rows = evaluate_active_search_fixed_sampling_budgets(
             "fixture",

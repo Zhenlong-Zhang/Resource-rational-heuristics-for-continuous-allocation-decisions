@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -49,6 +50,16 @@ def endpoint_fixture():
 
 
 class TestAllocationDiagnostics(unittest.TestCase):
+    def setUp(self):
+        self.assertEqual(S.RECIPE['seed'], 20261019)
+        self.assertEqual(S.RECIPE['populationId'], 'r10-working-five-v0-rep0-candidate-not-population-estimate')
+        self.assertEqual(S.RECIPE['randomizationGroup'], 'r10-original-root-private-stream-candidate-v1')
+        isolated = patch.dict(S.RECIPE, {'seed': 987654330000019,
+            'populationId': 'personal-time-diagnostics-test-only',
+            'randomizationGroup': 'personal-time-diagnostics-test-only-v1'})
+        isolated.start()
+        self.addCleanup(isolated.stop)
+
     def test_row_refuses_identity_budget_index_and_donor_changes(self):
         root, cfg, original = endpoint_fixture()
         result = D.row(root, 'rho_0.001', cfg, original)
@@ -104,7 +115,7 @@ class TestAllocationDiagnostics(unittest.TestCase):
                 D.fixed_utility(b, j, ns, cfg)
 
     def test_logical_key_and_initial_law_orientation(self):
-        ctx = {'identity': {'seed': 20261019, 'conditionId': 'C3', 'variant': 0, 'replicateId': 0, 'mainIndex': 1},
+        ctx = {'identity': {'seed': S.RECIPE['seed'], 'conditionId': 'C3', 'variant': 0, 'replicateId': 0, 'mainIndex': 1},
                'bindings': {k: S.RECIPE[k] for k in ('populationId', 'randomizationGroup')}}
         logs = [[-math.inf]*100 for _ in range(2)]
         logs[0][9], logs[1][89] = 0., 0.

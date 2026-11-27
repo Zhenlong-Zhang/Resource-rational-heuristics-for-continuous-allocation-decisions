@@ -13,7 +13,7 @@ class ObservationStreamRegressionTest(unittest.TestCase):
         summary = run_observation_stream_check(
             n_episodes=40,
             observations_per_person=100,
-            seed=123,
+            seed=987654329000123,
             sigma_need=20.0,
             sigma_sample=10.0,
             min_correlation=0.95,

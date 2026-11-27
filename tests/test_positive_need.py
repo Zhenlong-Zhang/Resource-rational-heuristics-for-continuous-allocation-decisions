@@ -140,7 +140,7 @@ class PositiveNeedModelTests(unittest.TestCase):
             target,
             n_episodes=18,
             stage="test",
-            seed_namespace=900,
+            seed_namespace=987654329000900,
             observations_per_person=8,
             balanced_atoms=True,
         )
@@ -148,7 +148,7 @@ class PositiveNeedModelTests(unittest.TestCase):
             control,
             n_episodes=18,
             stage="test",
-            seed_namespace=900,
+            seed_namespace=987654329000900,
             observations_per_person=8,
             balanced_atoms=True,
         )
@@ -227,6 +227,7 @@ class PositiveNeedModelTests(unittest.TestCase):
                 original.config,
                 allocation_grid_size=21,
                 max_meta_samples=4,
+                random_seed=987654329000902,
             ),
             prior=original.prior,
         )
@@ -234,7 +235,7 @@ class PositiveNeedModelTests(unittest.TestCase):
             environment,
             n_episodes=2,
             stage="test",
-            seed_namespace=901,
+            seed_namespace=987654329000901,
             observations_per_person=8,
             balanced_atoms=True,
         )

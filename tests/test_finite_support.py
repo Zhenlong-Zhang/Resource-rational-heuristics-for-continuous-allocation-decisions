@@ -35,7 +35,7 @@ def finite_config(**changes) -> EnvironmentConfig:
         "sample_time_cost": 0.25,
         "allocation_grid_size": 101,
         "max_meta_samples": 8,
-        "random_seed": 19,
+        "random_seed": 987654324000019,
     }
     values.update(changes)
     return EnvironmentConfig(**values)
@@ -60,7 +60,7 @@ class FiniteSupportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             FiniteSupportAtom(20.0, 1.0, 1)
 
-        mdp = FiniteSupportMetaMDP(finite_config(random_seed=71), prior)
+        mdp = FiniteSupportMetaMDP(finite_config(random_seed=987654324000071), prior)
         counts = {state: 0 for state in states}
         for _ in range(8000):
             draw = mdp.sample_true_state()
@@ -93,9 +93,9 @@ class FiniteSupportTests(unittest.TestCase):
             total_weights=(1.0, 2.0),
         )
         self.assertEqual(prior_a.support_hash, prior_b.support_hash)
-        self.assertEqual(prior_a.sample_atom(seed=91), prior_b.sample_atom(seed=91))
-        rng_a = random.Random(17)
-        rng_b = random.Random(17)
+        self.assertEqual(prior_a.sample_atom(seed=987654324000091), prior_b.sample_atom(seed=987654324000091))
+        rng_a = random.Random(987654324000017)
+        rng_b = random.Random(987654324000017)
         self.assertEqual(
             [prior_a.sample_atom(rng_a) for _ in range(10)],
             [prior_b.sample_atom(rng_b) for _ in range(10)],

@@ -128,10 +128,11 @@ class BoundedTaskTests(unittest.TestCase):
 
     def test_stream_replay_and_budget_no_truth_leak(self):
         task = BoundedTask(fixture())
-        first, repeat = task.scenario(123, 0), task.scenario(123, 0)
+        test_seed = 987654325000123
+        first, repeat = task.scenario(test_seed, 0), task.scenario(test_seed, 0)
         self.assertEqual(first, repeat)
-        self.assertNotEqual(first, task.scenario(123, 1))
-        result = simulate_episode(task, 123, 0)
+        self.assertNotEqual(first, task.scenario(test_seed, 1))
+        result = simulate_episode(task, test_seed, 0)
         self.assertEqual(result["remaining_millihours"], 130000-result["sample_count"]*500)
         self.assertLessEqual(result["sample_count"], 3)
         positions = [0, 0]

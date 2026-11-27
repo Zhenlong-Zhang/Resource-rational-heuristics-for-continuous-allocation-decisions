@@ -127,6 +127,20 @@ part of C5 preparation. See the
 [notebook](../notebooks/finite_tutoring/coefficient_precision.ipynb) for exact
 scientific boundaries and saved-versus-fresh options.
 
+For the supplemental fixed-population projection, use
+[c5_projection.ipynb](../notebooks/finite_tutoring/c5_projection.ipynb).
+`prepare_c5_projection_inputs.py` constructs its source inputs and can optionally
+accept already-generated canonical report products via `--report-dir`; both paths
+check their adopted byte identities. `reproduce_c5_projection.py` exposes
+sampling, replay, conditional reduction and redraw. Historical first-repetition
+data must be supplied separately; new outputs do not establish historical or
+cross-runtime bitwise equivalence.
+
+The separate `fresh_c5_run.py` route can prepare an independently named first
+repetition without the historical prefix. Its full-roster implementation remains
+under validation; its audit is descriptive, not a confidence or historical
+equivalence certificate. See the notebook for staged input and output paths.
+
 For the original compact dataset, use `import-original` rather than the
 paper-bundle reader. Supply `admitted_rows.json`, `public_summary.json` and
 `true_need_schedules.csv` in one directory. The importer checks exact scientific

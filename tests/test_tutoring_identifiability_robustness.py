@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from design_validation.bounded_task import project_share
 from design_validation.c1_identifiability import audit_candidates
+from tutoring_analysis import identifiability_robustness as robustness_module
 from tutoring_analysis.empirical_bernstein import (
     ATOL, RTOL, attest_initial_rows, fit_variance_adaptive,
     initial_projection_values, source_slope_domain, _schedule_reason,
@@ -262,15 +263,33 @@ class SourceContextTests(unittest.TestCase):
         with self.assertRaises(ValueError): vector_contrast(groups, "Q", {"C2": 1.}, {"C2": (0., 1.)}, "greater", "implicit_fallback")
 
     def test_tiny_fixed_seed_functional_generator_and_scalar_parity(self):
-        # Gate permits these separately labelled six tiny functional replicas.
-        # Frozen seeds with different RNG call shapes are not production prefixes;
-        # this is functionality/reproduction, not new calibration evidence.
-        context = prepare_context(self.config, self.design)
+        # Exercise functionality with test-only seeds, not frozen study streams.
+        source_call = robustness_module.source_call
+
+        def test_schedule_source(mode, design, spec, node="node"):
+            self.assertEqual(mode, "schedules")
+            test_spec = {**spec, "seed": 987654327000061,
+                         "identityPrefix": "identifiability-software-test-only"}
+            return source_call(mode, design, test_spec, node)
+
+        with patch.object(robustness_module, "source_call", side_effect=test_schedule_source):
+            context = prepare_context(self.config, self.design)
+        self.assertEqual({schedule["conditionId"] for schedule in context["scheduleDefinitions"]}, {"C2", "C3", "C4"})
+        self.assertEqual(len(context["scheduleDefinitions"]), 3)
+        for schedule in context["scheduleDefinitions"]:
+            cid = schedule["conditionId"]
+            identity = f"identifiability-software-test-only-{cid}-v0"
+            self.assertEqual(schedule["options"]["seed"], "987654327000061")
+            self.assertEqual(schedule["options"]["scheduleVariant"], 0)
+            self.assertEqual(schedule["options"]["participantId"], identity)
+            self.assertEqual(schedule["options"]["sessionId"], identity + "-session")
         for index in (0, 10):
-            cell = context["cells"][index]
+            cell = {**context["cells"][index], "seed": 987654323000000 + index}
             batch = generate_batch(cell, 0, context, batch_size=3)
             repeated = generate_batch(cell, 0, context, batch_size=3)
             self.assertEqual(batch["attempts"], 3)
+            self.assertEqual(set(batch["groups"]), set(CONDITIONS))
+            self.assertEqual(set(batch["raw"]), set(CONDITIONS))
             for cid in CONDITIONS:
                 for endpoint in batch["groups"][cid]:
                     np.testing.assert_array_equal(batch["groups"][cid][endpoint]["values"],
@@ -278,10 +297,16 @@ class SourceContextTests(unittest.TestCase):
             statistics = core_statistics(batch, context)
             for policy in POLICIES:
                 for replica in range(3):
+                    for cid in CONDITIONS:
+                        for endpoint in ("Q", "R", "L"):
+                            self.assertTrue(batch["groups"][cid][endpoint]["available"][replica].any())
+                    for cid in ("C2", "C3", "C4"):
+                        self.assertTrue(batch["raw"][cid]["slopeAvailable"][replica].any())
                     receipt = scalar_parity(cell, batch, statistics, context, policy, replica, self.config)
                     self.assertEqual(receipt["status"], "PASS")
                     self.assertEqual(receipt["fixedNineRoutes"], 9)
                     self.assertTrue(receipt["matchedSixChecked"])
+                    self.assertGreaterEqual(receipt["oldRawPersonChecks"], 3)
             if cell["selection"]:
                 for cid in CONDITIONS:
                     raw = batch["raw"][cid]

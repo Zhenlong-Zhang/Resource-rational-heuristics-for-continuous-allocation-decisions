@@ -20,9 +20,13 @@ class BoundedRobustnessTests(unittest.TestCase):
     def setUpClass(cls):
         root = Path(__file__).resolve().parents[1]
         cls.config = json.loads((root/"configs/tutoring_bounded_robustness_v01.json").read_text())
-        cls.cells = resolved_cells(cls.config)
+        cells = resolved_cells(cls.config)
+        cls.frozen_seeds = [cell["seed"] for cell in cells]
+        # Preserve the frozen configuration while using distinct test-only streams.
+        cls.cells = [{**cell, "seed": 987654321100000 + i} for i, cell in enumerate(cells)]
 
     def test_literal_truth_roster_and_no_precision_override(self):
+        self.assertEqual(self.frozen_seeds, list(range(710071, 710081)))
         self.assertEqual([c["id"] for c in self.cells], list(CELL_IDS))
         self.assertEqual(sum(c["replications"] for c in self.cells), 100000)
         selected = self.cells[-1]["analyticTruths"]["selected"]["C4"]

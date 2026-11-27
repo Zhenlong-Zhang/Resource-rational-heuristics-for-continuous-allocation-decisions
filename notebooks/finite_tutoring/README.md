@@ -54,6 +54,22 @@ and complete bounded shares are explicit assumptions. The historical planning
 certificate does not itself authorize sampling or report an executed268 campaign;
 its non-adoption flag does not describe subsequent project decisions.
 
+## Fixed-Population Projection
+
+[c5_projection.ipynb](c5_projection.ipynb) calls the source implementation for
+the supplemental fixed-population projection. Its prospective own-prefix route
+is under validation and provides descriptive output only; it does not certify
+inference or historical equality. The historical first repetition is
+an external content-checked input, not a regenerated seed. The remaining draws,
+replay, conditional intervals and redraw have explicit runtime and independence
+limitations; a new output is not automatically the historical exact result.
+Input preparation can generate report products or consume matching products from
+the canonical-law route. All long-running cells are disabled by default.
+The separate historical-redraw mode checks a supplied accepted summary and does
+not rerun the simulation. The external inputs are not included in this repository;
+download them from the [public input folder](https://drive.google.com/drive/folders/1DueektDCojHq0A2SwlM_XKf-OzOvJqHh).
+The notebook pins both SHA-256 hashes before use.
+
 ## Paper Figures
 
 [paper_figures.ipynb](paper_figures.ipynb) reproduces the four paper figures with

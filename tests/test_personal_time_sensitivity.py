@@ -148,9 +148,14 @@ class TestOriginalStreams(unittest.TestCase):
         self.assertEqual(key, P.make_key(other, 'A', 'report', 0))
         self.assertEqual(key, R.make_key(ctx, 'A', 'report', 0))
         self.assertNotEqual(ctx['identity']['personId'], other['identity']['personId'])
+        test_ctx = {**ctx, 'bindings': {**ctx['bindings'],
+                                       'randomizationGroup': 'personal-time-software-test-only-v1'}}
+        test_key = P.make_key(test_ctx, 'A', 'report', 0)
+        self.assertEqual(test_key, R.make_key(test_ctx, 'A', 'report', 0))
+        self.assertNotEqual(test_key, key)
         law = P.A.normalize_log_weights(np.asarray(root['initialLogs'][0]))
-        draw = P.stream_draw(key, law)
-        self.assertEqual(draw, R.stream_draw(key, law))
+        draw = P.stream_draw(test_key, law)
+        self.assertEqual(draw, R.stream_draw(test_key, law))
         self.assertEqual(len(draw['seedHex']), 32)
         self.assertLessEqual(float.fromhex(draw['cdfPreviousHex']), float.fromhex(draw['uniformHex']))
         self.assertGreater(float.fromhex(draw['cdfSelectedHex']), float.fromhex(draw['uniformHex']))
@@ -158,9 +163,9 @@ class TestOriginalStreams(unittest.TestCase):
             altered = copy.deepcopy(draw)
             altered[field] = 'changed'
             with self.assertRaises(ValueError):
-                S.compare(altered, R.stream_draw(key, law))
+                S.compare(altered, R.stream_draw(test_key, law))
         with self.assertRaises(ValueError):
-            P.stream_draw(key, law + .1)
+            P.stream_draw(test_key, law + .1)
 
     def test_paid_update_exactly_once_and_correct_slot(self):
         _, root, cfg = fixture()

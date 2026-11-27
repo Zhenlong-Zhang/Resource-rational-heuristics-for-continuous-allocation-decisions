@@ -8,6 +8,9 @@ or inference method is duplicated in notebook cells.
   five no-question rules and complete fixed ask-once expectations.
 - [Coefficient precision](finite_tutoring/coefficient_precision.ipynb): saved
   design diagnostics and deterministic C5 finite-law/original-floor preparation.
+- [Fixed-population projection](finite_tutoring/c5_projection.ipynb): source-calling
+  C5 sampling, independent replay, conditional intervals and redraw; historical
+  first-repetition data must be supplied externally.
 
 Use `main` for the maintained reproduction workflows. Retained historical
 analyses are identified by their scientific scope and fixed source versions,

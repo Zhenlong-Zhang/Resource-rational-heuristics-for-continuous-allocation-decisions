@@ -253,13 +253,17 @@ class TestCostAwareNumerics(unittest.TestCase):
                 compute()
 
     def test_stream_key_is_exact_and_scenario_free(self):
-        key = {"namespace": "r9-repeated-macro-bridge-v1", "conditionId": "C2", "scheduleVariant": 0,
+        self.assertEqual(P.NAMESPACE, "r9-repeated-macro-bridge-v1")
+        self.assertEqual(R.NAMESPACE, P.NAMESPACE)
+        test_namespace = "cost-aware-stream-test-only-v1"
+        key = {"namespace": test_namespace, "conditionId": "C2", "scheduleVariant": 0,
                "replicateId": 1, "mainIndex": 1, "logicalRecipient": "A", "streamKind": "report", "reportIndex": 0}
-        self.assertEqual(P.stream_uniform(key), R.stream_uniform(key))
-        self.assertNotEqual(P.stream_uniform(key)["digest"], P.stream_uniform({**key, "reportIndex": 1})["digest"])
-        for compute in (P.stream_uniform, R.stream_uniform):
-            with self.assertRaises(ValueError):
-                compute({**key, "scenarioId": "low|rho_0"})
+        with patch.object(P, "NAMESPACE", test_namespace), patch.object(R, "NAMESPACE", test_namespace):
+            self.assertEqual(P.stream_uniform(key), R.stream_uniform(key))
+            self.assertNotEqual(P.stream_uniform(key)["digest"], P.stream_uniform({**key, "reportIndex": 1})["digest"])
+            for compute in (P.stream_uniform, R.stream_uniform):
+                with self.assertRaises(ValueError):
+                    compute({**key, "scenarioId": "low|rho_0"})
 
     def test_pathwise_max_not_maximum_of_expectations(self):
         result = expected_pathwise_max(np.array([.5, .5]), np.array([0., 9.]), np.array([10., 10.]), 1., 5.)

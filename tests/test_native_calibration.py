@@ -99,7 +99,8 @@ class NativeCalibrationTests(unittest.TestCase):
     def test_normal_scalar_vector_audit(self):
         cell = self.cells["A02:null"]
         specs = C._specs_for(cell, self.analysis)
-        endpoints, _ = C._normal_batch(cell, specs, np.random.default_rng(C._seed(cell, 0)), 250)
+        # Exercise scalar/vector agreement using a test-only random stream.
+        endpoints, _ = C._normal_batch(cell, specs, np.random.default_rng(987654321012345), 250)
         for spec in specs:
             vector = C._vector_contrast(endpoints, spec, False)
             for i in (0, 1, 17, 249):

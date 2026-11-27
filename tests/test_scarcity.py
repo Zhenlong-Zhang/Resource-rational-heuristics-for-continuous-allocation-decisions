@@ -47,6 +47,8 @@ from src.policies.heuristic import (
     meet_lower_first_allocation,
 )
 
+TEST_ROOT_SEED = 987654328000001
+
 
 def scarcity_config(**overrides: object) -> EnvironmentConfig:
     values = {
@@ -423,7 +425,7 @@ class ScarcityOracleAndSeedTests(unittest.TestCase):
         )
         noisy = replace(base, sigma_sample=30.0)
         episodes = [
-            build_scarcity_paired_episode(config, stage="development", pairing_group_id=pairing, episode_index=7)
+            build_scarcity_paired_episode(config, stage="development", pairing_group_id=pairing, episode_index=7, root_seed=TEST_ROOT_SEED)
             for config in (base, control, noisy)
         ]
         self.assertEqual(len({episode.true_state_fingerprint for episode in episodes}), 1)
@@ -460,6 +462,7 @@ class ScarcityOracleAndSeedTests(unittest.TestCase):
                 stage="development",
                 pairing_group_id=pairing,
                 episode_index=index,
+                root_seed=TEST_ROOT_SEED,
             ).true_state_fingerprint
             for index in range(6)
         }
@@ -469,6 +472,7 @@ class ScarcityOracleAndSeedTests(unittest.TestCase):
                 stage="development",
                 pairing_group_id=pairing,
                 episode_index=index,
+                root_seed=TEST_ROOT_SEED,
             ).true_state_fingerprint
             for index in reversed(range(6))
         }
@@ -480,6 +484,7 @@ class ScarcityOracleAndSeedTests(unittest.TestCase):
                     stage="development",
                     pairing_group_id=pairing,
                     episode_index=index,
+                    root_seed=TEST_ROOT_SEED,
                 ).true_state_fingerprint
         self.assertEqual(forward, reverse)
         self.assertEqual(forward, shards)
@@ -684,12 +689,15 @@ class ScarcityExecutionInvarianceTests(unittest.TestCase):
     def test_policy_order_does_not_change_scientific_rows(self) -> None:
         descriptor = self.descriptor()
         with patch.object(scarcity_module, "_metalevel_policy_objects", return_value=self.policy_objects()):
-            forward = evaluate_metalevel_episode(descriptor, stage="development", episode_index=0, oracle_grid_size=101)
+            forward = evaluate_metalevel_episode(descriptor, stage="development", episode_index=0, oracle_grid_size=101, root_seed=TEST_ROOT_SEED)
             with patch.object(scarcity_module, "SCARCITY_POLICY_ORDER", tuple(reversed(SCARCITY_POLICY_ORDER))):
-                reverse = evaluate_metalevel_episode(descriptor, stage="development", episode_index=0, oracle_grid_size=101)
+                reverse = evaluate_metalevel_episode(descriptor, stage="development", episode_index=0, oracle_grid_size=101, root_seed=TEST_ROOT_SEED)
         forward_by_policy = {row["policy_id"]: row for row in forward}
         reverse_by_policy = {row["policy_id"]: row for row in reverse}
         self.assertEqual(canonical_hash(forward_by_policy), canonical_hash(reverse_by_policy))
+        self.assertEqual(forward_by_policy["frozen_rr"]["policy_computation_seed"], scarcity_policy_seed(
+            stage="development", environment_id=str(descriptor["environment_id"]),
+            episode_index=0, policy_id="frozen_rr", root_seed=TEST_ROOT_SEED))
         self.assertEqual(
             forward_by_policy["frozen_rr"]["final_choice_classification_basis"],
             "terminal_posterior_mean",
@@ -704,9 +712,9 @@ class ScarcityExecutionInvarianceTests(unittest.TestCase):
     def test_shard_partition_does_not_change_rows(self) -> None:
         descriptor = self.descriptor()
         with patch.object(scarcity_module, "_metalevel_policy_objects", return_value=self.policy_objects()):
-            serial = evaluate_metalevel_descriptor(descriptor, stage="development", n_episodes=4, oracle_grid_size=101)
-            sharded = evaluate_metalevel_descriptor(descriptor, stage="development", n_episodes=2, episode_start=0, oracle_grid_size=101)
-            sharded.extend(evaluate_metalevel_descriptor(descriptor, stage="development", n_episodes=2, episode_start=2, oracle_grid_size=101))
+            serial = evaluate_metalevel_descriptor(descriptor, stage="development", n_episodes=4, oracle_grid_size=101, root_seed=TEST_ROOT_SEED)
+            sharded = evaluate_metalevel_descriptor(descriptor, stage="development", n_episodes=2, episode_start=0, oracle_grid_size=101, root_seed=TEST_ROOT_SEED)
+            sharded.extend(evaluate_metalevel_descriptor(descriptor, stage="development", n_episodes=2, episode_start=2, oracle_grid_size=101, root_seed=TEST_ROOT_SEED))
         serial_sorted = sorted(serial, key=lambda row: (row["episode_index"], row["policy_id"]))
         shard_sorted = sorted(sharded, key=lambda row: (row["episode_index"], row["policy_id"]))
         self.assertEqual(canonical_hash(serial_sorted), canonical_hash(shard_sorted))

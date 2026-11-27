@@ -22,8 +22,14 @@ def specs():
                  for name in ("expected_gpa_analysis.json", "native_calibration.json"))
 
 
-def state(arm="C1", variant=0, main=1, prefix=0):
+def _test_source_meta(arm, variant):
     meta = L._source_meta(arm, variant)
+    meta["seed"] = f"native-lookup-test-only:{arm}:variant:{variant}"
+    return meta
+
+
+def state(arm="C1", variant=0, main=1, prefix=0):
+    meta = _test_source_meta(arm, variant)
     definition = I.schedule(meta)[main + 3]
     streams = I.scenario(meta, definition)[1]
     paid = L._paid(definition, L._prefix(definition, main, prefix), streams)
@@ -48,7 +54,7 @@ let rejected=false;
 try { N.normalize({rr_final_meta:'not a synthetic export'},design); } catch(e) { rejected=true; }
 process.stdout.write(JSON.stringify({schedule:state.schedule,rejected}));
 """
-        meta = L._source_meta("C1", 0)
+        meta = _test_source_meta("C1", 0)
         result = subprocess.run(["node", "-e", program, json.dumps(meta)], cwd=ROOT,
                                 text=True, capture_output=True, check=True)
         actual = json.loads(result.stdout)
@@ -56,7 +62,8 @@ process.stdout.write(JSON.stringify({schedule:state.schedule,rejected}));
         L._Replay().near(actual["schedule"], I.schedule(meta), "Native schedule parity")
 
     def test_full_schedule_roster_and_unscaled_gap(self):
-        schedules = {(a, v): I.schedule(L._source_meta(a, v)) for a in L.ARMS for v in range(9)}
+        self.assertEqual(L._source_meta("C1", 0)["seed"], "r9-calibration-lookup-v1:C1:variant:0")
+        schedules = {(a, v): I.schedule(_test_source_meta(a, v)) for a in L.ARMS for v in range(9)}
         for (arm, _), rows in schedules.items():
             self.assertEqual([r["stage"] for r in rows], ["practice"] * 4 + ["main"] * 10)
             self.assertEqual([r["stageIndex"] for r in rows[4:]], list(range(1, 11)))
@@ -70,7 +77,7 @@ process.stdout.write(JSON.stringify({schedule:state.schedule,rejected}));
         self.assertTrue(all(a == "C1" for population, a, _, _, _ in indices if population != "working"))
 
     def test_prefix_and_exhaustion_identity(self):
-        d = I.schedule(L._source_meta("C1", 0))[4]
+        d = I.schedule(_test_source_meta("C1", 0))[4]
         n = d["budgetMillihours"] // d["costMillihours"]
         self.assertEqual(L._prefix(d, 1, n), [i % 2 for i in range(n)])
         with self.assertRaises(ValueError):

@@ -31,7 +31,7 @@ def fixture_recipe() -> C2Recipe:
 class IdentifiabilityTests(unittest.TestCase):
     def setUp(self) -> None:
         recipe = fixture_recipe()
-        rng = np.random.default_rng(417)
+        rng = np.random.default_rng(987654331000417)
         orders = np.argsort(rng.random((12, 30)), axis=1)
         self.targets = recipe.targets[orders]
         self.folds = recipe.folds[orders]
@@ -94,6 +94,8 @@ class IdentifiabilityTests(unittest.TestCase):
 
     def test_reproducible_simulation_has_group_unit_and_all_cells(self) -> None:
         config = json.loads((ROOT / "configs/tutoring_identifiability_validation.json").read_text())
+        self.assertEqual(config["stages"]["smoke"]["root_seed"], 2026091730)
+        config["stages"]["smoke"]["root_seed"] = 987654331001730
         result, rows = simulate_recovery(fixture_recipe(), config, "smoke")
         again, again_rows = simulate_recovery(fixture_recipe(), config, "smoke")
         self.assertEqual(result, again)

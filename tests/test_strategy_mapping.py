@@ -69,7 +69,7 @@ def smoke_config() -> EnvironmentConfig:
         gauss_hermite_order=5,
         allocation_grid_size=21,
         max_meta_samples=8,
-        random_seed=71,
+        random_seed=987654329000071,
     )
 
 

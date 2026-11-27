@@ -17,7 +17,12 @@ from tutoring_analysis import calibration as C
 from tutoring_analysis.inference import CORE,participant_slope
 from tutoring_analysis.planning import covariance_matrix
 
-CONFIG=json.loads((ROOT/"configs/tutoring_calibration_v01.json").read_text())
+FROZEN_CONFIG=json.loads((ROOT/"configs/tutoring_calibration_v01.json").read_text())
+FROZEN_CELLS=C.resolved_cells(FROZEN_CONFIG)
+CONFIG=copy.deepcopy(FROZEN_CONFIG)
+for index, cell in enumerate(CONFIG["cells"]):
+    cell["seed"] = 987654322000000 + index
+CONFIG["fullRowParity"]["seed"] = 987654322100000
 CELLS=C.resolved_cells(CONFIG)
 
 
@@ -25,7 +30,7 @@ class CalibrationTests(unittest.TestCase):
     def test_frozen_roster_and_hash(self):
         self.assertEqual(hashlib.sha256((ROOT/"configs/tutoring_calibration_v01.json").read_bytes()).hexdigest(),"cc64f48180decc42092ed384470700949e3186008178736607124918fe562871")
         self.assertEqual(len(CELLS),30);self.assertEqual(sum(c["replications"] for c in CELLS),390000)
-        self.assertEqual([c["seed"] for c in CELLS],list(range(2026100601,2026100631)))
+        self.assertEqual([c["seed"] for c in FROZEN_CELLS],list(range(2026100601,2026100631)))
 
     def test_scalar_parity_all_cells_populations_policies(self):
         for cell in CELLS:
